@@ -7,146 +7,94 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --navy:#0c1f4a;--blue:#1b4fa8;--gold:#e8b923;
-  --green:#15803d;--red:#b91c1c;
-  --bg:#f0f3f8;--card:#fff;--border:#dde3ee;--text:#18243f;--muted:#64748b;
-  --r:10px;
-}
+:root{--navy:#0c1f4a;--blue:#1b4fa8;--gold:#e8b923;--green:#15803d;--red:#b91c1c;--bg:#f0f3f8;--card:#fff;--border:#dde3ee;--text:#18243f;--muted:#64748b;--r:10px;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;display:flex;flex-direction:column;}
 a{color:inherit;text-decoration:none;}
-
-/* NAV */
 .nav{background:linear-gradient(135deg,#0c1f4a 0%,#1b4fa8 60%,#0c3a8a 100%);box-shadow:0 3px 16px rgba(12,31,74,.4);position:sticky;top:0;z-index:100;}
-.nav-inner{max-width:1300px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:0;}
-.nav-brand{display:flex;align-items:center;gap:12px;padding:14px 0;margin-right:24px;}
-.nav-emblem{width:38px;height:38px;border-radius:7px;background:rgba(255,255,255,.12);border:2px solid rgba(232,185,35,.5);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
-.nav-brand-text h1{font-size:12px;font-weight:700;color:#fff;letter-spacing:.3px;}
-.nav-brand-text p{font-size:9.5px;color:rgba(255,255,255,.6);margin-top:1px;}
-.nav-links{display:flex;align-items:stretch;gap:0;}
-.nav-link{padding:0 16px;height:66px;display:flex;align-items:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.75);border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}
-.nav-link:hover{color:#fff;background:rgba(255,255,255,.08);}
-.nav-link.active{color:#fff;border-bottom-color:var(--gold);background:rgba(255,255,255,.05);}
-.nav-link span{margin-right:6px;}
-
-/* LAYOUT */
+.nav-inner{max-width:1300px;margin:0 auto;padding:0 20px;display:flex;align-items:center;}
+.nav-brand{display:flex;align-items:center;gap:12px;padding:14px 0;margin-right:20px;border-right:1px solid rgba(255,255,255,.12);padding-right:20px;}
+.nav-logo{width:34px;height:34px;border-radius:6px;background:rgba(255,255,255,.1);border:1.5px solid rgba(232,185,35,.5);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--gold);flex-shrink:0;}
+.nav-brand-text h1{font-size:11px;font-weight:700;color:#fff;letter-spacing:.3px;}
+.nav-brand-text p{font-size:9px;color:rgba(255,255,255,.5);margin-top:1px;}
+.nav-links{display:flex;align-items:stretch;overflow-x:auto;}
+.nav-link{padding:0 12px;height:60px;display:flex;align-items:center;font-size:11px;font-weight:600;color:rgba(255,255,255,.7);border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}
+.nav-link:hover{color:#fff;background:rgba(255,255,255,.07);}
+.nav-link.active{color:#fff;border-bottom-color:var(--gold);}
 .container{max-width:1300px;margin:0 auto;padding:24px 20px;flex:1;}
-
-/* CARD */
 .card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);margin-bottom:20px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);}
 .card-head{background:var(--navy);padding:11px 20px;display:flex;align-items:center;gap:10px;}
-.card-head h2{font-size:12px;font-weight:700;color:#fff;letter-spacing:.5px;text-transform:uppercase;}
-.card-icon{width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.card-head h2{font-size:11.5px;font-weight:700;color:#fff;letter-spacing:.5px;text-transform:uppercase;}
+.card-num{width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .card-body{padding:20px;}
-
-/* TABLE */
-.tbl-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:12px;}
-thead tr{background:#f5f7fb;}
-th{padding:9px 10px;text-align:left;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);white-space:nowrap;}
-td{padding:7px 10px;border-bottom:1px solid #f0f3f8;vertical-align:middle;}
-tr:hover td{background:#fafbff;}
-
-/* FORM */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
 .fg{display:flex;flex-direction:column;gap:5px;}
 .fg.span2{grid-column:span 2;}
-.fg.span3{grid-column:span 3;}
 label.fl{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
-input,select,textarea{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;background:#fff;outline:none;transition:border-color .2s;}
+input,select,textarea{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;background:#fff;outline:none;transition:border-color .2s;width:100%;}
 input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
-
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .18s;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 18px;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;white-space:nowrap;min-height:36px;}
 .btn-p{background:linear-gradient(135deg,#0c1f4a,#1b4fa8);color:#fff;}
 .btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(12,31,74,.3);}
 .btn-g{background:linear-gradient(135deg,#166534,#15803d);color:#fff;}
 .btn-g:hover{transform:translateY(-1px);box-shadow:0 5px 15px rgba(21,128,61,.3);}
 .btn-o{background:#fff;color:var(--navy);border:2px solid var(--border);}
 .btn-o:hover{border-color:var(--blue);}
-.btn-d{background:#fee2e2;color:var(--red);border:1px solid #fca5a5;}
-.btn-sm{padding:5px 12px;font-size:11px;}
-
-/* BADGES */
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;}
-.b-loteria{background:#dbeafe;color:#1e40af}
-.b-deportiva{background:#fef3c7;color:#92400e}
-.b-orden{background:#ede9fe;color:#5b21b6}
-.b-green{background:#dcfce7;color:#166534}
-.b-red{background:#fee2e2;color:#991b1b}
-.b-gray{background:#f1f5f9;color:#475569}
+.btn-d{background:#fee2e2;color:var(--red);border:1.5px solid #fca5a5;}
+.btn-d:hover{background:#fecaca;}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{background:#f5f7fb;}
+th{padding:9px 10px;text-align:left;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);white-space:nowrap;}
+td{padding:7px 10px;border-bottom:1px solid #f0f3f8;vertical-align:middle;}
+tr:hover td{background:#fafbff;}
+.badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;}
+.b-lot{background:#dbeafe;color:#1e40af}.b-dep{background:#fef3c7;color:#92400e}
+.b-ord{background:#ede9fe;color:#5b21b6}.b-ok{background:#dcfce7;color:#166534}
+.b-red{background:#fee2e2;color:#991b1b}.b-gray{background:#f1f5f9;color:#475569}
 .b-navy{background:var(--navy);color:var(--gold)}
-
-/* INFO BAR */
 .info-bar{background:#f5f7fb;border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 .info-bar p{font-size:11px;color:var(--muted);}
-
-/* ALERT */
-.alert{padding:10px 14px;border-radius:7px;font-size:12px;font-weight:600;margin-bottom:14px;}
+.alert{padding:10px 14px;border-radius:7px;font-size:12px;font-weight:500;margin-bottom:14px;line-height:1.5;}
 .alert-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;}
 .alert-warn{background:#fef9c3;border:1px solid #fde68a;color:#78350f;}
 .alert-green{background:#f0fdf4;border:1px solid #86efac;color:#166534;}
-
-/* STATS ROW */
 .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 20px;flex:1;min-width:140px;}
-.stat-card .val{font-size:28px;font-weight:800;color:var(--navy);}
-.stat-card .lbl{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;}
-
-/* FOOTER */
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 20px;flex:1;min-width:130px;}
+.stat-card .val{font-size:26px;font-weight:800;color:var(--navy);}
+.stat-card .lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:3px;}
 .footer{text-align:center;padding:14px;font-size:10px;color:#94a3b8;border-top:1px solid var(--border);background:#fff;}
-
-/* TOAST */
-#toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 20px;border-radius:8px;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);display:none;z-index:9999;animation:slideUp .25s ease;}
-@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
+#toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:11px 20px;border-radius:8px;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);display:none;z-index:9999;}
 hr.div{border:none;border-top:1px solid var(--border);margin:16px 0;}
 @media print{.nav,.footer,button,.no-print{display:none!important;}body{background:#fff;}}
 </style>
 {% block extra_head %}{% endblock %}
 </head>
 <body>
-
 <nav class="nav">
   <div class="nav-inner">
     <div class="nav-brand">
-      <div class="nav-emblem">🎲</div>
-      <div class="nav-brand-text">
-        <h1>DCJA — OPERATIVOS</h1>
-        <p>Dirección de Casinos y Juegos de Azar</p>
-      </div>
+      <div class="nav-logo">D</div>
+      <div class="nav-brand-text"><h1>DCJA — SISTEMA DE OPERATIVOS</h1><p>Dirección de Casinos y Juegos de Azar</p></div>
     </div>
     <div class="nav-links">
-      <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/"><span>🏠</span> Inicio</a>
-      <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias"><span>📥</span> Denuncias</a>
-      <a class="nav-link {% if request.endpoint=='planificacion_view' %}active{% endif %}" href="/planificacion"><span>📅</span> Planificación</a>
-      <a class="nav-link {% if request.endpoint=='asignacion_view' %}active{% endif %}" href="/asignacion"><span>🎲</span> Asignación</a>
-      <a class="nav-link {% if request.endpoint=='plan_semanal' %}active{% endif %}" href="/plan_semanal"><span>📋</span> Plan Semanal</a>
-      <a class="nav-link {% if request.endpoint=='personal_view' %}active{% endif %}" href="/personal"><span>👥</span> Personal</a>
+      <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
+      <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias">Denuncias</a>
+      <a class="nav-link {% if request.endpoint=='planificacion_view' %}active{% endif %}" href="/planificacion">Planificación</a>
+      <a class="nav-link {% if request.endpoint=='asignacion_view' %}active{% endif %}" href="/asignacion">Asignación</a>
+      <a class="nav-link {% if request.endpoint=='plan_semanal' %}active{% endif %}" href="/plan_semanal">Plan Semanal</a>
+      <a class="nav-link {% if request.endpoint=='historial_view' %}active{% endif %}" href="/historial">Historial</a>
+      <a class="nav-link {% if request.endpoint=='reportes_view' %}active{% endif %}" href="/reportes">Reportes</a>
+      <a class="nav-link {% if request.endpoint=='mapa_view' %}active{% endif %}" href="/mapa">Mapa</a>
+      <a class="nav-link {% if request.endpoint=='personal_view' %}active{% endif %}" href="/personal">Personal</a>
     </div>
   </div>
 </nav>
-
-<div class="container">
-  {% block content %}{% endblock %}
-</div>
-
-<div class="footer">
-  Ministerio de Hacienda y Economía &nbsp;·&nbsp; Dirección de Casinos y Juegos de Azar &nbsp;·&nbsp; Uso institucional exclusivo
-</div>
-
+<div class="container">{% block content %}{% endblock %}</div>
+<div class="footer">Ministerio de Hacienda y Economía &nbsp;·&nbsp; Dirección de Casinos y Juegos de Azar &nbsp;·&nbsp; Uso institucional exclusivo</div>
 <div id="toast"></div>
-
 <script>
-function toast(msg, color='#0c1f4a'){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.style.background=color; t.style.display='block';
-  setTimeout(()=>t.style.display='none', 3000);
-}
-async function api(url, data){
-  const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-  return r.json();
-}
+function toast(msg,color){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color||'#0c1f4a';t.style.display='block';setTimeout(()=>t.style.display='none',3200);}
+async function api(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return r.json();}
 </script>
 {% block scripts %}{% endblock %}
 </body>
