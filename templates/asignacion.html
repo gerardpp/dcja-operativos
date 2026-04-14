@@ -1,150 +1,96 @@
 {% extends "base.html" %}
-{% block title %}DCJA — Asignación de Brigadas{% endblock %}
+{% block title %}DCJA — Asignacion{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--navy);">🎲 Asignación de Brigadas</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana: <strong>{{ semana }}</strong> — Genera las brigadas con rotación justa.</p>
-  </div>
-  <a href="/plan_semanal" class="btn btn-o">📋 &nbsp;Ver Plan Semanal</a>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Asignacion de Brigadas</h2>
+  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong></p></div>
+  <a href="/plan_semanal" class="btn btn-o">Ver Plan Semanal</a>
 </div>
-
 <div class="stats">
-  <div class="stat-card"><div class="val">{{ operativos|length }}</div><div class="lbl">📅 Operativos</div></div>
-  <div class="stat-card"><div class="val">{{ total_brigadas }}</div><div class="lbl">🚗 Brigadas Requeridas</div></div>
-  <div class="stat-card"><div class="val">{{ vehiculos }}</div><div class="lbl">🚙 Vehículos Disponibles</div></div>
-  <div class="stat-card"><div class="val" style="color:{{ 'var(--green)' if total_brigadas <= vehiculos else 'var(--red)' }}">
-    {{ 'OK' if total_brigadas <= vehiculos else '⚠️ EXCEDE' }}
-  </div><div class="lbl">Estado Capacidad</div></div>
+  <div class="stat-card"><div class="val">{{ operativos|length }}</div><div class="lbl">Operativos</div></div>
+  <div class="stat-card"><div class="val">{{ total_brigadas }}</div><div class="lbl">Brigadas Requeridas</div></div>
+  <div class="stat-card"><div class="val">{{ vehiculos }}</div><div class="lbl">Vehiculos Disponibles</div></div>
+  <div class="stat-card"><div class="val" style="color:{{ 'var(--green)' if total_brigadas<=vehiculos else 'var(--red)' }}">{{ 'OK' if total_brigadas<=vehiculos else 'EXCEDE' }}</div><div class="lbl">Capacidad</div></div>
 </div>
-
 {% if total_brigadas > vehiculos %}
-<div class="alert alert-warn">
-  ⚠️ Se requieren <strong>{{ total_brigadas }} brigadas</strong> pero solo hay <strong>{{ vehiculos }} vehículos</strong> disponibles.
-  El sistema priorizará <strong>Órdenes de Dirección</strong> primero, luego denuncias por orden de carga hasta completar el límite.
-</div>
+<div class="alert alert-warn">Se requieren <strong>{{ total_brigadas }}</strong> brigadas pero hay <strong>{{ vehiculos }}</strong> vehiculos. El sistema priorizara Ordenes de Direccion y completara hasta el limite disponible.</div>
 {% endif %}
-
 {% if not operativos %}
-<div class="alert alert-warn">No hay operativos programados para esta semana. Ve a <a href="/planificacion" style="color:var(--blue);font-weight:700;">Planificación</a> para agregarlos.</div>
+<div class="alert alert-warn">No hay operativos programados. Ve a <a href="/planificacion" style="color:var(--blue);font-weight:700;">Planificacion</a> para agregarlos.</div>
 {% else %}
-
 <div class="card">
-  <div class="card-head"><div class="card-icon">📋</div><h2>Operativos de Esta Semana</h2></div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Nombre / Zona</th><th>Provincia</th><th>Brigadas</th><th>Fuente</th></tr>
-      </thead>
-      <tbody>
-        {% for op in operativos %}
-        <tr>
-          <td style="color:#94a3b8;">{{ loop.index }}</td>
-          <td style="font-size:11px;">{{ op.fecha or '—' }}</td>
-          <td>{% if 'DEPORTIVA' in op.tipo.upper() %}<span class="badge b-deportiva">Deportiva</span>{% else %}<span class="badge b-loteria">Lotería</span>{% endif %}</td>
-          <td><span style="font-weight:700;">{{ op.nombre }}</span><br><span style="font-size:10.5px;color:var(--muted);">{{ op.zona_operativo or op.provincia }}</span></td>
-          <td style="font-size:11px;">{{ op.provincia }}</td>
-          <td style="text-align:center;font-weight:700;">{{ op.brigadas_requeridas }}</td>
-          <td>{% if op.fuente=='orden_direccion' %}<span class="badge b-orden">⭐ Orden Dir.</span>{% else %}<span class="badge b-gray">Denuncia</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <div class="card-head"><div class="card-num">I</div><h2>Operativos de Esta Semana</h2></div>
+  <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Nombre / Zona</th><th>Provincia</th><th>Brigadas</th><th>Fuente</th><th>Estado</th></tr></thead>
+  <tbody>
+    {% for op in operativos %}
+    <tr><td style="color:#94a3b8;">{{ loop.index }}</td><td style="font-size:11px;">{{ op.fecha or '—' }}</td>
+    <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}</td>
+    <td><strong>{{ op.nombre }}</strong><br><span style="font-size:10.5px;color:var(--muted);">{{ op.zona_operativo or op.provincia }}</span></td>
+    <td style="font-size:11px;">{{ op.provincia }}</td>
+    <td style="text-align:center;font-weight:700;">{{ op.brigadas_requeridas }}</td>
+    <td>{% if op.fuente=='orden_direccion' %}<span class="badge b-ord">Orden Dir.</span>{% else %}<span class="badge b-gray">Denuncia</span>{% endif %}</td>
+    <td><span class="badge {{ 'b-ok' if op.estado=='asignado' else 'b-gray' }}">{{ op.estado.title() }}</span></td>
+    </tr>{% endfor %}
+  </tbody></table></div>
 </div>
-
 <div class="card">
-  <div class="card-head"><div class="card-icon">🎲</div><h2>Ejecutar Asignación Aleatoria</h2></div>
+  <div class="card-head"><div class="card-num">II</div><h2>Generar Asignaciones</h2></div>
   <div class="card-body">
-    <div class="alert alert-blue" style="margin-bottom:16px;">
-      <strong>Algoritmo:</strong> excluye inspectores de la zona del operativo, cooldown 21 días, no disponibles y conflictos. Del pool elegible: prioridad por <em>menor veces en esa zona</em> → menor carga total → aleatorio dentro del tier.
+    <div class="alert alert-blue">El algoritmo excluye al personal residente en la zona del operativo, en cooldown de 21 dias, no disponible o con conflicto declarado. Del pool elegible prioriza por menor frecuencia en esa zona, luego menor carga total, y dentro del mismo nivel la seleccion es aleatoria.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" class="no-print">
+      <button class="btn btn-p" id="btn-gen" onclick="generar()">Generar Asignaciones</button>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn btn-p" id="btn-ejecutar" onclick="ejecutarAsignacion()">🎲 &nbsp;GENERAR ASIGNACIONES</button>
-    </div>
-    <div id="resultado" style="margin-top:20px;"></div>
+    <div id="resultado"></div>
   </div>
 </div>
 {% endif %}
 {% endblock %}
-
 {% block scripts %}
 <script>
-const SEMANA = '{{ semana }}';
-const VEHICULOS = {{ vehiculos }};
-
-async function ejecutarAsignacion(){
-  const btn = document.getElementById('btn-ejecutar');
-  btn.disabled=true; btn.textContent='Generando...';
-  try {
-    const r = await api('/asignacion/ejecutar', {semana:SEMANA, vehiculos:VEHICULOS, fecha_base: new Date().toISOString().slice(0,10)});
-    if(!r.ok){ toast('Error al generar asignaciones','#b91c1c'); btn.disabled=false; btn.textContent='🎲 GENERAR ASIGNACIONES'; return; }
-    renderResultado(r.resultado, r.seed);
-    btn.textContent='↺ Regenerar';
-    btn.disabled=false;
-  } catch(e){ toast('Error de conexión','#b91c1c'); btn.disabled=false; btn.textContent='🎲 GENERAR ASIGNACIONES'; }
+const SEMANA='{{ semana }}'; const VEH={{ vehiculos }};
+async function generar(){
+  const btn=document.getElementById('btn-gen');
+  btn.disabled=true; btn.textContent='Procesando...';
+  const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH,fecha_base:new Date().toISOString().slice(0,10)});
+  if(!r.ok){toast('Error al generar','#b91c1c');btn.disabled=false;btn.textContent='Generar Asignaciones';return;}
+  renderResultado(r.resultado,r.seed);
+  btn.textContent='Regenerar'; btn.disabled=false;
 }
-
-function renderResultado(resultado, seed){
-  let h = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:15px;font-weight:800;color:var(--navy);">✅ Asignaciones Generadas</div>
+function renderResultado(res,seed){
+  let h=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div style="font-size:15px;font-weight:800;color:var(--navy);">Asignaciones Generadas</div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="background:var(--navy);color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:5px 11px;border-radius:5px;letter-spacing:1px;">🔑 ${seed}</span>
-      <button class="btn btn-g btn-sm" onclick="confirmarAsignacion(${JSON.stringify(resultado).replace(/"/g,'&quot;')})">✓ Confirmar y Registrar</button>
-    </div>
-  </div>`;
-
-  resultado.forEach((op, oi) => {
-    h += `<div style="border:1.5px solid var(--border);border-radius:9px;margin-bottom:14px;overflow:hidden;">
+      <span style="background:var(--navy);color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:5px 11px;border-radius:5px;letter-spacing:1px;">Semilla: ${seed}</span>
+      <button class="btn btn-g" onclick='confirmar(${JSON.stringify(res).replace(/'/g,"&#39;")})'>Confirmar y Registrar</button>
+    </div></div>`;
+  res.forEach((op,oi)=>{
+    h+=`<div style="border:1.5px solid var(--border);border-radius:9px;margin-bottom:14px;overflow:hidden;">
       <div style="background:#f5f7fb;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-        <div>
-          <span style="font-weight:800;font-size:13px;">${op.nombre}</span>
-          <span style="margin-left:8px;font-size:11px;color:var(--muted);">${op.provincia}${op.municipio?' / '+op.municipio:''}</span>
-          ${op.zona_operativo?`<span class="badge b-gray" style="margin-left:6px;">${op.zona_operativo}</span>`:''}
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          ${op.fuente=='orden_direccion'?'<span class="badge b-orden">⭐ Orden Dir.</span>':'<span class="badge b-gray">Denuncia</span>'}
-          <span class="badge b-navy">${op.brigadas_asignadas.length} brigada(s)</span>
-          ${op.fecha?`<span style="font-size:11px;color:var(--muted);">${op.fecha}</span>`:''}
-        </div>
+        <div><strong style="font-size:13px;">${op.nombre}</strong><span style="margin-left:8px;font-size:11px;color:var(--muted);">${op.provincia}${op.municipio?' / '+op.municipio:''}</span></div>
+        <div style="display:flex;gap:6px;">${op.fuente=='orden_direccion'?'<span class="badge b-ord">Orden Dir.</span>':'<span class="badge b-gray">Denuncia</span>'}
+        <span class="badge b-navy">${op.brigadas_asignadas.length} brigada(s)</span>${op.fecha?`<span class="badge b-gray">${op.fecha}</span>`:''}</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--border);">
-        ${op.brigadas_asignadas.map((b,bi) => `
-          <div style="background:#fff;padding:14px 16px;">
-            <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Brigada ${b.num} — Vehículo ${bi+1}</div>
-            ${renderPersona(b.coordinador,'COORDINADOR','#dbeafe','#1e40af')}
-            ${renderPersona(b.inspector,'INSPECTOR','#dcfce7','#166534')}
-            ${renderPersona(b.auxiliar,'AUXILIAR','#f3e8ff','#6d28d9')}
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+      ${op.brigadas_asignadas.map(b=>`
+        <div style="background:#fff;padding:14px 16px;">
+          <div style="font-size:10.5px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--navy);">Brigada ${b.num} — Vehiculo ${b.num}</div>
+          ${rp(b.coordinador,'COORDINADOR','#dbeafe','#1e40af')}
+          ${rp(b.inspector,'INSPECTOR','#dcfce7','#166534')}
+          ${rp(b.auxiliar,'AUXILIAR','#f3e8ff','#6d28d9')}
+        </div>`).join('')}
+      </div></div>`;
   });
-
-  document.getElementById('resultado').innerHTML = h;
+  document.getElementById('resultado').innerHTML=h;
 }
-
-function renderPersona(p, rol, bg, color){
-  if(!p) return `<div style="padding:6px 0;border-bottom:1px dashed #f0f3f8;display:flex;align-items:center;gap:8px;">
-    <span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;">${rol}</span>
-    <span style="font-size:11px;color:#94a3b8;font-style:italic;">Sin elegibles disponibles</span>
-  </div>`;
-  return `<div style="padding:6px 0;border-bottom:1px dashed #f0f3f8;display:flex;align-items:center;gap:8px;">
-    <span style="background:${bg};color:${color};padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;">${rol}</span>
-    <span style="font-size:12px;font-weight:600;flex:1;">${p.nombre}</span>
-    <span style="font-size:10px;color:var(--muted);">${p.zona}</span>
-  </div>`;
+function rp(p,rol,bg,col){
+  if(!p)return`<div style="padding:6px 0;border-bottom:1px dashed #f0f3f8;display:flex;gap:8px;align-items:center;"><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;min-width:90px;text-align:center;">${rol}</span><span style="font-size:11px;color:#94a3b8;">Sin elegibles disponibles</span></div>`;
+  return`<div style="padding:6px 0;border-bottom:1px dashed #f0f3f8;display:flex;gap:8px;align-items:center;"><span style="background:${bg};color:${col};padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;min-width:90px;text-align:center;">${rol}</span><div style="flex:1;"><div style="font-size:12px;font-weight:600;">${p.nombre}</div><div style="font-size:10px;color:var(--muted);">${p.zona}</div></div></div>`;
 }
-
-async function confirmarAsignacion(resultado){
-  if(!confirm(`¿Confirmar estas asignaciones? Se actualizarán los contadores de carga de ${resultado.length} operativos.`)) return;
-  const r = await api('/asignacion/confirmar', {resultado});
-  if(r.ok){
-    toast('✅ Asignaciones confirmadas. Carga actualizada.', '#166534');
-    setTimeout(()=>window.location='/plan_semanal', 1500);
-  } else {
-    toast('Error al confirmar','#b91c1c');
-  }
+async function confirmar(res){
+  if(!confirm('Confirmar estas asignaciones? Se actualizaran los contadores de carga del personal.'))return;
+  const r=await api('/asignacion/confirmar',{resultado:res});
+  if(r.ok){toast('Asignaciones confirmadas','#166534');setTimeout(()=>window.location='/plan_semanal',1500);}
+  else toast('Error al confirmar','#b91c1c');
 }
 </script>
 {% endblock %}
