@@ -1,70 +1,53 @@
 {% extends "base.html" %}
 {% block title %}DCJA — Inicio{% endblock %}
 {% block content %}
-<div style="margin-bottom:24px;">
-  <h2 style="font-size:20px;font-weight:800;color:var(--navy);">Panel Principal</h2>
-  <p style="color:var(--muted);font-size:12px;margin-top:4px;">Sistema de Planificación y Asignación de Operativos — Semana actual</p>
+<div style="margin-bottom:20px;">
+  <h2 style="font-size:18px;font-weight:800;color:var(--navy);">Panel Principal</h2>
+  <p style="color:var(--muted);font-size:12px;margin-top:4px;">Sistema de Planificación y Asignación de Operativos</p>
 </div>
-
 <div class="stats">
-  <div class="stat-card"><div class="val" id="s-pendientes">—</div><div class="lbl">📥 Denuncias Pendientes</div></div>
-  <div class="stat-card"><div class="val" id="s-operativos">—</div><div class="lbl">📅 Operativos Esta Semana</div></div>
-  <div class="stat-card"><div class="val" id="s-brigadas">—</div><div class="lbl">🚗 Brigadas Requeridas</div></div>
-  <div class="stat-card"><div class="val" id="s-vehiculos">—</div><div class="lbl">🚙 Vehículos Disponibles</div></div>
+  <div class="stat-card"><div class="val" id="s-pend">—</div><div class="lbl">Denuncias Pendientes</div></div>
+  <div class="stat-card"><div class="val" id="s-ops">—</div><div class="lbl">Operativos Esta Semana</div></div>
+  <div class="stat-card"><div class="val" id="s-brig">—</div><div class="lbl">Brigadas Requeridas</div></div>
+  <div class="stat-card"><div class="val" id="s-veh">—</div><div class="lbl">Vehículos Disponibles</div></div>
+  <div class="stat-card"><div class="val" id="s-hist">—</div><div class="lbl">Operativos Ejecutados (Total)</div></div>
 </div>
-
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-
   <div class="card">
-    <div class="card-head"><div class="card-icon">📋</div><h2>Flujo Semanal</h2></div>
+    <div class="card-head"><div class="card-num">I</div><h2>Flujo Semanal</h2></div>
     <div class="card-body">
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
-          <div style="width:32px;height:32px;border-radius:50%;background:#dbeafe;color:#1e40af;font-weight:800;display:flex;align-items:center;justify-content:center;">V</div>
-          <div><div style="font-weight:700;font-size:12.5px;">Viernes — Subir Denuncias</div><div style="font-size:11px;color:var(--muted);">Cargar Excel actualizado de denuncias pendientes</div></div>
-          <a href="/denuncias" class="btn btn-o btn-sm" style="margin-left:auto;">Ir →</a>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for dia, titulo, desc, url in [('V','Viernes — Cargar Denuncias','Subir el Excel actualizado de denuncias pendientes','/denuncias'),('L','Lunes — Configurar Semana','Registrar vehículos disponibles y operativos especiales','/planificacion'),('L','Lunes — Asignar Brigadas','Generar asignaciones con rotación justa','/asignacion'),('—','Imprimir Plan Semanal','Hoja oficial con brigadas y operativos confirmados','/plan_semanal')] %}
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--navy);color:var(--gold);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ dia }}</div>
+          <div style="flex:1;"><div style="font-weight:700;font-size:12.5px;">{{ titulo }}</div><div style="font-size:11px;color:var(--muted);">{{ desc }}</div></div>
+          <a href="{{ url }}" class="btn btn-o btn-sm">Ir</a>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
-          <div style="width:32px;height:32px;border-radius:50%;background:#dcfce7;color:#166534;font-weight:800;display:flex;align-items:center;justify-content:center;">L</div>
-          <div><div style="font-weight:700;font-size:12.5px;">Lunes — Configurar Semana</div><div style="font-size:11px;color:var(--muted);">Entrar vehículos disponibles y operativos especiales</div></div>
-          <a href="/planificacion" class="btn btn-o btn-sm" style="margin-left:auto;">Ir →</a>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
-          <div style="width:32px;height:32px;border-radius:50%;background:#ede9fe;color:#5b21b6;font-weight:800;display:flex;align-items:center;justify-content:center;">🎲</div>
-          <div><div style="font-weight:700;font-size:12.5px;">Lunes — Asignar Brigadas</div><div style="font-size:11px;color:var(--muted);">Generar asignaciones aleatorias con rotación justa</div></div>
-          <a href="/asignacion" class="btn btn-o btn-sm" style="margin-left:auto;">Ir →</a>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
-          <div style="width:32px;height:32px;border-radius:50%;background:#fef9c3;color:#713f12;font-weight:800;display:flex;align-items:center;justify-content:center;">📋</div>
-          <div><div style="font-weight:700;font-size:12.5px;">Imprimir Plan Semanal</div><div style="font-size:11px;color:var(--muted);">Hoja oficial con brigadas y rutas de la semana</div></div>
-          <a href="/plan_semanal" class="btn btn-o btn-sm" style="margin-left:auto;">Ir →</a>
-        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
-
   <div class="card">
-    <div class="card-head"><div class="card-icon">ℹ️</div><h2>Reglas del Sistema</h2></div>
-    <div class="card-body" style="font-size:12px;line-height:1.7;color:var(--text);">
-      <div style="margin-bottom:10px;"><strong>🏠 Exclusión por zona:</strong> inspectores que residen en la zona del operativo son descartados automáticamente (solo aplica a zonas del Gran Santo Domingo y San Cristóbal).</div>
-      <div style="margin-bottom:10px;"><strong>🔄 Cooldown:</strong> inspector asignado en los últimos <strong>21 días</strong> no entra al sorteo.</div>
-      <div style="margin-bottom:10px;"><strong>⚖️ Rotación justa:</strong> dentro del pool elegible, prioridad para quien menos veces ha ido a <em>esa zona</em>. Empate se resuelve por menor carga total. Aleatorio dentro de cada tier.</div>
-      <div style="margin-bottom:10px;"><strong>🚗 Estructura de brigada:</strong> 1 Coordinador + 1 Inspector + 1 Auxiliar por vehículo.</div>
-      <div style="margin-bottom:10px;"><strong>⭐ Prioridad de operativos:</strong> Órdenes de Dirección → Denuncias por antigüedad.</div>
-      <div><strong>📌 Mismo inspector, mismo día:</strong> nunca se asigna en dos brigadas simultáneas.</div>
+    <div class="card-head"><div class="card-num">II</div><h2>Reglas del Sistema</h2></div>
+    <div class="card-body" style="font-size:12px;line-height:1.8;color:var(--text);">
+      <div style="margin-bottom:8px;"><strong>Exclusión por zona:</strong> personal residente en la zona del operativo es descartado automáticamente (Gran Santo Domingo y San Cristóbal).</div>
+      <div style="margin-bottom:8px;"><strong>Cooldown:</strong> inspector asignado en los últimos <strong>21 días</strong> no entra al sorteo.</div>
+      <div style="margin-bottom:8px;"><strong>Rotación justa:</strong> prioridad para quien menos veces ha cubierto esa zona. Dentro del mismo nivel, aleatorio.</div>
+      <div style="margin-bottom:8px;"><strong>Brigada:</strong> 1 Coordinador + 1 Inspector + 1 Auxiliar por vehículo.</div>
+      <div style="margin-bottom:8px;"><strong>Prioridad:</strong> Órdenes de Dirección tienen prioridad sobre denuncias en el uso de vehículos.</div>
+      <div><strong>Conflicto de día:</strong> el mismo inspector no puede estar en dos brigadas el mismo día.</div>
     </div>
   </div>
-
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
 fetch('/api/stats').then(r=>r.json()).then(d=>{
-  document.getElementById('s-pendientes').textContent = d.pendientes;
-  document.getElementById('s-operativos').textContent = d.operativos;
-  document.getElementById('s-brigadas').textContent   = d.brigadas;
-  document.getElementById('s-vehiculos').textContent  = d.vehiculos;
+  document.getElementById('s-pend').textContent=d.pendientes;
+  document.getElementById('s-ops').textContent=d.operativos;
+  document.getElementById('s-brig').textContent=d.brigadas;
+  document.getElementById('s-veh').textContent=d.vehiculos;
+  document.getElementById('s-hist').textContent=d.historico;
 }).catch(()=>{});
 </script>
 {% endblock %}
