@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import sqlite3, json, os, random, secrets
-from datetime import datetime
+from datetime import datetime, date
 import pandas as pd
 from werkzeug.utils import secure_filename
 
@@ -60,6 +60,31 @@ PERSONAL = [
     {"id":49,"nombre":"JOSE LUIS DIAZ ARIAS","cargo":"AUXILIAR","zona":"SD Oeste"},
 ]
 
+PROV_COORDS = {
+    "Distrito Nacional":      [18.4861,-69.9312],
+    "SD Este":                [18.5001,-69.8500],
+    "SD Norte":               [18.5850,-69.9500],
+    "SD Oeste":               [18.5000,-70.0500],
+    "Santo Domingo":          [18.4900,-69.9000],
+    "San Cristóbal":          [18.4175,-70.1106],
+    "San Cristóbal / Haina":  [18.4300,-70.0500],
+    "Santiago":               [19.4517,-70.6970],
+    "La Romana":              [18.4273,-68.9728],
+    "Puerto Plata":           [19.7930,-70.6880],
+    "San Juan":               [18.8053,-71.2284],
+    "Espaillat":              [19.3941,-70.5232],
+    "Dajabón":                [19.5497,-71.7085],
+    "San Pedro de Macorís":   [18.4586,-69.3058],
+    "La Vega":                [19.2211,-70.5294],
+    "Barahona":               [18.2053,-71.0981],
+    "Baní / Peravia":         [18.2800,-70.3314],
+    "Monte Plata":            [18.8064,-69.7836],
+    "Duarte":                 [19.3007,-70.2518],
+    "Samaná":                 [19.2054,-69.3369],
+    "María Trinidad Sánchez": [19.3797,-69.8483],
+    "La Altagracia":          [18.6200,-68.7200],
+}
+
 def get_db():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
@@ -83,6 +108,7 @@ def init_db():
                 zona_operativo TEXT, brigadas_requeridas INTEGER DEFAULT 1,
                 fuente TEXT DEFAULT 'denuncia', no_oficio TEXT,
                 estado TEXT DEFAULT 'pendiente',
+                resultado TEXT DEFAULT '',
                 brigadas_json TEXT DEFAULT '[]', seed TEXT, created_at TEXT
             );
             CREATE TABLE IF NOT EXISTS denuncias (
@@ -96,7 +122,16 @@ def init_db():
                 semana TEXT UNIQUE, vehiculos_disponibles INTEGER DEFAULT 6,
                 notas TEXT, estado TEXT DEFAULT 'borrador', created_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS uploads_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fecha TEXT, semana TEXT, archivo TEXT,
+                pendientes_cargadas INTEGER, usuario TEXT DEFAULT 'encargado'
+            );
         ''')
+        # Add resultado column if missing (migration)
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN resultado TEXT DEFAULT ''")
+        except: pass
         if db.execute('SELECT COUNT(*) as c FROM personal_state').fetchone()['c'] == 0:
             for p in PERSONAL:
                 db.execute('INSERT INTO personal_state (persona_id, zona_counts) VALUES (?,?)', (p['id'],'{}'))
@@ -137,8 +172,9 @@ def select_fair(pool, n, zona):
     return (t1+t2+t3)[:n]
 
 def inferir_zona(prov, mun):
-    p = str(prov).upper() if prov else ''
-    m = str(mun).upper() if mun else ''
+    p = str(prov).upper() if prov and str(prov).lower() not in ['nan','none',''] else ''
+    m = str(mun).upper() if mun and str(mun).lower() not in ['nan','none',''] else ''
+    if not p: return 'Sin especificar'
     if 'DAJABON' in p or 'DAJABÓN' in p: return 'Dajabón'
     if 'ESPAILLAT' in p: return 'Espaillat'
     if 'SAN JUAN' in p: return 'San Juan'
@@ -154,10 +190,21 @@ def inferir_zona(prov, mun):
     for k,v in [('SANTIAGO','Santiago'),('LA VEGA','La Vega'),('PUERTO PLATA','Puerto Plata'),
                 ('LA ROMANA','La Romana'),('BARAHONA','Barahona'),('PERAVIA','Baní / Peravia'),
                 ('MONTE PLATA','Monte Plata'),('DUARTE','Duarte'),('SAMANA','Samaná'),
-                ('MARIA TRINIDAD','María Trinidad Sánchez')]:
+                ('MARIA TRINIDAD','María Trinidad Sánchez'),('LA ALTAGRACIA','La Altagracia'),
+                ('EL SEIBO','El Seibo'),('HATO MAYOR','Hato Mayor'),('SAN JOSE DE OCOA','San José de Ocoa'),
+                ('AZUA','Azua'),('ELIAS PIÑA','Elías Piña'),('INDEPENDENCIA','Independencia'),
+                ('PEDERNALES','Pedernales'),('VALVERDE','Valverde'),('MONSEÑOR NOUEL','Monseñor Nouel'),
+                ('SANTIAGO RODRIGUEZ','Santiago Rodríguez'),('HERMANAS MIRABAL','Hermanas Mirabal')]:
         if k in p: return v
-    return prov.title() if prov and prov.lower() not in ['nan','none'] else 'Sin especificar'
+    return prov.strip().title()
 
+def dias_pendiente(fecha_str):
+    try:
+        f = datetime.fromisoformat(str(fecha_str)[:10])
+        return (datetime.now() - f).days
+    except: return 0
+
+# ── ROUTES ────────────────────────────────────────────────────
 @app.route('/')
 def index(): return render_template('index.html')
 
@@ -168,8 +215,10 @@ def api_stats():
         pend = db.execute("SELECT COUNT(*) as c FROM denuncias WHERE estado='pendiente'").fetchone()['c']
         ops  = db.execute("SELECT COUNT(*) as c FROM operativos WHERE semana=?",(semana,)).fetchone()['c']
         brig = db.execute("SELECT COALESCE(SUM(brigadas_requeridas),0) as c FROM operativos WHERE semana=?",(semana,)).fetchone()['c']
+        hist = db.execute("SELECT COUNT(*) as c FROM operativos WHERE estado='asignado'").fetchone()['c']
         sem  = db.execute("SELECT vehiculos_disponibles FROM semanas WHERE semana=?",(semana,)).fetchone()
-    return jsonify(pendientes=pend,operativos=ops,brigadas=int(brig),vehiculos=sem['vehiculos_disponibles'] if sem else 6)
+    return jsonify(pendientes=pend,operativos=ops,brigadas=int(brig),
+                   vehiculos=sem['vehiculos_disponibles'] if sem else 6, historico=hist)
 
 @app.route('/personal')
 def personal_view():
@@ -195,14 +244,18 @@ def reset_carga():
 def denuncias_view():
     with get_db() as db:
         rows = [dict(r) for r in db.execute("SELECT * FROM denuncias ORDER BY provincia,municipio").fetchall()]
-    for r in rows: r['zona_inferida'] = inferir_zona(r['provincia'],r['municipio'])
-    return render_template('denuncias.html', denuncias=rows)
+        logs = [dict(r) for r in db.execute("SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10").fetchall()]
+    for r in rows:
+        r['zona_inferida'] = inferir_zona(r['provincia'],r['municipio'])
+        r['dias'] = dias_pendiente(r['fecha_entrada'])
+    return render_template('denuncias.html', denuncias=rows, logs=logs)
 
 @app.route('/denuncias/upload', methods=['POST'])
 def denuncias_upload():
     if 'file' not in request.files: return jsonify(ok=False,error='No file'),400
     f = request.files['file']
-    path = os.path.join(UPLOAD_FOLDER, secure_filename(f.filename)); f.save(path)
+    fname = secure_filename(f.filename)
+    path = os.path.join(UPLOAD_FOLDER, fname); f.save(path)
     try:
         df = pd.read_excel(path); df.columns=[c.strip() for c in df.columns]
         rc = next(c for c in df.columns if 'RESOLUCION' in c.upper())
@@ -214,6 +267,7 @@ def denuncias_upload():
         oc = next(c for c in df.columns if 'OFICIO MH' in c.upper())
         fc = next(c for c in df.columns if 'FECHA DE ENTRADA' in c.upper())
         pend = df[df[rc].astype(str).str.upper().str.contains('PENDIENTE',na=False)]
+        semana = datetime.now().strftime('%Y-W%V')
         with get_db() as db:
             db.execute("DELETE FROM denuncias WHERE estado='pendiente'")
             for _,row in pend.iterrows():
@@ -221,8 +275,9 @@ def denuncias_upload():
                 mu=str(row[mc]).strip() if pd.notna(row[mc]) else ''
                 db.execute('INSERT INTO denuncias (no_oficio,fecha_entrada,tipo,nombre,sector,municipio,provincia,zona_inferida,estado,cargado_semana) VALUES (?,?,?,?,?,?,?,?,?,?)',
                     (str(row[oc]),str(row[fc])[:10],str(row[tc]),str(row[nc]),
-                     str(row[sc]) if pd.notna(row[sc]) else '',mu,pv,inferir_zona(pv,mu),
-                     'pendiente',datetime.now().strftime('%Y-W%V')))
+                     str(row[sc]) if pd.notna(row[sc]) else '',mu,pv,inferir_zona(pv,mu),'pendiente',semana))
+            db.execute('INSERT INTO uploads_log (fecha,semana,archivo,pendientes_cargadas) VALUES (?,?,?,?)',
+                       (datetime.now().strftime('%Y-%m-%d %H:%M'),semana,fname,len(pend)))
         return jsonify(ok=True,inserted=len(pend))
     except Exception as e: return jsonify(ok=False,error=str(e)),500
 
@@ -249,10 +304,11 @@ def guardar_semana():
 
 @app.route('/planificacion/agregar_operativo', methods=['POST'])
 def agregar_operativo():
-    d=request.json; br=2 if 'DEPORTIVA' in str(d['tipo']).upper() else 1
+    d=request.json
+    br=2 if 'DEPORTIVA' in str(d.get('tipo','')).upper() else 1
     with get_db() as db:
         db.execute('INSERT INTO operativos (semana,fecha,tipo,nombre,direccion,municipio,provincia,zona_operativo,brigadas_requeridas,fuente,no_oficio,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-                   (d['semana'],d.get('fecha',''),d['tipo'],d['nombre'],d.get('direccion',''),
+                   (d['semana'],d.get('fecha',''),d.get('tipo',''),d.get('nombre',''),d.get('direccion',''),
                     d.get('municipio',''),d.get('provincia',''),d.get('zona',''),br,
                     d.get('fuente','denuncia'),d.get('no_oficio',''),datetime.now().isoformat()))
     return jsonify(ok=True)
@@ -270,7 +326,7 @@ def asignacion_view():
         sr=db.execute("SELECT * FROM semanas WHERE semana=?",(semana,)).fetchone()
     tb=sum(o['brigadas_requeridas'] for o in ops)
     v=sr['vehiculos_disponibles'] if sr else 6
-    return render_template('asignacion.html',operativos=ops,semana=semana,vehiculos=v,total_brigadas=tb,personal=PERSONAL)
+    return render_template('asignacion.html',operativos=ops,semana=semana,vehiculos=v,total_brigadas=tb)
 
 @app.route('/asignacion/ejecutar', methods=['POST'])
 def ejecutar_asignacion():
@@ -317,6 +373,15 @@ def confirmar_asignacion():
                                (op.get('fecha',datetime.now().strftime('%Y-%m-%d')),json.dumps(zc),pid))
     return jsonify(ok=True)
 
+@app.route('/asignacion/resultado', methods=['POST'])
+def guardar_resultado():
+    d=request.json
+    with get_db() as db:
+        db.execute("UPDATE operativos SET resultado=? WHERE id=?", (d['resultado'], d['id']))
+        if d.get('cerrar_denuncia') and d.get('no_oficio'):
+            db.execute("UPDATE denuncias SET estado=? WHERE no_oficio=?", ('cerrada', d['no_oficio']))
+    return jsonify(ok=True)
+
 @app.route('/plan_semanal')
 def plan_semanal():
     semana=request.args.get('semana',datetime.now().strftime('%Y-W%V'))
@@ -325,6 +390,78 @@ def plan_semanal():
         sr=db.execute("SELECT * FROM semanas WHERE semana=?",(semana,)).fetchone()
     for o in ops: o['brigadas']=json.loads(o['brigadas_json'] or '[]')
     return render_template('plan_semanal.html',operativos=ops,semana=semana,semana_row=dict(sr) if sr else None)
+
+@app.route('/historial')
+def historial_view():
+    with get_db() as db:
+        ops=[dict(r) for r in db.execute("SELECT * FROM operativos WHERE estado='asignado' ORDER BY fecha DESC,id DESC").fetchall()]
+    for o in ops:
+        o['brigadas']=json.loads(o['brigadas_json'] or '[]')
+    return render_template('historial.html', operativos=ops)
+
+@app.route('/reportes')
+def reportes_view():
+    with get_db() as db:
+        denuncias=[dict(r) for r in db.execute("SELECT * FROM denuncias ORDER BY fecha_entrada").fetchall()]
+        ops_asig=[dict(r) for r in db.execute("SELECT * FROM operativos WHERE estado='asignado' ORDER BY fecha DESC").fetchall()]
+        personal_states=[{**p,**get_state(p['id'])} for p in PERSONAL]
+
+    # Denuncias por antigüedad
+    for d in denuncias:
+        d['dias']=dias_pendiente(d['fecha_entrada'])
+        d['semaforo']='rojo' if d['dias']>90 else ('amarillo' if d['dias']>30 else 'verde')
+
+    # Operativos por mes
+    por_mes={}
+    for o in ops_asig:
+        mes=str(o['fecha'])[:7] if o['fecha'] else 'Sin fecha'
+        por_mes[mes]=por_mes.get(mes,0)+1
+
+    # Operativos por provincia
+    por_prov={}
+    for o in ops_asig:
+        pv=o['provincia'] or 'Sin especificar'
+        por_prov[pv]=por_prov.get(pv,0)+1
+
+    # Rendimiento por inspector
+    rendimiento=[]
+    for p in personal_states:
+        st=get_state(p['id'])
+        zc=json.loads(st.get('zona_counts') or '{}')
+        rendimiento.append({'nombre':p['nombre'],'cargo':p['cargo'],
+                            'carga':st['carga_total'],'zonas':zc,
+                            'ultima':st['ultima_asignacion']})
+    rendimiento.sort(key=lambda x:-x['carga'])
+
+    # Denuncias pendientes por provincia
+    pend_prov={}
+    for d in [x for x in denuncias if x['estado']=='pendiente']:
+        z=d['zona_inferida'] or inferir_zona(d['provincia'],d['municipio'])
+        pend_prov[z]=pend_prov.get(z,0)+1
+
+    return render_template('reportes.html',
+        denuncias=denuncias, por_mes=sorted(por_mes.items()),
+        por_prov=sorted(por_prov.items(),key=lambda x:-x[1]),
+        rendimiento=rendimiento, pend_prov=sorted(pend_prov.items(),key=lambda x:-x[1]),
+        total_asignados=len(ops_asig), total_pendientes=sum(1 for d in denuncias if d['estado']=='pendiente'))
+
+@app.route('/mapa')
+def mapa_view():
+    with get_db() as db:
+        denuncias=[dict(r) for r in db.execute("SELECT * FROM denuncias WHERE estado='pendiente'").fetchall()]
+    puntos=[]
+    for d in denuncias:
+        zona=d['zona_inferida'] or inferir_zona(d['provincia'],d['municipio'])
+        coords=PROV_COORDS.get(zona)
+        if not coords: coords=PROV_COORDS.get(d['provincia'],None)
+        if coords:
+            import random as rnd
+            puntos.append({'lat':coords[0]+rnd.uniform(-0.05,0.05),
+                           'lng':coords[1]+rnd.uniform(-0.05,0.05),
+                           'nombre':d['nombre'],'tipo':d['tipo'],
+                           'municipio':d['municipio'],'provincia':d['provincia'],
+                           'zona':zona,'dias':dias_pendiente(d['fecha_entrada'])})
+    return render_template('mapa.html', puntos=puntos)
 
 if __name__=='__main__':
     port=int(os.environ.get('PORT',5000))
