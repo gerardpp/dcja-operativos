@@ -2,36 +2,40 @@
 {% block title %}DCJA — Denuncias{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--navy);">📥 Denuncias Pendientes</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Subir el Excel actualizado cada viernes. El sistema extrae automáticamente las pendientes.</p>
-  </div>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Denuncias Pendientes</h2>
+  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Cargar el Excel actualizado cada viernes. El sistema extrae automáticamente las pendientes.</p></div>
 </div>
-
 <div class="card">
-  <div class="card-head"><div class="card-icon">📤</div><h2>Cargar Excel de Denuncias (Viernes)</h2></div>
+  <div class="card-head"><div class="card-num">1</div><h2>Cargar Excel de Denuncias</h2></div>
   <div class="card-body">
-    <div class="alert alert-blue">
-      Sube el archivo <strong>DATA_RECEPCION_Y_SEGUIMIENTO.xlsx</strong> actualizado. El sistema extrae solo las filas con estado <strong>"PENDIENTES"</strong> y reemplaza las anteriores.
-    </div>
+    <div class="alert alert-blue">Sube el archivo <strong>DATA_RECEPCION_Y_SEGUIMIENTO.xlsx</strong>. El sistema extrae las filas con estado <strong>PENDIENTES</strong> y reemplaza el listado anterior.</div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <input type="file" id="file-input" accept=".xlsx,.xls" style="font-size:12px;">
-      <button class="btn btn-p" onclick="subirExcel()">⬆️ &nbsp;Subir y Procesar</button>
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="font-size:12px;width:auto;">
+      <button class="btn btn-p" onclick="subirExcel()">Subir y Procesar</button>
       <span id="upload-status" style="font-size:12px;color:var(--muted);"></span>
     </div>
   </div>
 </div>
-
+{% if logs %}
 <div class="card">
-  <div class="card-head"><div class="card-icon">📋</div><h2>Denuncias Actualmente Pendientes — {{ denuncias|length }}</h2></div>
+  <div class="card-head"><div class="card-num">2</div><h2>Registro de Cargas — Ultimas 10</h2></div>
   <div class="tbl-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>#</th><th>No. Oficio</th><th>Fecha Entrada</th><th>Tipo</th>
-          <th>Nombre</th><th>Sector</th><th>Municipio</th><th>Provincia</th><th>Zona Inferida</th>
-        </tr>
-      </thead>
+      <thead><tr><th>#</th><th>Fecha / Hora</th><th>Semana</th><th>Archivo</th><th>Pendientes Cargadas</th></tr></thead>
+      <tbody>
+        {% for l in logs %}
+        <tr><td style="color:#94a3b8;">{{ loop.index }}</td><td>{{ l.fecha }}</td><td style="font-family:'DM Mono',monospace;font-size:11px;">{{ l.semana }}</td><td style="font-size:11px;color:var(--muted);">{{ l.archivo }}</td><td><strong>{{ l.pendientes_cargadas }}</strong></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+<div class="card">
+  <div class="card-head"><div class="card-num">3</div><h2>Listado Actual de Pendientes — {{ denuncias|length }}</h2></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>No. Oficio</th><th>Fecha Entrada</th><th>Dias</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Zona</th></tr></thead>
       <tbody>
         {% for d in denuncias %}
         <tr>
@@ -39,17 +43,15 @@
           <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ d.no_oficio }}</td>
           <td style="font-size:11px;">{{ d.fecha_entrada }}</td>
           <td>
-            {% if 'DEPORTIVA' in d.tipo.upper() %}
-              <span class="badge b-deportiva">Deportiva</span>
-            {% else %}
-              <span class="badge b-loteria">Lotería</span>
-            {% endif %}
+            {% if d.dias > 90 %}<span class="badge b-red">{{ d.dias }}d</span>
+            {% elif d.dias > 30 %}<span class="badge" style="background:#fef3c7;color:#92400e;">{{ d.dias }}d</span>
+            {% else %}<span class="badge b-ok">{{ d.dias }}d</span>{% endif %}
           </td>
+          <td>{% if 'DEPORTIVA' in d.tipo.upper() %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Lotería</span>{% endif %}</td>
           <td style="font-weight:600;">{{ d.nombre }}</td>
-          <td style="font-size:11px;color:var(--muted);">{{ d.sector }}</td>
-          <td>{{ d.municipio }}</td>
-          <td style="font-weight:600;">{{ d.provincia }}</td>
-          <td><span class="badge b-gray">{{ d.zona_inferida if d.zona_inferida else '—' }}</span></td>
+          <td style="font-size:11px;">{{ d.municipio }}</td>
+          <td style="font-size:11px;font-weight:600;">{{ d.provincia }}</td>
+          <td><span class="badge b-gray">{{ d.zona_inferida }}</span></td>
         </tr>
         {% else %}
         <tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8;">No hay denuncias pendientes. Sube el Excel para cargarlas.</td></tr>
@@ -59,29 +61,20 @@
   </div>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
 async function subirExcel(){
-  const input = document.getElementById('file-input');
-  const status = document.getElementById('upload-status');
-  if(!input.files[0]){ alert('Selecciona un archivo Excel.'); return; }
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
-  status.textContent = 'Procesando...';
-  try {
-    const r = await fetch('/denuncias/upload', {method:'POST', body:fd});
-    const d = await r.json();
-    if(d.ok){
-      toast(`✅ ${d.inserted} denuncias pendientes cargadas`, '#166534');
-      setTimeout(()=>location.reload(), 1200);
-    } else {
-      status.textContent = 'Error: ' + d.error;
-      toast('❌ Error al procesar el archivo', '#b91c1c');
-    }
-  } catch(e){
-    status.textContent = 'Error de conexión';
-  }
+  const input=document.getElementById('file-input');
+  const status=document.getElementById('upload-status');
+  if(!input.files[0]){alert('Selecciona un archivo Excel.');return;}
+  const fd=new FormData(); fd.append('file',input.files[0]);
+  status.textContent='Procesando...';
+  try{
+    const r=await fetch('/denuncias/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){toast(d.inserted+' denuncias cargadas correctamente','#166534');setTimeout(()=>location.reload(),1200);}
+    else{status.textContent='Error: '+d.error;toast('Error al procesar el archivo','#b91c1c');}
+  }catch(e){status.textContent='Error de conexión';}
 }
 </script>
 {% endblock %}
