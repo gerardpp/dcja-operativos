@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Reportes{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Reportes e Indicadores</h2>
+  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Resumen de actividad, denuncias y rendimiento del personal</p></div>
+  <button class="btn btn-o no-print" onclick="window.print()">Imprimir</button>
+</div>
+
+<div class="stats">
+  <div class="stat-card"><div class="val">{{ total_pendientes }}</div><div class="lbl">Denuncias Pendientes</div></div>
+  <div class="stat-card"><div class="val">{{ total_asignados }}</div><div class="lbl">Operativos Ejecutados</div></div>
+  <div class="stat-card"><div class="val">{{ denuncias|selectattr('semaforo','eq','rojo')|list|length }}</div><div class="lbl">Denuncias Criticas (+90 dias)</div></div>
+  <div class="stat-card"><div class="val">{{ denuncias|selectattr('semaforo','eq','amarillo')|list|length }}</div><div class="lbl">Denuncias En Riesgo (30-90 dias)</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+
+  <div class="card">
+    <div class="card-head"><div class="card-num">I</div><h2>Denuncias Pendientes por Zona</h2></div>
+    <div class="card-body">
+      {% for zona, cnt in pend_prov %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:600;flex:1;">{{ zona }}</span>
+        <div style="width:120px;height:8px;background:#eee;border-radius:4px;overflow:hidden;">
+          <div style="height:8px;background:var(--blue);border-radius:4px;width:{{ [cnt * 10, 100]|min }}%;"></div>
+        </div>
+        <span style="font-weight:800;font-size:13px;min-width:24px;text-align:right;">{{ cnt }}</span>
+      </div>
+      {% else %}<p style="color:var(--muted);font-size:12px;">Sin datos.</p>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-num">II</div><h2>Operativos Ejecutados por Mes</h2></div>
+    <div class="card-body">
+      {% for mes, cnt in por_mes %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:600;flex:1;">{{ mes }}</span>
+        <div style="width:120px;height:8px;background:#eee;border-radius:4px;overflow:hidden;">
+          <div style="height:8px;background:var(--green);border-radius:4px;width:{{ [cnt * 15, 100]|min }}%;"></div>
+        </div>
+        <span style="font-weight:800;font-size:13px;min-width:24px;text-align:right;">{{ cnt }}</span>
+      </div>
+      {% else %}<p style="color:var(--muted);font-size:12px;">Sin operativos registrados aun.</p>{% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<div class="card">
+  <div class="card-head"><div class="card-num">III</div><h2>Denuncias con Mayor Tiempo Pendiente</h2></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Dias</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Fecha Entrada</th><th>Estado</th></tr></thead>
+    <tbody>
+      {% for d in denuncias|sort(attribute='dias',reverse=true) %}
+      {% if d.estado == 'pendiente' %}
+      <tr>
+        <td style="color:#94a3b8;">{{ loop.index }}</td>
+        <td>{% if d.dias > 90 %}<span class="badge b-red">{{ d.dias }}d</span>
+            {% elif d.dias > 30 %}<span class="badge" style="background:#fef3c7;color:#92400e;">{{ d.dias }}d</span>
+            {% else %}<span class="badge b-ok">{{ d.dias }}d</span>{% endif %}</td>
+        <td>{% if 'DEPORTIVA' in d.tipo.upper() %}<span class="badge b-dep">Dep.</span>{% else %}<span class="badge b-lot">Lot.</span>{% endif %}</td>
+        <td style="font-weight:600;">{{ d.nombre }}</td>
+        <td style="font-size:11px;">{{ d.municipio }}</td>
+        <td style="font-size:11px;font-weight:600;">{{ d.provincia }}</td>
+        <td style="font-size:11px;">{{ d.fecha_entrada }}</td>
+        <td><span class="badge b-gray">{{ d.estado.title() }}</span></td>
+      </tr>
+      {% endif %}
+      {% else %}
+      <tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8;">Sin denuncias pendientes.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><div class="card-num">IV</div><h2>Rendimiento por Inspector</h2></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Operativos Totales</th><th>Ultima Asignacion</th><th>Zonas Cubiertas</th></tr></thead>
+    <tbody>
+      {% for r in rendimiento %}
+      <tr>
+        <td style="color:#94a3b8;">{{ loop.index }}</td>
+        <td style="font-weight:600;font-size:12px;">{{ r.nombre }}</td>
+        <td>{% if r.cargo=='COORDINADOR' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Coord.</span>
+            {% elif r.cargo=='INSPECTOR' %}<span class="badge" style="background:#dcfce7;color:#166534;">Insp.</span>
+            {% else %}<span class="badge" style="background:#f3e8ff;color:#6d28d9;">Aux.</span>{% endif %}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <div style="width:80px;height:6px;background:#eee;border-radius:3px;overflow:hidden;">
+              <div style="height:6px;background:{% if r.carga < 5 %}#16a34a{% elif r.carga < 10 %}#ca8a04{% else %}#dc2626{% endif %};width:{{ [r.carga*8,100]|min }}%;border-radius:3px;"></div>
+            </div>
+            <strong>{{ r.carga }}</strong>
+          </div>
+        </td>
+        <td style="font-size:11px;color:var(--muted);">{{ r.ultima or '—' }}</td>
+        <td style="font-size:11px;">
+          {% for zona, cnt in r.zonas.items() %}
+          <span class="badge b-gray" style="margin:1px;">{{ zona }}: {{ cnt }}</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}
