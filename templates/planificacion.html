@@ -2,255 +2,184 @@
 {% block title %}DCJA — Planificación{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--navy);">📅 Planificación Semanal</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana: <strong>{{ semana }}</strong> — Configura los operativos del lunes aquí.</p>
-  </div>
-  <a href="/asignacion" class="btn btn-p">🎲 &nbsp;Ir a Asignación →</a>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Planificación Semanal</h2>
+  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong> — Configurar operativos cada lunes.</p></div>
+  <a href="/asignacion" class="btn btn-p">Ir a Asignacion</a>
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-icon">🚗</div><h2>Disponibilidad de Vehículos (Lunes)</h2></div>
+  <div class="card-head"><div class="card-num">1</div><h2>Vehiculos Disponibles Esta Semana</h2></div>
   <div class="card-body">
-    <div class="alert alert-blue" style="margin-bottom:14px;">
-      Cada operativo requiere <strong>2 brigadas (2 vehículos)</strong>. Ingresa cuántos vehículos tienes disponibles esta semana.
-    </div>
+    <div class="alert alert-blue">Ingresa la cantidad de vehiculos disponibles. Cada operativo de loteria usa 1 brigada (1 vehiculo). Cada operativo de banca deportiva usa 2 brigadas (2 vehiculos).</div>
     <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
-      <div class="fg">
-        <label class="fl">Vehículos disponibles esta semana</label>
-        <input type="number" id="vehiculos-input" value="{{ semana_row.vehiculos_disponibles if semana_row else 6 }}" min="1" max="20" style="max-width:120px;">
+      <div class="fg" style="max-width:180px;">
+        <label class="fl">Vehiculos disponibles</label>
+        <input type="number" id="vehiculos-input" value="{{ semana_row.vehiculos_disponibles if semana_row else 6 }}" min="1" max="30">
       </div>
-      <button class="btn btn-g" onclick="guardarVehiculos()">💾 &nbsp;Guardar</button>
-      <div id="vehiculos-info" style="font-size:12px;color:var(--muted);padding-bottom:8px;"></div>
+      <button class="btn btn-g" onclick="guardarVehiculos()">Guardar</button>
+      <div id="vehiculos-info" style="font-size:12px;color:var(--muted);padding-bottom:9px;"></div>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-icon">📍</div><h2>Denuncias Pendientes — Agrupadas por Zona</h2></div>
-  <div class="info-bar">
-    <p>Selecciona los grupos que entran esta semana según vehículos disponibles. Las deportivas requieren 2 brigadas.</p>
-  </div>
+  <div class="card-head"><div class="card-num">2</div><h2>Denuncias Pendientes — Agrupadas por Zona</h2></div>
+  <div class="info-bar"><p>Selecciona los grupos que entran esta semana. Deportivas requieren 2 brigadas, Loteria 1 brigada.</p></div>
   <div class="card-body">
     {% if grupos %}
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">
-      {% for zona, items in grupos.items() %}
-        {% set ns = namespace(tiene_deportiva=false) %}
-        {% for item in items %}
-          {% if 'DEPORTIVA' in item.tipo|upper %}
-            {% set ns.tiene_deportiva = true %}
-          {% endif %}
-        {% endfor %}
-        <div class="grupo-card" style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
-          <div style="background:#f5f7fb;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <span style="font-weight:700;font-size:12.5px;">{{ zona }}</span>
-              <span class="badge b-gray" style="margin-left:6px;">{{ items|length }} establ.</span>
-              {% if ns.tiene_deportiva %}
-                <span class="badge b-deportiva" style="margin-left:4px;">2 brigadas</span>
-              {% else %}
-                <span class="badge b-loteria" style="margin-left:4px;">1 brigada</span>
-              {% endif %}
-            </div>
-            <button class="btn btn-g btn-sm" onclick="agregarGrupo(this, '{{ zona }}', {{ items|tojson|safe }})">+ Agregar</button>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
+    {% for zona, items in grupos.items() %}
+      {% set ns = namespace(es_dep=false) %}
+      {% for item in items %}{% if 'DEPORTIVA' in item.tipo|upper %}{% set ns.es_dep = true %}{% endif %}{% endfor %}
+      <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="background:#f5f7fb;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div>
+            <span style="font-weight:700;font-size:12.5px;">{{ zona }}</span>
+            <span class="badge b-gray" style="margin-left:6px;">{{ items|length }} establecimientos</span>
+            {% if ns.es_dep %}<span class="badge b-dep" style="margin-left:4px;">2 brigadas</span>
+            {% else %}<span class="badge b-lot" style="margin-left:4px;">1 brigada</span>{% endif %}
           </div>
-          <div style="padding:10px 14px;">
-            {% for item in items %}
-            <div style="font-size:11px;padding:2px 0;border-bottom:1px dashed #f0f3f8;display:flex;gap:8px;align-items:center;">
-              <span style="color:var(--muted);">•</span>
-              <span style="font-weight:600;">{{ item.nombre }}</span>
-              <span style="color:var(--muted);">{{ item.municipio }}</span>
-              {% if 'DEPORTIVA' in item.tipo|upper %}
-                <span class="badge b-deportiva" style="font-size:9px;">DEP</span>
-              {% endif %}
-            </div>
-            {% endfor %}
-          </div>
+          <button class="btn btn-g btn-sm" data-zona="{{ zona }}" data-items="{{ items|tojson|e }}" onclick="agregarGrupo(this)">Agregar</button>
         </div>
-      {% endfor %}
+        <div style="padding:10px 14px;">
+          {% for item in items %}
+          <div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #f0f3f8;display:flex;gap:8px;align-items:center;">
+            <span style="color:var(--muted);">—</span>
+            <span style="font-weight:600;">{{ item.nombre }}</span>
+            <span style="color:var(--muted);">{{ item.municipio }}</span>
+            {% if 'DEPORTIVA' in item.tipo|upper %}<span class="badge b-dep" style="font-size:9px;">DEP</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
       </div>
+    {% endfor %}
+    </div>
     {% else %}
-      <div style="text-align:center;padding:32px;color:#94a3b8;">No hay denuncias pendientes. Ve a <a href="/denuncias" style="color:var(--blue);font-weight:700;">Denuncias</a> y sube el Excel.</div>
+    <div style="text-align:center;padding:32px;color:#94a3b8;">No hay denuncias pendientes. Ve a <a href="/denuncias" style="color:var(--blue);font-weight:700;">Denuncias</a> y sube el Excel.</div>
     {% endif %}
   </div>
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-icon" style="background:#7c3aed;color:#fff;">⭐</div><h2>Agregar Operativo por Orden de Dirección</h2></div>
+  <div class="card-head"><div class="card-num">3</div><h2>Agregar Operativo por Orden de Direccion</h2></div>
   <div class="card-body">
-    <div class="alert alert-blue" style="margin-bottom:14px;">
-      Los operativos por Orden de Dirección tienen <strong>prioridad sobre las denuncias</strong> en la asignación de vehículos.
-    </div>
+    <div class="alert alert-blue">Los operativos por Orden de Direccion tienen prioridad sobre las denuncias en la asignacion de vehiculos.</div>
     <div class="form-grid">
-      <div class="fg">
-        <label class="fl">Tipo de Establecimiento</label>
+      <div class="fg"><label class="fl">Tipo de Establecimiento</label>
         <select id="od-tipo">
-          <option value="BANCAS DE LOTERIA">Banca de Lotería</option>
+          <option value="BANCAS DE LOTERIA">Banca de Loteria</option>
           <option value="BANCA DE APUESTAS DEPORTIVAS">Banca Deportiva</option>
           <option value="Casino">Casino</option>
           <option value="Bingo">Bingo</option>
           <option value="Otro">Otro</option>
         </select>
       </div>
-      <div class="fg">
-        <label class="fl">Nombre del Establecimiento</label>
-        <input type="text" id="od-nombre" placeholder="Nombre del lugar">
-      </div>
-      <div class="fg">
-        <label class="fl">Fecha del Operativo</label>
-        <input type="date" id="od-fecha">
-      </div>
-      <div class="fg span2">
-        <label class="fl">Dirección Completa</label>
-        <input type="text" id="od-direccion" placeholder="Calle, número, sector...">
-      </div>
-      <div class="fg">
-        <label class="fl">Municipio</label>
-        <input type="text" id="od-municipio" placeholder="Municipio">
-      </div>
-      <div class="fg">
-        <label class="fl">Provincia</label>
-        <input type="text" id="od-provincia" placeholder="Provincia">
-      </div>
-      <div class="fg">
-        <label class="fl">Zona Operativo</label>
+      <div class="fg"><label class="fl">Nombre del Establecimiento</label><input type="text" id="od-nombre" placeholder="Nombre"></div>
+      <div class="fg"><label class="fl">Fecha del Operativo</label><input type="date" id="od-fecha"></div>
+      <div class="fg span2"><label class="fl">Direccion Completa</label><input type="text" id="od-direccion" placeholder="Calle, numero, sector..."></div>
+      <div class="fg"><label class="fl">Municipio</label><input type="text" id="od-municipio" placeholder="Municipio"></div>
+      <div class="fg"><label class="fl">Provincia</label><input type="text" id="od-provincia" placeholder="Provincia"></div>
+      <div class="fg"><label class="fl">Zona Operativo</label>
         <select id="od-zona">
           <option value="">— Seleccionar —</option>
-          <option>Distrito Nacional</option>
-          <option>SD Este</option>
-          <option>SD Norte</option>
-          <option>SD Oeste</option>
-          <option>San Cristóbal</option>
-          <option>Santiago</option>
-          <option>La Romana</option>
-          <option>Puerto Plata</option>
-          <option>La Altagracia</option>
-          <option>Otras Provincias</option>
+          <option>Distrito Nacional</option><option>SD Este</option><option>SD Norte</option><option>SD Oeste</option>
+          <option>San Cristóbal</option><option>Santiago</option><option>La Romana</option>
+          <option>Puerto Plata</option><option>La Altagracia</option><option>Otras Provincias</option>
         </select>
       </div>
-      <div class="fg">
-        <label class="fl">No. de Instrucción / Oficio</label>
-        <input type="text" id="od-oficio" placeholder="No. de referencia">
-      </div>
+      <div class="fg"><label class="fl">No. Instruccion / Oficio</label><input type="text" id="od-oficio" placeholder="Referencia"></div>
     </div>
     <div style="margin-top:14px;">
-      <button class="btn btn-p" onclick="agregarOrdenDireccion()">⭐ &nbsp;Agregar por Orden de Dirección</button>
+      <button class="btn btn-p" onclick="agregarOrdenDireccion()">Agregar Orden de Direccion</button>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-icon">📋</div><h2>Operativos Programados Esta Semana — {{ operativos|length }}</h2></div>
+  <div class="card-head"><div class="card-num">4</div><h2>Operativos Programados Esta Semana — {{ operativos|length }}</h2></div>
   <div class="tbl-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>#</th><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Municipio</th>
-          <th>Provincia</th><th>Zona</th><th>Brigadas</th><th>Fuente</th><th>Estado</th><th></th>
-        </tr>
-      </thead>
+      <thead><tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Zona</th><th>Brigadas</th><th>Fuente</th><th>Estado</th><th></th></tr></thead>
       <tbody id="ops-tbody">
         {% for op in operativos %}
         <tr id="op-row-{{ op.id }}">
           <td style="color:#94a3b8;">{{ loop.index }}</td>
           <td style="font-size:11px;">{{ op.fecha or '—' }}</td>
-          <td>
-            {% if 'DEPORTIVA' in op.tipo|upper %}
-              <span class="badge b-deportiva">Deportiva</span>
-            {% else %}
-              <span class="badge b-loteria">Lotería</span>
-            {% endif %}
-          </td>
+          <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}</td>
           <td style="font-weight:600;">{{ op.nombre }}</td>
           <td style="font-size:11px;">{{ op.municipio }}</td>
           <td style="font-size:11px;">{{ op.provincia }}</td>
           <td><span class="badge b-gray">{{ op.zona_operativo or '—' }}</span></td>
           <td style="text-align:center;font-weight:700;">{{ op.brigadas_requeridas }}</td>
-          <td>
-            {% if op.fuente == 'orden_direccion' %}
-              <span class="badge b-orden">⭐ Orden Dir.</span>
-            {% else %}
-              <span class="badge b-gray">Denuncia</span>
-            {% endif %}
-          </td>
-          <td><span class="badge {{ 'b-green' if op.estado=='asignado' else 'b-gray' }}">{{ op.estado.title() }}</span></td>
-          <td>
-            {% if op.estado != 'asignado' %}
-            <button class="btn btn-d btn-sm" onclick="eliminarOp({{ op.id }}, this)">✕</button>
-            {% endif %}
-          </td>
+          <td>{% if op.fuente=='orden_direccion' %}<span class="badge b-ord">Orden Dir.</span>{% else %}<span class="badge b-gray">Denuncia</span>{% endif %}</td>
+          <td><span class="badge {{ 'b-ok' if op.estado=='asignado' else 'b-gray' }}">{{ op.estado.title() }}</span></td>
+          <td>{% if op.estado!='asignado' %}<button class="btn btn-d btn-sm" onclick="eliminarOp({{ op.id }},this)">Eliminar</button>{% endif %}</td>
         </tr>
         {% else %}
-        <tr><td colspan="11" style="text-align:center;padding:32px;color:#94a3b8;">Sin operativos programados. Agrega desde los grupos de arriba.</td></tr>
+        <tr><td colspan="11" style="text-align:center;padding:32px;color:#94a3b8;">Sin operativos programados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
-const SEMANA = '{{ semana }}';
+const SEMANA='{{ semana }}';
 
 async function guardarVehiculos(){
-  const v = parseInt(document.getElementById('vehiculos-input').value);
-  const r = await api('/planificacion/guardar_semana', {semana:SEMANA, vehiculos:v});
-  if(r.ok){
-    toast('✅ Disponibilidad guardada');
-    document.getElementById('vehiculos-info').textContent = `Máximo ${Math.floor(v/2)} operativos de 2 brigadas`;
-  }
+  const v=parseInt(document.getElementById('vehiculos-input').value);
+  const r=await api('/planificacion/guardar_semana',{semana:SEMANA,vehiculos:v});
+  if(r.ok){toast('Disponibilidad guardada');calcInfo(v);}
+}
+function calcInfo(v){
+  document.getElementById('vehiculos-info').textContent='Capacidad: hasta '+v+' brigadas / '+Math.floor(v/2)+' operativos dobles';
 }
 
-async function agregarGrupo(btn, zona, items){
-  btn.disabled = true; btn.textContent = '...';
-  const tieneDeportiva = items.some(i => i.tipo.toUpperCase().includes('DEPORTIVA'));
-  const tipo = tieneDeportiva ? 'BANCA DE APUESTAS DEPORTIVAS' : 'BANCAS DE LOTERIA';
-  const nombres = items.map(i=>i.nombre).join(' / ');
-  const prov = items[0].provincia;
-  const mun  = items[0].municipio;
-  const fecha = document.getElementById('od-fecha').value || '';
-  const r = await api('/planificacion/agregar_operativo', {
-    semana: SEMANA, tipo, nombre: nombres,
-    direccion: items.map(i=>i.sector+' '+i.municipio).join(' | '),
-    municipio: mun, provincia: prov, zona, fuente: 'denuncia',
-    no_oficio: items.map(i=>i.no_oficio).join(', '), fecha
+function agregarGrupo(btn){
+  const zona=btn.getAttribute('data-zona');
+  const items=JSON.parse(btn.getAttribute('data-items'));
+  btn.disabled=true; btn.textContent='...';
+  const tieneD=items.some(i=>i.tipo.toUpperCase().includes('DEPORTIVA'));
+  const tipo=tieneD?'BANCA DE APUESTAS DEPORTIVAS':'BANCAS DE LOTERIA';
+  const fecha=document.getElementById('od-fecha').value||'';
+  api('/planificacion/agregar_operativo',{
+    semana:SEMANA,tipo,nombre:items.map(i=>i.nombre).join(' / '),
+    direccion:items.map(i=>(i.sector||'')+' '+i.municipio).join(' | '),
+    municipio:items[0].municipio,provincia:items[0].provincia,
+    zona,fuente:'denuncia',no_oficio:items.map(i=>i.no_oficio).join(', '),fecha
+  }).then(r=>{
+    if(r.ok){toast('Operativo agregado');setTimeout(()=>location.reload(),800);}
+    else{btn.disabled=false;btn.textContent='Agregar';}
   });
-  if(r.ok){ toast('✅ Operativo agregado'); setTimeout(()=>location.reload(), 800); }
-  else { btn.disabled=false; btn.textContent='+ Agregar'; }
 }
 
 async function agregarOrdenDireccion(){
-  const tipo   = document.getElementById('od-tipo').value;
-  const nombre = document.getElementById('od-nombre').value.trim();
-  const fecha  = document.getElementById('od-fecha').value;
-  const dir    = document.getElementById('od-direccion').value.trim();
-  const mun    = document.getElementById('od-municipio').value.trim();
-  const prov   = document.getElementById('od-provincia').value.trim();
-  const zona   = document.getElementById('od-zona').value;
-  const oficio = document.getElementById('od-oficio').value.trim();
-  if(!nombre || !prov){ alert('Completa al menos el nombre y la provincia.'); return; }
-  const r = await api('/planificacion/agregar_operativo', {
-    semana:SEMANA, tipo, nombre, fecha, direccion:dir,
-    municipio:mun, provincia:prov, zona, fuente:'orden_direccion', no_oficio:oficio
+  const nombre=document.getElementById('od-nombre').value.trim();
+  const prov=document.getElementById('od-provincia').value.trim();
+  if(!nombre||!prov){alert('Completa al menos el nombre y la provincia.');return;}
+  const r=await api('/planificacion/agregar_operativo',{
+    semana:SEMANA,
+    tipo:document.getElementById('od-tipo').value,
+    nombre,fecha:document.getElementById('od-fecha').value,
+    direccion:document.getElementById('od-direccion').value.trim(),
+    municipio:document.getElementById('od-municipio').value.trim(),
+    provincia:prov,zona:document.getElementById('od-zona').value,
+    fuente:'orden_direccion',no_oficio:document.getElementById('od-oficio').value.trim()
   });
-  if(r.ok){ toast('⭐ Operativo agregado'); setTimeout(()=>location.reload(), 800); }
+  if(r.ok){toast('Operativo por Orden de Direccion agregado');setTimeout(()=>location.reload(),800);}
 }
 
-async function eliminarOp(id, btn){
-  if(!confirm('¿Eliminar este operativo?')) return;
+async function eliminarOp(id,btn){
+  if(!confirm('Eliminar este operativo del plan?'))return;
   btn.disabled=true;
-  const r = await fetch('/planificacion/eliminar_operativo/'+id, {method:'DELETE'});
-  const d = await r.json();
-  if(d.ok){ document.getElementById('op-row-'+id).remove(); toast('Operativo eliminado'); }
+  const r=await fetch('/planificacion/eliminar_operativo/'+id,{method:'DELETE'});
+  const d=await r.json();
+  if(d.ok){document.getElementById('op-row-'+id).remove();toast('Operativo eliminado');}
 }
 
-document.getElementById('od-fecha').valueAsDate = new Date();
-document.getElementById('vehiculos-info').textContent =
-  `Máximo ${Math.floor(parseInt(document.getElementById('vehiculos-input').value||6)/2)} operativos de 2 brigadas`;
-document.getElementById('vehiculos-input').addEventListener('input', e=>{
-  document.getElementById('vehiculos-info').textContent =
-    `Máximo ${Math.floor(parseInt(e.target.value||0)/2)} operativos de 2 brigadas`;
-});
+document.getElementById('od-fecha').valueAsDate=new Date();
+calcInfo(parseInt(document.getElementById('vehiculos-input').value||6));
+document.getElementById('vehiculos-input').addEventListener('input',e=>calcInfo(parseInt(e.target.value||0)));
 </script>
 {% endblock %}
