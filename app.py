@@ -270,22 +270,22 @@ def personal_update():
     d = request.json; pid = d['id']
     with get_db() as db:
         st = db.execute('SELECT * FROM personal_state WHERE persona_id=?',(pid,)).fetchone()
-        if st:
-            nd = d.get('no_disponible', st['no_disponible'])
-            motivo = d.get('motivo_no_disponible', st['motivo_no_disponible'] or '')
-            detalle = d.get('motivo_detalle', st['motivo_detalle'] or '')
-            ci = d.get('conflicto', st['conflicto'])
-            db.execute('''UPDATE personal_state SET no_disponible=?,motivo_no_disponible=?,
-                          motivo_detalle=?,conflicto=? WHERE persona_id=?''',
-                       (nd, motivo, detalle, ci, pid))
-            if nd:
-                semana = datetime.now().strftime('%Y-W%V')
-                db.execute('''INSERT INTO personal_disponibilidad_log
-                    (persona_id,fecha_registro,motivo,detalle,disponible,semana)
-                    VALUES (?,?,?,?,?,?)''',
-                    (pid, datetime.now().isoformat(), motivo, detalle, 0, semana))
-            p_nombre = next((x['nombre'] for x in PERSONAL if x['id']==pid), str(pid))
-            audit('DISPONIBILIDAD', f"{p_nombre} — {'No disponible' if nd else 'Disponible'}: {motivo} {detalle}", pid)
+        if not st:
+            return jsonify(ok=True)
+        nd = d.get('no_disponible', st['no_disponible'])
+        motivo = d.get('motivo_no_disponible', st['motivo_no_disponible'] or '')
+        detalle = d.get('motivo_detalle', st['motivo_detalle'] or '')
+        ci = d.get('conflicto', st['conflicto'])
+        db.execute('''UPDATE personal_state SET no_disponible=?,motivo_no_disponible=?,
+                      motivo_detalle=?,conflicto=? WHERE persona_id=?''',
+                   (nd, motivo, detalle, ci, pid))
+        # Only log when availability actually changes
+        if nd != st['no_disponible']:
+            semana = datetime.now().strftime('%Y-W%V')
+            db.execute('''INSERT INTO personal_disponibilidad_log
+                (persona_id,fecha_registro,motivo,detalle,disponible,semana)
+                VALUES (?,?,?,?,?,?)''',
+                (pid, datetime.now().isoformat(), motivo, detalle, 1-nd, semana))
     return jsonify(ok=True)
 
 @app.route('/personal/reset_carga', methods=['POST'])
