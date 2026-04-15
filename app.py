@@ -180,13 +180,13 @@ def get_state(pid):
 def zona_count(pid, zona):
     return json.loads(get_state(pid).get('zona_counts') or '{}').get(zona, 0)
 
-def is_elegible(p, zona, fecha):
+def is_elegible(p, zona, fecha, skip_cooldown=False):
     st = get_state(p['id'])
     LOCAL = ["Distrito Nacional","SD Este","SD Norte","SD Oeste","San Cristóbal","San Cristóbal / Haina"]
     if zona in LOCAL and p['zona'] == zona: return False, ["Zona residencia"]
     if st['no_disponible']: return False, [st.get('motivo_no_disponible') or "No disponible"]
     if st['conflicto']: return False, ["Conflicto de interes"]
-    if st['ultima_asignacion']:
+    if not skip_cooldown and st['ultima_asignacion']:
         try:
             ref = datetime.fromisoformat(fecha) if fecha else datetime.now()
             d = (ref - datetime.fromisoformat(st['ultima_asignacion'])).days
@@ -252,10 +252,17 @@ def api_stats():
 
 @app.route('/personal')
 def personal_view():
-    personal = [{**p,**get_state(p['id'])} for p in PERSONAL]
     with get_db() as db:
+        all_states = {row['persona_id']:dict(row) for row in
+                      db.execute('SELECT * FROM personal_state').fetchall()}
         logs = [dict(r) for r in db.execute(
             "SELECT * FROM personal_disponibilidad_log ORDER BY fecha_registro DESC LIMIT 50").fetchall()]
+    personal = []
+    for p in PERSONAL:
+        st = all_states.get(p['id'], {"persona_id":p['id'],"carga_total":0,"no_disponible":0,
+            "motivo_no_disponible":"","motivo_detalle":"","conflicto":0,
+            "ultima_asignacion":None,"zona_counts":"{}"})
+        personal.append({**p, **st})
     return render_template('personal.html', personal=personal, cooldown=COOLDOWN_DAYS, logs=logs)
 
 @app.route('/personal/update', methods=['POST'])
@@ -391,10 +398,15 @@ def asignacion_view():
             "SELECT * FROM operativos WHERE semana=? ORDER BY CASE fuente WHEN 'orden_direccion' THEN 0 ELSE 1 END,fecha,id",
             (semana,)).fetchall()]
         sr=db.execute("SELECT * FROM semanas WHERE semana=?",(semana,)).fetchone()
+        # Count available pool for display
+        all_states={row['persona_id']:dict(row) for row in db.execute('SELECT * FROM personal_state').fetchall()}
+    disponibles = sum(1 for p in PERSONAL if not all_states.get(p['id'],{}).get('no_disponible',0)
+                      and not all_states.get(p['id'],{}).get('conflicto',0))
     tb=sum(o['brigadas_requeridas'] for o in ops)
     v=sr['vehiculos_disponibles'] if sr else 6
     m=sr['militares_disponibles'] if sr else 6
-    return render_template('asignacion.html',operativos=ops,semana=semana,vehiculos=v,militares=m,total_brigadas=tb)
+    return render_template('asignacion.html',operativos=ops,semana=semana,vehiculos=v,militares=m,
+                           total_brigadas=tb,disponibles=disponibles)
 
 @app.route('/asignacion/ejecutar', methods=['POST'])
 def ejecutar_asignacion():
@@ -410,21 +422,31 @@ def ejecutar_asignacion():
     coords=[p for p in PERSONAL if p['cargo']=='COORDINADOR']
     insps =[p for p in PERSONAL if p['cargo']=='INSPECTOR']
     auxs  =[p for p in PERSONAL if p['cargo']=='AUXILIAR']
-    arun=set(); aday={}; seed=secrets.token_hex(4).upper(); resultado=[]
+    arun=set(); aday={}; seed=secrets.token_hex(4).upper(); resultado=[]; cooldown_relajado=False
     for op in sel:
         zona=op['zona_operativo'] or inferir_zona(op['provincia'],op['municipio'])
         fecha=op['fecha'] or fb; bops=[]
         for b in range(op['brigadas_requeridas']):
-            def pool(lst):
+            def pool(lst, skip_cd=False):
                 return [p for p in lst if p['id'] not in arun
                         and (fecha not in aday or p['id'] not in aday[fecha])
-                        and is_elegible(p,zona,fecha)[0]]
-            c=select_fair(pool(coords),1,zona); i=select_fair(pool(insps),1,zona); a=select_fair(pool(auxs),1,zona)
+                        and is_elegible(p,zona,fecha,skip_cooldown=skip_cd)[0]]
+            # Try strict first
+            cp=pool(coords); ip=pool(insps); ap=pool(auxs)
+            # If any role has no candidates, relax cooldown
+            if not cp or not ip or not ap:
+                cp2=pool(coords,True); ip2=pool(insps,True); ap2=pool(auxs,True)
+                if (cp2 or cp) and (ip2 or ip) and (ap2 or ap):
+                    if not cp: cp=cp2; cooldown_relajado=True
+                    if not ip: ip=ip2; cooldown_relajado=True
+                    if not ap: ap=ap2; cooldown_relajado=True
+            c=select_fair(cp,1,zona); i=select_fair(ip,1,zona); a=select_fair(ap,1,zona)
             bops.append({"num":b+1,"coordinador":c[0] if c else None,
-                         "inspector":i[0] if i else None,"auxiliar":a[0] if a else None})
+                         "inspector":i[0] if i else None,"auxiliar":a[0] if a else None,
+                         "cooldown_relajado":cooldown_relajado})
             for p in filter(None,[c[0] if c else None,i[0] if i else None,a[0] if a else None]):
                 arun.add(p['id']); aday.setdefault(fecha,set()).add(p['id'])
-        resultado.append({**op,'brigadas_asignadas':bops,'seed':seed})
+        resultado.append({**op,'brigadas_asignadas':bops,'seed':seed,'cooldown_relajado':cooldown_relajado})
     audit('SORTEO', f"Semana {semana} — {len(resultado)} operativos sorteados — semilla {seed}")
     return jsonify(ok=True,resultado=resultado,seed=seed)
 
