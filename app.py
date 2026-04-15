@@ -351,9 +351,14 @@ def planificacion_view():
     grupos={}
     for d in dp:
         z=inferir_zona(d['provincia'],d['municipio']); grupos.setdefault(z,[]).append(d)
+    # Build set of already-added zonas for this week
+    zonas_agregadas = set()
+    for o in ops:
+        if o['zona_operativo']:
+            zonas_agregadas.add(o['zona_operativo'])
     return render_template('planificacion.html',grupos=grupos,semana=semana,
                            semana_row=dict(sr) if sr else None,operativos=ops,
-                           week_days=week_days)
+                           week_days=week_days, zonas_agregadas=list(zonas_agregadas))
 
 @app.route('/planificacion/guardar_semana', methods=['POST'])
 def guardar_semana():
@@ -550,7 +555,12 @@ def reportes_view():
     ejecutados = [o for o in ops if o.get('ejecutado')==1]
     no_ejecutados = [o for o in ops if o.get('ejecutado')==0]
     con_decomiso = [o for o in ops if o.get('decomiso')==1]
-    rendimiento=[{**p,'st':get_state(p['id'])} for p in PERSONAL]
+    with get_db() as db2:
+        all_st = {r['persona_id']:dict(r) for r in db2.execute('SELECT * FROM personal_state').fetchall()}
+    rendimiento=[]
+    for p in PERSONAL:
+        st = all_st.get(p['id'], {"carga_total":0,"ultima_asignacion":None,"zona_counts":"{}"})
+        rendimiento.append({**p,'st':st})
     rendimiento.sort(key=lambda x:-x['st']['carga_total'])
     return render_template('reportes.html',
         ops=ops, ejecutados=ejecutados, no_ejecutados=no_ejecutados,
