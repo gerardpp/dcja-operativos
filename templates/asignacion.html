@@ -10,10 +10,14 @@
   <div class="stat-card"><div class="val">{{ operativos|length }}</div><div class="lbl">Operativos</div></div>
   <div class="stat-card"><div class="val">{{ total_brigadas }}</div><div class="lbl">Brigadas Requeridas</div></div>
   <div class="stat-card"><div class="val">{{ vehiculos }}</div><div class="lbl">Vehiculos Disponibles</div></div>
+  <div class="stat-card"><div class="val" style="color:{% if disponibles < total_brigadas * 3 %}var(--red){% else %}var(--green){% endif %}">{{ disponibles }}</div><div class="lbl">Personal Disponible</div></div>
   <div class="stat-card"><div class="val" style="color:{{ 'var(--green)' if total_brigadas<=vehiculos else 'var(--red)' }}">{{ 'OK' if total_brigadas<=vehiculos else 'EXCEDE' }}</div><div class="lbl">Capacidad</div></div>
 </div>
 {% if total_brigadas > vehiculos %}
-<div class="alert alert-warn">Se requieren <strong>{{ total_brigadas }}</strong> brigadas pero hay <strong>{{ vehiculos }}</strong> vehiculos. El sistema priorizara Ordenes de Direccion y completara hasta el limite disponible.</div>
+<div class="alert alert-warn">Se requieren <strong>{{ total_brigadas }}</strong> brigadas pero hay <strong>{{ vehiculos }}</strong> vehiculos. El sistema priorizara Ordenes de Direccion.</div>
+{% endif %}
+{% if disponibles < total_brigadas * 3 %}
+<div class="alert alert-warn"><strong>Personal reducido:</strong> {{ disponibles }} personas disponibles para {{ total_brigadas * 3 }} roles requeridos. Si el pool elegible es insuficiente el sistema relajara automaticamente el cooldown de 21 dias para completar las brigadas.</div>
 {% endif %}
 {% if not operativos %}
 <div class="alert alert-warn">No hay operativos programados. Ve a <a href="/planificacion" style="color:var(--blue);font-weight:700;">Planificacion</a> para agregarlos.</div>
@@ -63,6 +67,12 @@ function renderResultado(res,seed){
       <span style="background:var(--navy);color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:5px 11px;border-radius:5px;letter-spacing:1px;">Semilla: ${seed}</span>
       <button class="btn btn-g" onclick='confirmar(${JSON.stringify(res).replace(/'/g,"&#39;")})'>Confirmar y Registrar</button>
     </div></div>`;
+  const div=document.getElementById('resultado');
+  if(res.some(op=>op.cooldown_relajado)){
+    const w=document.createElement('div');w.className='alert alert-warn';w.style.marginBottom='14px';
+    w.innerHTML='<strong>Aviso:</strong> Se relajo el cooldown de 21 dias en uno o mas operativos por pool insuficiente de personal disponible.';
+    div.appendChild(w);
+  }
   res.forEach((op,oi)=>{
     h+=`<div style="border:1.5px solid var(--border);border-radius:9px;margin-bottom:14px;overflow:hidden;">
       <div style="background:#f5f7fb;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
@@ -93,4 +103,4 @@ async function confirmar(res){
   else toast('Error al confirmar','#b91c1c');
 }
 </script>
-{% endblock %} 
+{% endblock %}
