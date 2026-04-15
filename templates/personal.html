@@ -2,43 +2,109 @@
 {% block title %}DCJA — Personal{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Personal Operativo</h2>
-  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ personal|length }} miembros activos — Cooldown fijo: <strong>{{ cooldown }} dias</strong></p></div>
-  <button class="btn btn-d btn-sm no-print" onclick="resetCarga()">Resetear toda la carga</button>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Personal Operativo</h2>
+  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ personal|length }} miembros — Cooldown institucional: <strong>{{ cooldown }} dias</strong></p></div>
+  <button class="btn btn-d btn-sm no-print" onclick="resetCarga()">Resetear carga total</button>
 </div>
+
 <div class="card">
-  <div class="info-bar"><p>Marca <strong>No Disponible</strong> para excluir de la semana. La carga acumulada se actualiza automaticamente al confirmar asignaciones.</p></div>
-  <div class="tbl-wrap"><table>
-    <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Zona</th><th>Carga Total</th><th>Ultima Asignacion</th><th style="text-align:center;">No Disponible</th><th style="text-align:center;">Conflicto</th></tr></thead>
-    <tbody>
-      {% for p in personal %}
-      <tr>
-        <td style="color:#94a3b8;font-size:11px;">{{ p.id }}</td>
-        <td style="font-weight:600;font-size:12px;">{{ p.nombre }}</td>
-        <td>{% if p.cargo=='COORDINADOR' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Coordinador</span>
-            {% elif p.cargo=='INSPECTOR' %}<span class="badge" style="background:#dcfce7;color:#166534;">Inspector</span>
-            {% else %}<span class="badge" style="background:#f3e8ff;color:#6d28d9;">Auxiliar</span>{% endif %}</td>
-        <td><span class="badge b-gray">{{ p.zona }}</span></td>
-        <td>
-          <div style="display:flex;align-items:center;gap:7px;">
-            <div style="flex:1;max-width:80px;height:6px;background:#eee;border-radius:3px;overflow:hidden;">
-              <div style="height:6px;background:{% if p.carga_total < 5 %}#16a34a{% elif p.carga_total < 10 %}#ca8a04{% else %}#dc2626{% endif %};width:{{ [p.carga_total*8,100]|min }}%;border-radius:3px;"></div>
+  <div class="info-bar"><p>Marca <strong>No Disponible</strong> con su motivo. La carga acumulada se actualiza al confirmar asignaciones. Todo queda registrado en el historial.</p></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Zona</th><th>Carga</th><th>Ultima Asignacion</th><th style="text-align:center;">No Disponible</th><th>Motivo</th><th>Detalle</th><th style="text-align:center;">Conflicto</th><th></th></tr></thead>
+      <tbody>
+        {% for p in personal %}
+        <tr id="pr-{{ p.id }}">
+          <td style="color:#94a3b8;font-size:10px;">{{ p.id }}</td>
+          <td style="font-weight:600;font-size:12px;">{{ p.nombre }}</td>
+          <td>{% if p.cargo=='COORDINADOR' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Coord.</span>
+              {% elif p.cargo=='INSPECTOR' %}<span class="badge" style="background:#dcfce7;color:#166534;">Insp.</span>
+              {% else %}<span class="badge" style="background:#f3e8ff;color:#6d28d9;">Aux.</span>{% endif %}</td>
+          <td><span class="badge b-gray">{{ p.zona }}</span></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="width:60px;height:5px;background:#eee;border-radius:3px;overflow:hidden;">
+                <div style="height:5px;background:{% if p.carga_total<5 %}#16a34a{% elif p.carga_total<10 %}#ca8a04{% else %}#dc2626{% endif %};width:{{ [p.carga_total*8,100]|min }}%;border-radius:3px;"></div>
+              </div>
+              <strong>{{ p.carga_total }}</strong>
             </div>
-            <strong>{{ p.carga_total }}</strong>
-          </div>
-        </td>
-        <td style="font-size:11px;color:var(--muted);">{{ p.ultima_asignacion or '—' }}</td>
-        <td style="text-align:center;"><input type="checkbox" {% if p.no_disponible %}checked{% endif %} onchange="upd({{ p.id }},'no_disponible',this.checked)" style="width:15px;height:15px;accent-color:#2563eb;cursor:pointer;"></td>
-        <td style="text-align:center;"><input type="checkbox" {% if p.conflicto %}checked{% endif %} onchange="upd({{ p.id }},'conflicto',this.checked)" style="width:15px;height:15px;accent-color:#dc2626;cursor:pointer;"></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
+          </td>
+          <td style="font-size:11px;color:var(--muted);">{{ p.ultima_asignacion or '—' }}</td>
+          <td style="text-align:center;">
+            <input type="checkbox" id="nd-{{ p.id }}" {% if p.no_disponible %}checked{% endif %}
+              style="width:15px;height:15px;accent-color:var(--dcja-blue);cursor:pointer;"
+              onchange="updateDisp({{ p.id }})">
+          </td>
+          <td>
+            <select id="mot-{{ p.id }}" style="font-size:11px;padding:4px 6px;min-width:120px;" onchange="updateDisp({{ p.id }})">
+              <option value="" {% if not p.motivo_no_disponible %}selected{% endif %}>—</option>
+              <option value="Vacaciones" {% if p.motivo_no_disponible=='Vacaciones' %}selected{% endif %}>Vacaciones</option>
+              <option value="Licencia" {% if p.motivo_no_disponible=='Licencia' %}selected{% endif %}>Licencia</option>
+              <option value="Discapacidad" {% if p.motivo_no_disponible=='Discapacidad' %}selected{% endif %}>Discapacidad</option>
+              <option value="Otro" {% if p.motivo_no_disponible=='Otro' %}selected{% endif %}>Otro</option>
+            </select>
+          </td>
+          <td>
+            <input type="text" id="det-{{ p.id }}" value="{{ p.motivo_detalle or '' }}"
+              placeholder="Especificar..." style="font-size:11px;padding:4px 7px;min-width:140px;"
+              onblur="updateDisp({{ p.id }})">
+          </td>
+          <td style="text-align:center;">
+            <input type="checkbox" {% if p.conflicto %}checked{% endif %}
+              style="width:15px;height:15px;accent-color:#dc2626;cursor:pointer;"
+              onchange="updConf({{ p.id }},this.checked)">
+          </td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
+
+{% if logs %}
+<div class="card">
+  <div class="card-head"><div class="card-num">H</div><h2>Historial de Disponibilidad — Ultimos 50 registros</h2></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Fecha</th><th>Inspector</th><th>Motivo</th><th>Detalle</th><th>Semana</th></tr></thead>
+      <tbody>
+        {% for l in logs %}
+        {% set pname = '' %}
+        {% for p in personal %}{% if p.id == l.persona_id %}{% set pname = p.nombre %}{% endif %}{% endfor %}
+        <tr>
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-size:11px;">{{ l.fecha_registro[:16] if l.fecha_registro else '—' }}</td>
+          <td style="font-weight:600;font-size:12px;">{{ pname or l.persona_id }}</td>
+          <td><span class="badge b-gray">{{ l.motivo or '—' }}</span></td>
+          <td style="font-size:11px;color:var(--muted);">{{ l.detalle or '—' }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ l.semana }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
+
 {% block scripts %}
 <script>
-async function upd(id,campo,val){const r=await api('/personal/update',{id,[campo]:val?1:0});if(r.ok)toast('Actualizado');}
-async function resetCarga(){if(!confirm('Resetear TODOS los contadores de carga a cero?'))return;const r=await api('/personal/reset_carga',{});if(r.ok){toast('Carga reseteada','#166534');setTimeout(()=>location.reload(),1000);}}
+async function updateDisp(id){
+  const nd = document.getElementById('nd-'+id).checked;
+  const mot = document.getElementById('mot-'+id).value;
+  const det = document.getElementById('det-'+id).value;
+  const r = await api('/personal/update',{id, no_disponible:nd?1:0, motivo_no_disponible:mot, motivo_detalle:det});
+  if(r.ok) toast('Actualizado — ' + (nd?('No disponible: '+mot):'Disponible'));
+}
+async function updConf(id,v){
+  const r=await api('/personal/update',{id,conflicto:v?1:0});
+  if(r.ok) toast('Conflicto de interes actualizado');
+}
+async function resetCarga(){
+  if(!confirm('Resetear TODOS los contadores de carga a cero? Esta accion no se puede deshacer.'))return;
+  const r=await api('/personal/reset_carga',{});
+  if(r.ok){toast('Carga reseteada');setTimeout(()=>location.reload(),1000);}
+}
 </script>
 {% endblock %}
