@@ -541,6 +541,23 @@ def reportes_view():
     rendimiento = [{**p, 'st': all_states.get(p['id'], {"carga_total":0,"ultima_asignacion":None})}
                    for p in PERSONAL]
     rendimiento.sort(key=lambda x: -x['st']['carga_total'])
+    # Operativos por provincia
+    por_prov = {}
+    for o in ops:
+        pv = o['provincia'] or 'Sin especificar'
+        por_prov[pv] = por_prov.get(pv, 0) + 1
+    por_prov_sorted = sorted(por_prov.items(), key=lambda x:-x[1])
+    max_prov = max(por_prov.values()) if por_prov else 1
+
+    # Denuncias pendientes por zona
+    pend_zona = {}
+    for d in denuncias_all:
+        if d['estado'] == 'pendiente':
+            z = d['zona_inferida'] or 'Sin especificar'
+            pend_zona[z] = pend_zona.get(z, 0) + 1
+    pend_zona_sorted = sorted(pend_zona.items(), key=lambda x:-x[1])
+    max_pend = max(pend_zona.values()) if pend_zona else 1
+
     return render_template('reportes.html',
         ops=ops,
         ejecutados   =[o for o in ops if o.get('ejecutado')==1],
@@ -548,6 +565,8 @@ def reportes_view():
         con_decomiso =[o for o in ops if o.get('decomiso')==1],
         denuncias=denuncias_all,
         rendimiento=rendimiento,
+        por_prov=por_prov_sorted, max_prov=max_prov,
+        pend_zona=pend_zona_sorted, max_pend=max_pend,
         filtro=filtro, valor=valor,
         total_pendientes=sum(1 for d in denuncias_all if d['estado']=='pendiente'))
 
