@@ -36,7 +36,7 @@
     <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Ejecucion Diaria</h2>
     <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Sorteo de personal y registro de resultados</p>
   </div>
-  <a href="/plan_semanal" class="btn btn-o no-print">Ver Plan Semanal</a>
+  <button class="btn btn-p no-print" onclick="window.print()">Imprimir DCJA-042</button>
 </div>
 
 <!-- FECHA SELECTOR -->
@@ -81,11 +81,7 @@
       exclusion por zona de residencia, cooldown de 21 dias, disponibilidad y conflictos.
       Si el pool es insuficiente se relaja el cooldown automaticamente.
     </div>
-    {% if fecha == today %}
-    <button class="btn btn-p" id="btn-sorteo" onclick="ejecutarSorteo()">Ejecutar Sorteo — Hoy {{ fecha }}</button>
-    {% else %}
-    <div class="alert alert-warn">Estas viendo el dia <strong>{{ fecha }}</strong>. El sorteo solo puede ejecutarse para el dia de hoy (<strong>{{ today }}</strong>). <a href="/ejecucion_diaria" style="color:var(--dcja-blue);font-weight:700;">Ir a hoy</a></div>
-    {% endif %}
+    <button class="btn btn-p" id="btn-sorteo" onclick="ejecutarSorteo()">Ejecutar Sorteo — {{ fecha }}</button>
     <div id="sorteo-resultado" style="margin-top:16px;"></div>
   </div>
 </div>
