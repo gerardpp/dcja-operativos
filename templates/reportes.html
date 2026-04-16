@@ -36,6 +36,82 @@
   <div class="stat-card"><div class="val">{{ total_pendientes }}</div><div class="lbl">Denuncias pendientes</div></div>
 </div>
 
+<!-- VISUAL CHARTS -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+
+  <div class="card" style="margin-bottom:0;">
+    <div class="card-head"><div class="card-num">G</div><h2>Operativos Ejecutados por Provincia</h2></div>
+    <div class="card-body">
+      {% if por_prov %}
+        {% for prov, cnt in por_prov %}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+          <span style="font-size:11.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ prov }}">{{ prov }}</span>
+          <div style="width:140px;height:8px;background:#e8ecf4;border-radius:4px;overflow:hidden;flex-shrink:0;">
+            <div style="height:8px;background:var(--dcja-blue);border-radius:4px;width:{{ (cnt / max_prov * 100)|int }}%;transition:width .4s;"></div>
+          </div>
+          <span style="font-weight:800;font-size:13px;color:var(--dcja-navy);min-width:20px;text-align:right;">{{ cnt }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--muted);font-size:12px;">Sin operativos en este periodo.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div class="card-head"><div class="card-num">G</div><h2>Denuncias Pendientes por Zona</h2></div>
+    <div class="card-body">
+      {% if pend_zona %}
+        {% for zona, cnt in pend_zona %}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+          <span style="font-size:11.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ zona }}">{{ zona }}</span>
+          <div style="width:140px;height:8px;background:#e8ecf4;border-radius:4px;overflow:hidden;flex-shrink:0;">
+            <div style="height:8px;background:{% if cnt > 3 %}#dc2626{% elif cnt > 1 %}#ca8a04{% else %}#16a34a{% endif %};border-radius:4px;width:{{ (cnt / max_pend * 100)|int }}%;"></div>
+          </div>
+          <span style="font-weight:800;font-size:13px;color:var(--dcja-navy);min-width:20px;text-align:right;">{{ cnt }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--muted);font-size:12px;">No hay denuncias pendientes.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<div class="card">
+  <div class="card-head"><div class="card-num">G</div><h2>Carga Acumulada por Inspector</h2></div>
+  <div class="card-body">
+    {% set max_carga = rendimiento[0].st.carga_total if rendimiento else 1 %}
+    {% set max_carga = max_carga if max_carga > 0 else 1 %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">
+      {% for r in rendimiento %}
+      {% if r.st.carga_total > 0 %}
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;font-weight:600;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.nombre.split()[0] }} {{ r.nombre.split()[-1] }}</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="flex:1;height:7px;background:#e8ecf4;border-radius:4px;overflow:hidden;">
+              <div style="height:7px;border-radius:4px;
+                background:{% if r.st.carga_total < 5 %}#16a34a{% elif r.st.carga_total < 10 %}#ca8a04{% else %}#dc2626{% endif %};
+                width:{{ (r.st.carga_total / max_carga * 100)|int }}%;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:800;color:var(--dcja-navy);min-width:20px;">{{ r.st.carga_total }}</span>
+          </div>
+        </div>
+        <span style="font-size:9.5px;background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;white-space:nowrap;">
+          {% if r.cargo=='COORDINADOR' %}Coord.{% elif r.cargo=='INSPECTOR' %}Insp.{% else %}Aux.{% endif %}
+        </span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% if not rendimiento or rendimiento[0].st.carga_total == 0 %}
+    <p style="color:var(--muted);font-size:12px;">Sin asignaciones registradas aun.</p>
+    {% endif %}
+  </div>
+</div>
+
 <div class="card">
   <div class="card-head"><div class="card-num">I</div><h2>Operativos del Periodo</h2></div>
   <div class="tbl-wrap"><table>
@@ -135,4 +211,4 @@
     </tbody>
   </table></div>
 </div>
-{% endblock %} 
+{% endblock %}
