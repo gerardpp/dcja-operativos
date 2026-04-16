@@ -4,7 +4,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
   <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Planificacion Semanal</h2>
   <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong></p></div>
-  <a href="/asignacion" class="btn btn-p">Ir a Asignacion</a>
+  <a href="/ejecucion_diaria" class="btn btn-p">Ejecutar Operativos de Hoy</a>
 </div>
 
 <div class="card">
@@ -229,4 +229,4 @@ calcInfo();
 document.getElementById('vehiculos-input').addEventListener('input',calcInfo);
 document.getElementById('militares-input').addEventListener('input',calcInfo);
 </script>
-{% endblock %} 
+{% endblock %}
