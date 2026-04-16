@@ -1,45 +1,130 @@
 {% extends "base.html" %}
-{% block title %}DCJA — Historial{% endblock %}
+{% block title %}DCJA-039 — Bitacora de Inspecciones{% endblock %}
+{% block extra_head %}
+<style>
+@media print{
+  .no-print,.nav-top,.nav-links-bar,.footer{display:none!important;}
+  body{background:#fff;font-size:11px;}
+  .container{padding:8px;}
+  .print-header{display:block!important;}
+}
+.print-header{display:none;}
+</style>
+{% endblock %}
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Historial de Operativos</h2>
-  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) ejecutado(s) en total</p></div>
-  <button class="btn btn-o no-print" onclick="window.print()">Imprimir</button>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;" class="no-print">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">DCJA-039 — Bitacora de Inspecciones</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) ejecutado(s) en total</p>
+  </div>
+  <button class="btn btn-p no-print" onclick="window.print()">Imprimir DCJA-039</button>
 </div>
+
+<!-- PRINT HEADER -->
+<div class="print-header">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <div style="font-size:9px;color:#666;">Republica Dominicana — Ministerio de Hacienda y Economia</div>
+    <div style="font-size:9px;color:#666;">Codigo: DCJA-039 &nbsp;·&nbsp; Version: 01</div>
+  </div>
+  <div style="border:2px solid #0d2257;border-radius:6px;padding:10px 16px;margin-bottom:14px;text-align:center;">
+    <div style="font-size:11px;font-weight:700;color:#0d2257;text-transform:uppercase;">Direccion de Casinos y Juegos de Azar</div>
+    <div style="font-size:15px;font-weight:800;color:#0d2257;margin:3px 0;">BITACORA DE INSPECCIONES</div>
+    <div style="font-size:11px;color:#666;">Departamento de Operaciones de Control</div>
+    <div style="font-size:10px;color:#666;margin-top:4px;">Generado: <span id="fgen"></span> &nbsp;·&nbsp; Total registros: {{ operativos|length }}</div>
+  </div>
+</div>
+
 <div class="card">
-  <div class="tbl-wrap"><table>
-    <thead><tr><th>#</th><th>Semana</th><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Brigadas</th><th>Personal DCJA</th><th>Ejecutado</th><th>Decomiso</th><th>Observaciones</th></tr></thead>
-    <tbody>
-      {% for op in operativos %}
-      <tr>
-        <td style="color:#94a3b8;">{{ loop.index }}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.semana }}</td>
-        <td style="font-size:11px;font-weight:700;">{{ op.fecha or '—' }}</td>
-        <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Dep.</span>{% else %}<span class="badge b-lot">Lot.</span>{% endif %}</td>
-        <td style="font-weight:600;">{{ op.nombre }}</td>
-        <td style="font-size:11px;">{{ op.municipio }}</td>
-        <td style="font-size:11px;">{{ op.provincia }}</td>
-        <td style="text-align:center;">{{ op.brigadas|length }}</td>
-        <td style="font-size:11px;">
-          {% for b in op.brigadas %}
-          <div style="padding:2px 0;border-bottom:1px dashed #eef0f6;">
-            <strong>V{{ b.num }}:</strong>
-            {% if b.coordinador %}{{ b.coordinador.nombre.split()[0] }}{% endif %} /
-            {% if b.inspector %}{{ b.inspector.nombre.split()[0] }}{% endif %} /
-            {% if b.auxiliar %}{{ b.auxiliar.nombre.split()[0] }}{% endif %}
-          </div>
-          {% endfor %}
-        </td>
-        <td>{% if op.ejecutado==1 %}<span class="badge b-ok">Si</span>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Semana</th>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Establecimiento</th>
+          <th>Municipio</th>
+          <th>Provincia</th>
+          <th>Brigadas</th>
+          <th>Personal DCJA</th>
+          <th>Ejecutado</th>
+          <th>Decomiso</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for op in operativos %}
+        <tr>
+          <td style="color:#94a3b8;font-size:10px;">{{ loop.index }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.semana }}</td>
+          <td style="font-weight:700;font-size:11px;white-space:nowrap;">{{ op.fecha or '—' }}</td>
+          <td>
+            {% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Dep.</span>
+            {% else %}<span class="badge b-lot">Lot.</span>{% endif %}
+          </td>
+          <td style="font-weight:600;max-width:160px;">{{ op.nombre }}</td>
+          <td style="font-size:11px;">{{ op.municipio or '—' }}</td>
+          <td style="font-size:11px;font-weight:600;">{{ op.provincia or '—' }}</td>
+          <td style="text-align:center;">{{ op.brigadas|length }}</td>
+          <td style="font-size:10.5px;">
+            {% for b in op.brigadas %}
+            <div style="padding:2px 0;border-bottom:1px dashed #eef0f6;white-space:nowrap;">
+              <strong>V{{ b.num }}:</strong>
+              {% if b.coordinador %}{{ b.coordinador.nombre.split()[0] }} {{ b.coordinador.nombre.split()[-1] }}{% endif %} /
+              {% if b.inspector %}{{ b.inspector.nombre.split()[0] }} {{ b.inspector.nombre.split()[-1] }}{% endif %} /
+              {% if b.auxiliar %}{{ b.auxiliar.nombre.split()[0] }} {{ b.auxiliar.nombre.split()[-1] }}{% endif %}
+            </div>
+            {% endfor %}
+          </td>
+          <td>
+            {% if op.ejecutado==1 %}<span class="badge b-ok">Si</span>
             {% elif op.ejecutado==0 %}<span class="badge b-red">No</span>
-            {% else %}<span class="badge b-gray">—</span>{% endif %}</td>
-        <td>{% if op.decomiso %}<span class="badge b-red">Si</span>{% else %}<span class="badge b-gray">No</span>{% endif %}</td>
-        <td style="font-size:11px;color:var(--muted);max-width:180px;">{{ op.observaciones or '—' }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;">No hay operativos en el historial aun. Los operativos aparecen aqui luego de ser confirmados en Asignacion.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
+            {% else %}<span class="badge b-gray">—</span>{% endif %}
+          </td>
+          <td>
+            {% if op.decomiso %}<span class="badge b-red">Si</span>
+            {% else %}<span class="badge b-gray">No</span>{% endif %}
+          </td>
+          <td style="font-size:10.5px;color:var(--muted);max-width:160px;">
+            {{ op.observaciones or '—' }}
+            {% if op.decomiso and op.decomiso_detalle %}
+            <div style="color:var(--red);font-weight:600;">Decomiso: {{ op.decomiso_detalle }}</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;">
+            No hay operativos en la bitacora aun. Los operativos aparecen aqui luego de ser ejecutados.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
-{% endblock %} 
+
+<!-- FIRMA PRINT -->
+<div style="border:1.5px solid #c8a022;border-radius:6px;padding:14px 18px;margin-top:10px;background:#fefdf5;" class="print-only">
+  <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Certificacion</div>
+  <div style="font-size:10.5px;line-height:1.7;margin-bottom:14px;">Certifico que la presente bitacora refleja fielmente los operativos de control realizados por el Departamento de Operaciones de la Direccion de Casinos y Juegos de Azar durante el periodo indicado.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:10px;">
+    {% for f in ['Encargado Departamento de Operaciones','Director(a) de Casinos y Juegos de Azar'] %}
+    <div style="text-align:center;">
+      <div style="border-bottom:1.5px solid #0d2257;height:40px;margin-bottom:6px;"></div>
+      <div style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;">{{ f }}</div>
+      <div style="font-size:9px;color:#5a6480;margin-top:2px;">Nombre, Firma y Fecha</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const fgen = document.getElementById('fgen');
+if(fgen) fgen.textContent = new Date().toLocaleDateString('es-DO',{year:'numeric',month:'long',day:'numeric'});
+</script>
+{% endblock %}
