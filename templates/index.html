@@ -17,7 +17,12 @@
     <div class="card-head"><div class="card-num">I</div><h2>Flujo Semanal</h2></div>
     <div class="card-body">
       <div style="display:flex;flex-direction:column;gap:8px;">
-        {% for dia, titulo, desc, url in [('V','Viernes — Cargar Denuncias','Subir el Excel actualizado de denuncias pendientes','/denuncias'),('L','Lunes — Configurar Semana','Registrar vehículos disponibles y operativos especiales','/planificacion'),('L','Lunes — Asignar Brigadas','Generar asignaciones con rotación justa','/asignacion'),('—','Imprimir Plan Semanal','Hoja oficial con brigadas y operativos confirmados','/plan_semanal')] %}
+        {% for dia, titulo, desc, url in [
+          ('V','Viernes — Cargar Denuncias','Subir el Excel actualizado de denuncias pendientes','/denuncias'),
+          ('L','Lunes — Planificacion Semanal','Seleccionar operativos de la semana segun vehiculos y militares disponibles. Genera documento DCJA-035.','/planificacion'),
+          ('D','Dia del Operativo — Ejecucion Diaria','Sorteo de personal para los operativos del dia. Genera documento DCJA-042 para firma.','/ejecucion_diaria'),
+          ('—','Bitacora — Historial','Registro historico de todos los operativos ejecutados. Documento DCJA-039.','/historial')
+        ] %}
         <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
           <div style="width:30px;height:30px;border-radius:50%;background:var(--navy);color:var(--gold);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ dia }}</div>
           <div style="flex:1;"><div style="font-weight:700;font-size:12.5px;">{{ titulo }}</div><div style="font-size:11px;color:var(--muted);">{{ desc }}</div></div>
