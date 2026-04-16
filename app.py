@@ -460,54 +460,61 @@ def ejecutar_asignacion():
 @app.route('/asignacion/confirmar', methods=['POST'])
 def confirmar_asignacion():
     now = datetime.now().isoformat()
-    with get_db() as db:
-        for op in request.json['resultado']:
-            brigadas = op['brigadas_asignadas']
-            seed = op.get('seed','')
-            # Build audit record
-            asignados = []
-            excluidos_detail = []
-            zona = op.get('zona_operativo','') or inferir_zona(op.get('provincia',''), op.get('municipio',''))
-            fecha = op.get('fecha', datetime.now().strftime('%Y-%m-%d'))
-            all_states = get_all_states()
-            for p in PERSONAL:
-                elegible = is_elegible(p, zona, fecha, all_states=all_states)
-                if not elegible:
-                    st = get_state(p['id'], all_states)
-                    reasons = []
-                    LOCAL = ["Distrito Nacional","SD Este","SD Norte","SD Oeste","San Cristóbal","San Cristóbal / Haina"]
-                    if zona in LOCAL and p['zona']==zona: reasons.append("Zona residencia")
-                    if st['no_disponible']: reasons.append(st.get('motivo_no_disponible') or "No disponible")
-                    if st['conflicto']: reasons.append("Conflicto")
-                    if st['ultima_asignacion']:
-                        try:
-                            ref = datetime.fromisoformat(fecha)
-                            d = (ref - datetime.fromisoformat(st['ultima_asignacion'])).days
-                            if d < COOLDOWN_DAYS: reasons.append(f"Cooldown {d}d")
-                        except: pass
-                    excluidos_detail.append({"id":p['id'],"nombre":p['nombre'],"cargo":p['cargo'],"razones":reasons})
-            for b in brigadas:
-                for role in ['coordinador','inspector','auxiliar']:
-                    p = b.get(role)
-                    if p: asignados.append({"id":p['id'],"nombre":p['nombre'],"cargo":p['cargo'],"vehiculo":b['num']})
-            audit_data = json.dumps({
-                "seed": seed,
-                "operativo_id": op['id'],
-                "operativo_nombre": op.get('nombre',''),
-                "zona": zona,
-                "fecha": fecha,
-                "timestamp": now,
-                "asignados": asignados,
-                "excluidos": excluidos_detail,
-                "total_pool": len(PERSONAL),
-                "total_elegibles": len(PERSONAL) - len(excluidos_detail),
-            })
+    resultado = request.json['resultado']
+    # Load states ONCE outside the DB transaction
+    all_states = get_all_states()
+
+    for op in resultado:
+        brigadas = op['brigadas_asignadas']
+        seed     = op.get('seed','')
+        zona     = op.get('zona_operativo','') or inferir_zona(op.get('provincia',''), op.get('municipio',''))
+        fecha    = op.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+
+        # Build audit record using already-loaded states
+        asignados = []
+        excluidos_detail = []
+        LOCAL = ["Distrito Nacional","SD Este","SD Norte","SD Oeste","San Cristóbal","San Cristóbal / Haina"]
+        for p in PERSONAL:
+            st = get_state(p['id'], all_states)
+            excluded = False
+            reasons = []
+            if zona in LOCAL and p['zona']==zona:
+                excluded=True; reasons.append("Zona residencia")
+            if st['no_disponible']:
+                excluded=True; reasons.append(st.get('motivo_no_disponible') or "No disponible")
+            if st['conflicto']:
+                excluded=True; reasons.append("Conflicto")
+            if st['ultima_asignacion']:
+                try:
+                    ref = datetime.fromisoformat(fecha)
+                    d = (ref - datetime.fromisoformat(st['ultima_asignacion'])).days
+                    if d < COOLDOWN_DAYS:
+                        excluded=True; reasons.append(f"Cooldown {d}d")
+                except: pass
+            if excluded:
+                excluidos_detail.append({"id":p['id'],"nombre":p['nombre'],"cargo":p['cargo'],"razones":reasons})
+        for b in brigadas:
+            for role in ['coordinador','inspector','auxiliar']:
+                p = b.get(role)
+                if p: asignados.append({"id":p['id'],"nombre":p['nombre'],"cargo":p['cargo'],"vehiculo":b['num']})
+
+        audit_data = json.dumps({
+            "seed": seed, "operativo_id": op['id'],
+            "operativo_nombre": op.get('nombre',''),
+            "zona": zona, "fecha": fecha, "timestamp": now,
+            "asignados": asignados, "excluidos": excluidos_detail,
+            "total_pool": len(PERSONAL),
+            "total_elegibles": len(PERSONAL) - len(excluidos_detail),
+        })
+
+        with get_db() as db:
             db.execute("""UPDATE operativos SET brigadas_json=?,seed=?,estado='asignado',confirmed_at=?
-                          WHERE id=?""",
-                       (json.dumps(brigadas), seed, now, op['id']))
-            # Store audit record
-            db.execute("""INSERT INTO sorteo_audit (seed, operativo_id, fecha_sorteo, audit_json)
-                          VALUES (?,?,?,?)""", (seed, op['id'], now, audit_data))
+                          WHERE id=?""", (json.dumps(brigadas), seed, now, op['id']))
+            # Use seed+operativo_id as unique key to avoid conflicts
+            try:
+                db.execute("""INSERT INTO sorteo_audit (seed, operativo_id, fecha_sorteo, audit_json)
+                              VALUES (?,?,?,?)""", (seed+'-'+str(op['id']), op['id'], now, audit_data))
+            except: pass
             for b in brigadas:
                 for role in ['coordinador','inspector','auxiliar']:
                     p = b.get(role)
@@ -642,7 +649,7 @@ def auditoria_view():
     resultado = None
     if q:
         with get_db() as db:
-            row = db.fetchone("SELECT * FROM sorteo_audit WHERE UPPER(seed)=?", (q,))
+            row = db.fetchone("SELECT * FROM sorteo_audit WHERE UPPER(seed) LIKE ?", (q+'%',))
             if row:
                 resultado = dict(row)
                 resultado['data'] = json.loads(resultado['audit_json'])
@@ -666,4 +673,4 @@ def mapa_view():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    app.run(host='0.0.0.0', port=port, debug=False)
