@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Auditoria de Sorteos{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Auditoria de Sorteos</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Verificacion de transparencia — cada semilla justifica una asignacion</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><div class="card-num">1</div><h2>Buscar por Semilla</h2></div>
+  <div class="card-body">
+    <div class="alert alert-blue">
+      Ingresa el codigo de semilla que aparece en la planilla DCJA-042 para verificar el sorteo completo —
+      quien fue elegido, quien fue excluido y por que razon, y la fecha y hora exacta del sorteo.
+    </div>
+    <form method="get" action="/auditoria" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="fg" style="flex:1;max-width:300px;">
+        <label class="fl">Codigo de semilla</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Ej. A3F9C21B"
+               style="font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:2px;font-size:15px;">
+      </div>
+      <button type="submit" class="btn btn-p">Verificar</button>
+      {% if q %}<a href="/auditoria" class="btn btn-o">Limpiar</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+{% if q and not resultado %}
+<div class="alert alert-warn">No se encontro ningun sorteo con la semilla <strong style="font-family:'DM Mono',monospace;">{{ q }}</strong>. Verifica que el codigo sea correcto.</div>
+{% endif %}
+
+{% if resultado %}
+{% set d = resultado.data %}
+<div class="card">
+  <div class="card-head" style="background:var(--dcja-navy);">
+    <div style="flex:1;">
+      <div style="font-size:14px;font-weight:800;color:#fff;">Sorteo Verificado — {{ d.operativo_nombre }}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">
+        Fecha operativo: {{ d.fecha }} &nbsp;·&nbsp; Zona: {{ d.zona }} &nbsp;·&nbsp;
+        Sorteo ejecutado: {{ d.timestamp[:16]|replace('T',' ') }}
+      </div>
+    </div>
+    <div style="background:rgba(200,160,34,.15);border:1px solid rgba(200,160,34,.4);border-radius:6px;padding:8px 14px;text-align:center;">
+      <div style="font-size:9px;color:rgba(200,160,34,.8);text-transform:uppercase;letter-spacing:.5px;">Semilla Criptografica</div>
+      <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:800;color:var(--dcja-gold);letter-spacing:3px;">{{ d.seed }}</div>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <div class="stats" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="val">{{ d.total_pool }}</div><div class="lbl">Personal total</div></div>
+      <div class="stat-card"><div class="val" style="color:var(--green);">{{ d.total_elegibles }}</div><div class="lbl">Pool elegible</div></div>
+      <div class="stat-card"><div class="val" style="color:var(--red);">{{ d.excluidos|length }}</div><div class="lbl">Excluidos</div></div>
+      <div class="stat-card"><div class="val" style="color:var(--dcja-navy);">{{ d.asignados|length }}</div><div class="lbl">Asignados</div></div>
+    </div>
+
+    <!-- ASIGNADOS -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--dcja-navy);">Personal Seleccionado</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">
+        {% for p in d.asignados %}
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#16a34a;color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">V{{ p.vehiculo }}</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;">{{ p.nombre }}</div>
+            <div style="font-size:10px;color:var(--muted);">{{ p.cargo }}</div>
+          </div>
+          <span style="margin-left:auto;background:#dcfce7;color:#166534;padding:2px 7px;border-radius:8px;font-size:9.5px;font-weight:700;">Asignado</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- EXCLUIDOS -->
+    <div>
+      <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border);">Personal Excluido del Pool</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Nombre</th><th>Cargo</th><th>Motivo de exclusion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in d.excluidos %}
+            <tr>
+              <td style="color:#94a3b8;">{{ loop.index }}</td>
+              <td style="font-weight:600;">{{ p.nombre }}</td>
+              <td style="font-size:11px;">{{ p.cargo }}</td>
+              <td>
+                {% for r in p.razones %}
+                <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;margin:1px;display:inline-block;">{{ r }}</span>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT FOOTER -->
+<div style="background:#f8f9fc;border:1px solid var(--border);border-radius:7px;padding:12px 16px;font-size:11px;color:var(--muted);">
+  Este registro es prueba verificable de que la asignacion del personal fue realizada mediante un proceso aleatorio criptografico transparente, ejecutado el {{ d.timestamp[:16]|replace('T',' ') }}. La semilla <strong style="font-family:'DM Mono',monospace;color:var(--dcja-navy);">{{ d.seed }}</strong> identifica de forma unica este sorteo en el sistema.
+</div>
+{% endif %}
+
+{% endblock %}
