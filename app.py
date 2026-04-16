@@ -498,7 +498,8 @@ def plan_semanal():
 @app.route('/ejecucion_diaria')
 def ejecucion_diaria():
     today  = datetime.now().strftime('%Y-%m-%d')
-    fecha  = request.args.get('fecha', today)
+    # Always use today - sorteo only happens day-of
+    fecha  = today
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
         ops     = [dict(r) for r in db.fetchall(
