@@ -3,8 +3,10 @@
 {% block extra_head %}
 <style>
 .print-header{display:none;}
+.print-only{display:none;}
 @media print{
   .print-header{display:block!important;}
+  .print-only{display:block!important;}
   .no-print,.nav-top,.nav-links-bar,.footer{display:none!important;}
   body{background:#fff;font-size:11px;}
   .container{padding:8px;}
