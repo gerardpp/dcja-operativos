@@ -497,7 +497,8 @@ def plan_semanal():
 
 @app.route('/ejecucion_diaria')
 def ejecucion_diaria():
-    fecha  = request.args.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+    today  = datetime.now().strftime('%Y-%m-%d')
+    fecha  = request.args.get('fecha', today)
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
         ops     = [dict(r) for r in db.fetchall(
@@ -511,7 +512,8 @@ def ejecucion_diaria():
     vehiculos_diarios = sr['vehiculos_disponibles'] if sr else 6
     return render_template('ejecucion_diaria.html', operativos=ops, fecha=fecha,
                            fechas_disponibles=[x['fecha'] for x in all_ops],
-                           semana=semana, vehiculos_diarios=vehiculos_diarios)
+                           semana=semana, vehiculos_diarios=vehiculos_diarios,
+                           today=today)
 
 @app.route('/historial')
 def historial_view():
