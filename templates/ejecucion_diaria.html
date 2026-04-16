@@ -1,25 +1,56 @@
 {% extends "base.html" %}
-{% block title %}DCJA — Ejecucion Diaria{% endblock %}
+{% block title %}DCJA-042 — Ejecucion Diaria{% endblock %}
+{% block extra_head %}
+<style>
+.vh-block{border:1.5px solid #0d2257;border-radius:0;overflow:hidden;break-inside:avoid;}
+.vh-title{background:#0d2257;color:#fff;padding:7px 14px;font-size:11px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between;}
+.vh-body{display:grid;grid-template-columns:1fr 210px;}
+.vh-personal table{width:100%;border-collapse:collapse;}
+.vh-personal th{background:#f5f7fc;padding:5px 8px;font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;border:1px solid #d8dde8;}
+.vh-personal td{padding:6px 8px;font-size:12px;border:1px solid #d8dde8;min-height:24px;}
+.vh-personal td.cargo{background:#f8f9fc;font-weight:700;font-size:10px;color:#0d2257;white-space:nowrap;width:90px;}
+.vh-info{border-left:1.5px solid #0d2257;padding:9px 12px;}
+.info-row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+.info-lbl{font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;width:115px;flex-shrink:0;}
+.info-val{flex:1;border-bottom:1px solid #d8dde8;min-height:18px;font-size:11px;padding:1px 4px;}
+.obs-row{padding:7px 12px;background:#fafbfd;border-top:1px solid #d8dde8;}
+.transparency-box{border:1.5px solid #c8a022;border-radius:6px;padding:14px 18px;margin-top:16px;background:#fefdf5;}
+.firma-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:12px;}
+.firma-line{border-bottom:1.5px solid #0d2257;height:40px;margin-bottom:6px;}
+@media print{
+  .no-print,.nav-top,.nav-links-bar,.footer{display:none!important;}
+  body{background:#fff;font-size:11px;}
+  .container{padding:8px;}
+  .print-header{display:block!important;}
+  .resultado-section{display:none!important;}
+  .op-print-block{break-inside:avoid;page-break-inside:avoid;margin-bottom:20px;}
+}
+.print-header{display:none;}
+</style>
+{% endblock %}
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+
+<!-- SCREEN HEADER -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;" class="no-print">
   <div>
     <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Ejecucion Diaria</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Registro de resultados por operativo</p>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Sorteo de personal y registro de resultados</p>
   </div>
-  <a href="/plan_semanal" class="btn btn-o">Ver Plan Semanal</a>
+  <a href="/plan_semanal" class="btn btn-o no-print">Ver Plan Semanal (DCJA-035)</a>
 </div>
 
-<div class="card">
-  <div class="card-head"><div class="card-num">1</div><h2>Seleccionar Fecha</h2></div>
+<!-- FECHA SELECTOR -->
+<div class="card no-print">
+  <div class="card-head"><div class="card-num">1</div><h2>Seleccionar Fecha del Operativo</h2></div>
   <div class="card-body">
     <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
       <div class="fg" style="max-width:200px;">
-        <label class="fl">Fecha del operativo</label>
+        <label class="fl">Fecha</label>
         <input type="date" id="fecha-sel" value="{{ fecha }}" onchange="window.location='/ejecucion_diaria?fecha='+this.value">
       </div>
       {% if fechas_disponibles %}
       <div style="font-size:11px;color:var(--muted);padding-bottom:9px;">
-        Dias con operativos esta semana:
+        Dias planificados esta semana:
         {% for fd in fechas_disponibles %}
         <a href="/ejecucion_diaria?fecha={{ fd }}"
            style="color:var(--dcja-blue);font-weight:700;margin-left:8px;{% if fd==fecha %}text-decoration:underline;{% endif %}">
@@ -35,112 +66,197 @@
 {% if not operativos %}
 <div class="alert alert-warn">
   No hay operativos planificados para el <strong>{{ fecha }}</strong>.
-  {% if not fechas_disponibles %}
-  No hay operativos en el plan semanal. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a> para agregarlos y luego a <a href="/asignacion" style="color:var(--dcja-blue);font-weight:700;">Asignacion</a> para sortear el personal.
-  {% endif %}
+  Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a> para programarlos.
 </div>
 {% else %}
 
-{% for op in operativos %}
-<div class="card">
-  <div class="card-head" style="background:var(--dcja-navy);">
-    <div style="flex:1;">
-      <span style="font-weight:800;font-size:14px;color:#fff;">{{ loop.index }}. {{ op.nombre }}</span>
-      <span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.6);">
-        {{ op.provincia }}{% if op.municipio %} / {{ op.municipio }}{% endif %}
-        {% if op.direccion %} — {{ op.direccion }}{% endif %}
-      </span>
+<!-- SORTEO SECTION -->
+{% set hay_sin_asignar = operativos|selectattr('estado','ne','asignado')|list|length > 0 %}
+{% if hay_sin_asignar %}
+<div class="card no-print">
+  <div class="card-head"><div class="card-num">2</div><h2>Sorteo de Personal — {{ fecha }}</h2></div>
+  <div class="card-body">
+    <div class="alert alert-blue">
+      El sorteo selecciona aleatoriamente el personal para los operativos de hoy aplicando todas las reglas:
+      exclusion por zona de residencia, cooldown de 21 dias, disponibilidad y conflictos.
+      Si el pool es insuficiente se relaja el cooldown automaticamente.
     </div>
-    <div style="display:flex;gap:6px;align-items:center;">
-      {% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}
-      {% if op.ejecutado==1 %}<span class="badge b-ok">Ejecutado</span>
-      {% elif op.ejecutado==0 %}<span class="badge b-red">No Ejecutado</span>
-      {% else %}<span class="badge b-gray">Sin registro</span>{% endif %}
+    <button class="btn btn-p" id="btn-sorteo" onclick="ejecutarSorteo()">Ejecutar Sorteo para {{ fecha }}</button>
+    <div id="sorteo-resultado" style="margin-top:16px;"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- OPERATIVOS DEL DIA -->
+{% for op in operativos %}
+<div class="op-print-block">
+
+  <!-- PRINT HEADER (per operativo) -->
+  <div class="print-header" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div style="font-size:9px;color:#666;">Republica Dominicana — Ministerio de Hacienda y Economia</div>
+      <div style="font-size:9px;color:#666;">Codigo: DCJA-042 &nbsp;·&nbsp; DPD / Version: 03</div>
+    </div>
+    <div style="border:2px solid #0d2257;border-radius:6px;padding:9px 14px;margin-bottom:10px;">
+      <div style="text-align:center;margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:700;color:#0d2257;text-transform:uppercase;">Direccion de Casinos y Juegos de Azar</div>
+        <div style="font-size:13px;font-weight:800;color:#0d2257;margin:2px 0;">REGISTRO DE PARTICIPANTES EN OPERATIVO</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:10px;">
+        <div><strong>Fecha:</strong> {{ op.fecha }}</div>
+        <div><strong>Tipo:</strong> {{ op.tipo }}</div>
+        <div><strong>Provincia:</strong> {{ op.provincia }}</div>
+        <div><strong>No. Oficio:</strong> {{ op.no_oficio or '—' }}</div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:800;color:#0d2257;margin-bottom:6px;">{{ op.nombre }}{% if op.municipio %} — {{ op.municipio }}{% endif %}{% if op.direccion %} · {{ op.direccion }}{% endif %}</div>
+  </div>
+
+  <!-- SCREEN OPERATIVO HEADER -->
+  <div class="card no-print" style="margin-bottom:4px;">
+    <div style="background:var(--dcja-navy);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <span style="font-weight:800;font-size:14px;color:#fff;">{{ loop.index }}. {{ op.nombre }}</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.6);margin-left:8px;">{{ op.provincia }}{% if op.municipio %} / {{ op.municipio }}{% endif %}{% if op.direccion %} — {{ op.direccion }}{% endif %}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        {% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}
+        {% if op.estado=='asignado' %}
+          <span class="badge b-ok">Personal asignado</span>
+          <button class="btn btn-p btn-sm no-print" onclick="window.print()">Imprimir DCJA-042</button>
+        {% else %}
+          <span class="badge b-gray">Pendiente sorteo</span>
+        {% endif %}
+      </div>
     </div>
   </div>
 
-  <div class="card-body">
-
-    <!-- Personal asignado -->
-    {% if op.brigadas %}
-    <div style="margin-bottom:16px;">
-      <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Personal Asignado</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;">
-        {% for b in op.brigadas %}
-        <div style="border:1px solid var(--border);border-radius:7px;padding:10px 14px;">
-          <div style="font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:5px;border-bottom:1.5px solid var(--dcja-navy);">Vehiculo {{ b.num }}</div>
-          {% for rk,rl,bg,col in [('coordinador','Coordinador','#dbeafe','#1e40af'),('inspector','Inspector','#dcfce7','#166534'),('auxiliar','Auxiliar','#f3e8ff','#6d28d9')] %}
-          {% set persona = b[rk] %}
-          <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed #eef0f6;">
-            <span style="background:{{ bg }};color:{{ col }};padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;min-width:80px;text-align:center;">{{ rl }}</span>
-            {% if persona %}<span style="font-size:12px;font-weight:600;">{{ persona.nombre }}</span>
-            {% else %}<span style="font-size:11px;color:#94a3b8;">Sin asignar</span>{% endif %}
-          </div>
-          {% endfor %}
+  <!-- BRIGADAS / VEHICULOS -->
+  {% if op.brigadas %}
+  {% set vd_list = op.vehiculos_data %}
+  {% for b in op.brigadas %}
+  {% set vd = vd_list[loop.index0] if vd_list and loop.index0 < vd_list|length else {} %}
+  <div class="vh-block" style="{% if loop.first %}border-top:1.5px solid #0d2257;{% endif %}border-bottom:1.5px solid #0d2257;{% if not loop.last %}border-bottom:1px solid #d8dde8;{% endif %}">
+    <div class="vh-title">
+      <span>Vehiculo {{ loop.index }}</span>
+      {% if op.seed %}<span style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,160,34,.8);">Semilla: {{ op.seed }}</span>{% endif %}
+    </div>
+    <div class="vh-body">
+      <div class="vh-personal">
+        <table>
+          <thead><tr><th>Cargo</th><th>Nombre</th><th style="min-width:120px;">Firma</th></tr></thead>
+          <tbody>
+            {% for rk,rl in [('coordinador','Coordinador'),('inspector','Inspector'),('auxiliar','Auxiliar')] %}
+            <tr>
+              <td class="cargo">{{ rl }}</td>
+              <td>{% if b[rk] %}{{ b[rk].nombre }}{% endif %}</td>
+              <td></td>
+            </tr>
+            {% endfor %}
+            <tr><td class="cargo">Militar</td><td id="mil-{{ op.id }}-{{ b.num }}" class="editable-cell">{{ vd.militar if vd and vd.militar else '' }}</td><td></td></tr>
+            <tr><td class="cargo">Chofer</td><td id="cho-{{ op.id }}-{{ b.num }}" class="editable-cell">{{ vd.chofer if vd and vd.chofer else '' }}</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="vh-info">
+        {% for lbl,key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designacion','designacion'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
+        <div class="info-row">
+          <span class="info-lbl">{{ lbl }}</span>
+          <span class="info-val">{{ vd[key] if vd and key in vd else '' }}</span>
         </div>
         {% endfor %}
       </div>
     </div>
-    {% else %}
-    <div class="alert alert-warn" style="margin-bottom:16px;">Este operativo aun no tiene personal asignado. Ve a <a href="/asignacion" style="color:var(--dcja-blue);font-weight:700;">Asignacion</a>.</div>
-    {% endif %}
+    <div class="obs-row">
+      <span style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;">Observaciones:</span>
+      <span style="font-size:11px;margin-left:8px;">{{ vd.observaciones if vd and vd.observaciones else '' }}</span>
+    </div>
+  </div>
+  {% endfor %}
 
-    <!-- REGISTRO DE RESULTADO -->
-    <div style="background:#f8f9fc;border:1.5px solid var(--border);border-radius:8px;padding:16px 18px;">
-      <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Registro de Resultado</div>
-
-      <!-- Ejecutado / No ejecutado -->
-      <div style="margin-bottom:14px;">
-        <label class="fl" style="margin-bottom:6px;display:block;">Estado del operativo</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-g" id="btn-ej-{{ op.id }}" onclick="setEj({{ op.id }},1)"
-            {% if op.ejecutado==1 %}style="outline:3px solid var(--dcja-gold);outline-offset:2px;"{% endif %}>
-            Ejecutado
-          </button>
-          <button class="btn btn-d" id="btn-noej-{{ op.id }}" onclick="setEj({{ op.id }},0)"
-            {% if op.ejecutado==0 %}style="outline:3px solid #dc2626;outline-offset:2px;"{% endif %}>
-            No Ejecutado
-          </button>
-        </div>
-      </div>
-
-      <!-- Observaciones -->
-      <div class="form-grid" style="margin-bottom:14px;">
-        <div class="fg span2">
-          <label class="fl">Observaciones</label>
-          <textarea id="obs-{{ op.id }}" rows="3"
-            placeholder="Detalles del operativo, novedades, razones si no se ejecuto...">{{ op.observaciones or '' }}</textarea>
-        </div>
-      </div>
-
-      <!-- Decomiso -->
-      <div class="form-grid" style="margin-bottom:14px;">
-        <div class="fg">
-          <label class="fl">Incautacion / Decomiso</label>
-          <select id="dec-{{ op.id }}" onchange="toggleDec({{ op.id }},this.value)">
-            <option value="0" {% if not op.decomiso %}selected{% endif %}>No hubo decomiso</option>
-            <option value="1" {% if op.decomiso %}selected{% endif %}>Si, se incauto / decomiso</option>
-          </select>
-        </div>
-        <div class="fg span2" id="decdet-{{ op.id }}" {% if not op.decomiso %}style="display:none"{% endif %}>
-          <label class="fl">Especificar lo incautado / decomisado</label>
-          <textarea id="decval-{{ op.id }}" rows="2"
-            placeholder="Descripcion detallada de lo incautado o decomisado...">{{ op.decomiso_detalle or '' }}</textarea>
-        </div>
-      </div>
-
-      <!-- Save button -->
-      <div style="display:flex;align-items:center;gap:10px;">
-        <button class="btn btn-p" onclick="guardar({{ op.id }},'{{ op.no_oficio or '' }}')">
-          Guardar registro
-        </button>
-        {% if op.ejecutado != -1 %}
-        <span style="font-size:11px;color:var(--green);">Ultimo registro guardado ✓</span>
-        {% endif %}
+  <!-- DATOS VEHICULOS (screen only) -->
+  <div class="no-print" style="background:#f8f9fc;border:1px solid var(--border);padding:14px 16px;margin-bottom:4px;">
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Completar datos de vehiculos antes de imprimir</div>
+    {% for b in op.brigadas %}
+    {% set vd = op.vehiculos_data[loop.index0] if op.vehiculos_data and loop.index0 < op.vehiculos_data|length else {} %}
+    <div style="margin-bottom:12px;{% if not loop.last %}padding-bottom:12px;border-bottom:1px solid var(--border);{% endif %}">
+      <div style="font-size:11px;font-weight:700;color:var(--dcja-navy);margin-bottom:8px;">Vehiculo {{ loop.index }}</div>
+      <div class="form-grid" id="vhform-{{ op.id }}-{{ b.num }}">
+        <div class="fg"><label class="fl">Hora Salida</label><input type="time" class="vhf" data-key="hora_salida" value="{{ vd.hora_salida if vd else '' }}"></div>
+        <div class="fg"><label class="fl">No. Placa</label><input type="text" class="vhf" data-key="placa" value="{{ vd.placa if vd else '' }}" placeholder="A123456"></div>
+        <div class="fg"><label class="fl">No. Flota</label><input type="text" class="vhf" data-key="flota" value="{{ vd.flota if vd else '' }}" placeholder="F-042"></div>
+        <div class="fg"><label class="fl">Designacion</label><input type="text" class="vhf" data-key="designacion" value="{{ vd.designacion if vd else '' }}"></div>
+        <div class="fg"><label class="fl">Provincia Destino</label><input type="text" class="vhf" data-key="provincia_destino" value="{{ vd.provincia_destino if vd else op.provincia }}"></div>
+        <div class="fg"><label class="fl">Hora Llegada</label><input type="time" class="vhf" data-key="hora_llegada" value="{{ vd.hora_llegada if vd else '' }}"></div>
+        <div class="fg"><label class="fl">Militar</label><input type="text" class="vhf" data-key="militar" value="{{ vd.militar if vd else '' }}" placeholder="Nombre completo"></div>
+        <div class="fg"><label class="fl">Chofer</label><input type="text" class="vhf" data-key="chofer" value="{{ vd.chofer if vd else '' }}" placeholder="Nombre completo"></div>
+        <div class="fg span2"><label class="fl">Observaciones del vehiculo</label><input type="text" class="vhf" data-key="observaciones" value="{{ vd.observaciones if vd else '' }}"></div>
       </div>
     </div>
-
+    {% endfor %}
+    <button class="btn btn-g btn-sm" onclick="guardarVehiculos({{ op.id }},{{ op.brigadas|length }})">Guardar datos de vehiculos</button>
   </div>
+
+  <!-- TRANSPARENCY -->
+  <div class="transparency-box">
+    <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaracion de Transparencia y Cumplimiento Normativo</div>
+    <div style="font-size:10.5px;line-height:1.7;margin-bottom:12px;">
+      Los participantes en el presente operativo declaran conocer y acatar las disposiciones establecidas en la Ley No. 356 del 1964 sobre Juegos de Azar y sus modificaciones, asi como las normativas internas de la Direccion de Casinos y Juegos de Azar del Ministerio de Hacienda y Economia. Se comprometen a actuar con probidad, imparcialidad y apego a los principios de transparencia institucional, conforme a la Ley No. 311-14 sobre Declaracion Jurada de Patrimonio y la Ley No. 172-13 de Proteccion de Datos Personales.
+    </div>
+    <div class="firma-grid">
+      {% for f in ['Encargado Departamento de Operaciones','Supervisor del Operativo','Funcionario Habilitado'] %}
+      <div style="text-align:center;">
+        <div class="firma-line"></div>
+        <div style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;letter-spacing:.3px;">{{ f }}</div>
+        <div style="font-size:9px;color:#5a6480;margin-top:2px;">Nombre, Firma y Fecha</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- RESULTADO SECTION (screen only, after operativo) -->
+  <div class="resultado-section no-print" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:16px 18px;margin-top:8px;margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Registrar Resultado del Operativo</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="btn btn-g" id="btn-ej-{{ op.id }}" onclick="setEj({{ op.id }},1)">Ejecutado</button>
+      <button class="btn btn-d" id="btn-noej-{{ op.id }}" onclick="setEj({{ op.id }},0)">No Ejecutado</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="fg span2">
+        <label class="fl">Observaciones</label>
+        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones si no se ejecuto...">{{ op.observaciones or '' }}</textarea>
+      </div>
+      <div class="fg">
+        <label class="fl">Incautacion / Decomiso</label>
+        <select id="dec-{{ op.id }}" onchange="toggleDec({{ op.id }},this.value)">
+          <option value="0" {% if not op.decomiso %}selected{% endif %}>No hubo decomiso</option>
+          <option value="1" {% if op.decomiso %}selected{% endif %}>Si, hubo incautacion</option>
+        </select>
+      </div>
+      <div class="fg span2" id="decdet-{{ op.id }}" {% if not op.decomiso %}style="display:none"{% endif %}>
+        <label class="fl">Descripcion de lo incautado</label>
+        <textarea id="decval-{{ op.id }}" rows="2" placeholder="Describa detalladamente...">{{ op.decomiso_detalle or '' }}</textarea>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="btn btn-p" onclick="guardarResultado({{ op.id }},'{{ op.no_oficio or '' }}')">Guardar resultado</button>
+      {% if op.ejecutado != -1 %}
+      <span style="font-size:11px;color:var(--green);font-weight:600;">
+        {% if op.ejecutado==1 %}Registrado: Ejecutado ✓{% else %}Registrado: No Ejecutado ✓{% endif %}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <!-- No brigadas yet -->
+  <div class="card no-print" style="margin-bottom:16px;">
+    <div class="card-body">
+      <div class="alert alert-warn" style="margin:0;">Este operativo aun no tiene personal asignado. Ejecuta el sorteo arriba.</div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endfor %}
 {% endif %}
@@ -148,59 +264,68 @@
 
 {% block scripts %}
 <script>
-const ejState = {};
+const SEMANA='{{ semana }}';
+const FECHA='{{ fecha }}';
+const VEH_DISP = {{ vehiculos_diarios }};
+const ejState={};
+{% for op in operativos %}ejState[{{ op.id }}]={{ op.ejecutado }};{% endfor %}
 
-// Initialize states from server data
-{% for op in operativos %}
-ejState[{{ op.id }}] = {{ op.ejecutado }};
-{% endfor %}
-
-function setEj(id, val){
-  ejState[id] = val;
-  const btnEj   = document.getElementById('btn-ej-'+id);
-  const btnNoEj = document.getElementById('btn-noej-'+id);
-  btnEj.style.outline=''; btnEj.style.outlineOffset='';
-  btnNoEj.style.outline=''; btnNoEj.style.outlineOffset='';
-  if(val===1){
-    btnEj.style.outline='3px solid var(--dcja-gold)';
-    btnEj.style.outlineOffset='2px';
-  } else {
-    btnNoEj.style.outline='3px solid #dc2626';
-    btnNoEj.style.outlineOffset='2px';
-  }
+// ── SORTEO ────────────────────────────────────────────────────
+async function ejecutarSorteo(){
+  const btn=document.getElementById('btn-sorteo');
+  btn.disabled=true; btn.textContent='Ejecutando sorteo...';
+  try {
+    const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
+    if(!r.ok){toast('Error al ejecutar sorteo','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Sorteo para '+FECHA;return;}
+    // Confirm immediately
+    const c=await api('/asignacion/confirmar',{resultado:r.resultado});
+    if(c.ok){
+      toast('Sorteo ejecutado y personal asignado. Recargando...','#166534');
+      setTimeout(()=>location.reload(),1500);
+    }
+  } catch(e){ toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Ejecutar Sorteo para '+FECHA; }
 }
 
-function toggleDec(id, v){
-  document.getElementById('decdet-'+id).style.display = v==='1' ? 'flex' : 'none';
+// ── VEHICULOS ─────────────────────────────────────────────────
+async function guardarVehiculos(opId, numBrigadas){
+  const vehiculos=[];
+  for(let b=1;b<=numBrigadas;b++){
+    const container=document.getElementById('vhform-'+opId+'-'+b);
+    if(!container){vehiculos.push({});continue;}
+    const vd={};
+    container.querySelectorAll('.vhf').forEach(inp=>{ vd[inp.dataset.key]=inp.value; });
+    vehiculos.push(vd);
+  }
+  const r=await api('/operativo/vehiculos',{id:opId,vehiculos});
+  if(r.ok) toast('Datos guardados — recarga para ver en la planilla');
+  else toast('Error al guardar','#dc2626');
 }
 
-async function guardar(id, oficio){
-  const ej      = ejState[id] ?? -1;
-  const obs     = document.getElementById('obs-'+id)?.value || '';
-  const dec     = parseInt(document.getElementById('dec-'+id)?.value || 0);
-  const decDet  = document.getElementById('decval-'+id)?.value || '';
-
-  if(ej === -1){
-    alert('Por favor selecciona si el operativo fue Ejecutado o No Ejecutado antes de guardar.');
-    return;
-  }
-
-  const r = await api('/operativo/resultado', {
-    id,
-    ejecutado:       ej,
-    observaciones:   obs,
-    decomiso:        dec,
-    decomiso_detalle:decDet,
-    no_oficio:       oficio,
-    cerrar_denuncia: ej === 1
+// ── RESULTADO ─────────────────────────────────────────────────
+function setEj(id,val){
+  ejState[id]=val;
+  ['btn-ej-'+id,'btn-noej-'+id].forEach(bid=>{
+    const b=document.getElementById(bid);
+    if(b){b.style.outline='';b.style.outlineOffset='';}
   });
+  const active=document.getElementById(val===1?'btn-ej-'+id:'btn-noej-'+id);
+  if(active){active.style.outline=val===1?'3px solid var(--dcja-gold)':'3px solid #dc2626';active.style.outlineOffset='2px';}
+}
 
-  if(r.ok){
-    toast('Registro guardado correctamente', '#166534');
-    setTimeout(()=>location.reload(), 1200);
-  } else {
-    toast('Error al guardar', '#dc2626');
-  }
+function toggleDec(id,v){ document.getElementById('decdet-'+id).style.display=v==='1'?'flex':'none'; }
+
+async function guardarResultado(id,oficio){
+  const ej=ejState[id]??-1;
+  if(ej===-1){alert('Selecciona si el operativo fue Ejecutado o No Ejecutado.');return;}
+  const r=await api('/operativo/resultado',{
+    id, ejecutado:ej,
+    observaciones:document.getElementById('obs-'+id)?.value||'',
+    decomiso:parseInt(document.getElementById('dec-'+id)?.value||0),
+    decomiso_detalle:document.getElementById('decval-'+id)?.value||'',
+    no_oficio:oficio, cerrar_denuncia:ej===1
+  });
+  if(r.ok){toast('Resultado registrado correctamente','#166634');setTimeout(()=>location.reload(),1200);}
+  else toast('Error al guardar','#dc2626');
 }
 </script>
-{% endblock %} 
+{% endblock %}
