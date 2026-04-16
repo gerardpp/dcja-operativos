@@ -124,10 +124,9 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
     <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias">Denuncias</a>
     <a class="nav-link {% if request.endpoint=='planificacion_view' %}active{% endif %}" href="/planificacion">Planificación</a>
-    <a class="nav-link {% if request.endpoint=='asignacion_view' %}active{% endif %}" href="/asignacion">Asignación</a>
-    <a class="nav-link {% if request.endpoint=='plan_semanal' %}active{% endif %}" href="/plan_semanal">DCJA-035</a>
-    <a class="nav-link {% if request.endpoint=='ejecucion_diaria' %}active{% endif %}" href="/ejecucion_diaria">DCJA-042 Diario</a>
-    <a class="nav-link {% if request.endpoint=='historial_view' %}active{% endif %}" href="/historial">DCJA-039 Bitacora</a>
+    <a class="nav-link {% if request.endpoint in ['plan_semanal','asignacion_view'] %}active{% endif %}" href="/plan_semanal">Plan Semanal</a>
+    <a class="nav-link {% if request.endpoint=='ejecucion_diaria' %}active{% endif %}" href="/ejecucion_diaria">Ejecucion Diaria</a>
+    <a class="nav-link {% if request.endpoint=='historial_view' %}active{% endif %}" href="/historial">Bitacora</a>
     <a class="nav-link {% if request.endpoint=='reportes_view' %}active{% endif %}" href="/reportes">Reportes</a>
     <a class="nav-link {% if request.endpoint=='mapa_view' %}active{% endif %}" href="/mapa">Mapa</a>
     <a class="nav-link {% if request.endpoint=='personal_view' %}active{% endif %}" href="/personal">Personal</a>
