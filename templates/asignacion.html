@@ -2,24 +2,22 @@
 {% block title %}DCJA — Asignacion{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Asignacion de Brigadas</h2>
-  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong></p></div>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Asignacion de Personal</h2>
+  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong> — Sorteo aleatorio con rotacion justa</p></div>
   <a href="/plan_semanal" class="btn btn-o">Ver Plan Semanal</a>
 </div>
 
 <div class="stats">
-  <div class="stat-card"><div class="val">{{ operativos|length }}</div><div class="lbl">Operativos</div></div>
-  <div class="stat-card"><div class="val">{{ total_brigadas }}</div><div class="lbl">Brigadas Requeridas</div></div>
-  <div class="stat-card"><div class="val">{{ vehiculos }}</div><div class="lbl">Vehiculos Disponibles</div></div>
+  <div class="stat-card"><div class="val">{{ operativos|length }}</div><div class="lbl">Operativos planificados</div></div>
+  <div class="stat-card"><div class="val">{{ total_brigadas }}</div><div class="lbl">Brigadas requeridas</div></div>
+  <div class="stat-card"><div class="val">{{ vehiculos }}</div><div class="lbl">Vehiculos disponibles</div></div>
   <div class="stat-card">
     <div class="val" style="color:{% if disponibles < total_brigadas * 3 %}var(--red){% else %}var(--green){% endif %}">{{ disponibles }}</div>
-    <div class="lbl">Personal Disponible</div>
+    <div class="lbl">Personal disponible</div>
   </div>
   <div class="stat-card">
-    <div class="val" style="color:{{ 'var(--green)' if total_brigadas<=vehiculos else 'var(--red)' }}">
-      {{ 'OK' if total_brigadas<=vehiculos else 'EXCEDE' }}
-    </div>
-    <div class="lbl">Capacidad Vehiculos</div>
+    <div class="val" style="color:{{ 'var(--green)' if total_brigadas<=vehiculos else 'var(--red)' }}">{{ 'OK' if total_brigadas<=vehiculos else 'EXCEDE' }}</div>
+    <div class="lbl">Capacidad</div>
   </div>
 </div>
 
@@ -27,25 +25,25 @@
 <div class="alert alert-warn">Se requieren <strong>{{ total_brigadas }}</strong> brigadas pero hay <strong>{{ vehiculos }}</strong> vehiculos. El sistema priorizara Ordenes de Direccion.</div>
 {% endif %}
 {% if disponibles < total_brigadas * 3 %}
-<div class="alert alert-warn"><strong>Personal reducido:</strong> {{ disponibles }} personas disponibles para {{ total_brigadas * 3 }} roles. Si el pool es insuficiente el sistema relajara el cooldown automaticamente.</div>
+<div class="alert alert-warn"><strong>Personal reducido:</strong> {{ disponibles }} disponibles para {{ total_brigadas * 3 }} roles. Si el pool es insuficiente se relajara el cooldown automaticamente.</div>
 {% endif %}
 
 {% if not operativos %}
-<div class="alert alert-warn">No hay operativos programados. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a>.</div>
+<div class="alert alert-warn">No hay operativos planificados. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a> para agregarlos primero.</div>
 {% else %}
 
 <div class="card">
   <div class="card-head"><div class="card-num">I</div><h2>Operativos de Esta Semana</h2></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Nombre / Zona</th><th>Provincia</th><th>Brigadas</th><th>Fuente</th><th>Estado</th></tr></thead>
+    <thead><tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Provincia / Zona</th><th>Brigadas</th><th>Fuente</th><th>Estado</th></tr></thead>
     <tbody>
       {% for op in operativos %}
       <tr>
         <td style="color:#94a3b8;">{{ loop.index }}</td>
-        <td style="font-weight:700;font-size:11px;color:var(--dcja-blue);">{{ op.fecha or '—' }}</td>
+        <td style="font-weight:700;color:var(--dcja-blue);">{{ op.fecha or '—' }}</td>
         <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}</td>
-        <td><strong>{{ op.nombre }}</strong><br><span style="font-size:10.5px;color:var(--muted);">{{ op.zona_operativo or op.provincia }}</span></td>
-        <td style="font-size:11px;">{{ op.provincia }}</td>
+        <td style="font-weight:600;">{{ op.nombre }}</td>
+        <td style="font-size:11px;">{{ op.provincia }}{% if op.zona_operativo %} · {{ op.zona_operativo }}{% endif %}</td>
         <td style="text-align:center;font-weight:700;">{{ op.brigadas_requeridas }}</td>
         <td>{% if op.fuente=='orden_direccion' %}<span class="badge b-ord">Orden Dir.</span>{% else %}<span class="badge b-gray">Denuncia</span>{% endif %}</td>
         <td><span class="badge {{ 'b-ok' if op.estado=='asignado' else 'b-gray' }}">{{ op.estado.title() }}</span></td>
@@ -56,11 +54,16 @@
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-num">II</div><h2>Generar Asignaciones Aleatorias</h2></div>
+  <div class="card-head"><div class="card-num">II</div><h2>Ejecutar Sorteo de Personal</h2></div>
   <div class="card-body">
-    <div class="alert alert-blue">El algoritmo excluye al personal residente en la zona del operativo, en cooldown de 21 dias, no disponible o con conflicto. Del pool elegible prioriza por menor frecuencia en esa zona, luego menor carga total. Si el pool es insuficiente relaja el cooldown automaticamente.</div>
-    <div style="display:flex;gap:10px;margin-bottom:20px;" class="no-print">
-      <button class="btn btn-p" id="btn-gen" onclick="generar()">Generar Asignaciones</button>
+    <div class="alert alert-blue">
+      El sistema excluye al personal que reside en la zona del operativo, que este en cooldown de 21 dias, no disponible o con conflicto declarado.
+      Del pool elegible prioriza por menor frecuencia en esa zona especifica, luego por menor carga total.
+      Dentro del mismo nivel la seleccion es 100% aleatoria con aleatoriedad criptografica.
+      Si el pool es insuficiente el cooldown se relaja automaticamente.
+    </div>
+    <div style="margin-bottom:20px;">
+      <button class="btn btn-p" id="btn-gen" onclick="generar()">Ejecutar Sorteo</button>
     </div>
     <div id="resultado"></div>
   </div>
@@ -77,117 +80,71 @@ async function generar(){
   btn.disabled=true; btn.textContent='Procesando...';
   try {
     const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH,fecha_base:new Date().toISOString().slice(0,10)});
-    if(!r.ok){toast('Error al generar','#dc2626');btn.disabled=false;btn.textContent='Generar Asignaciones';return;}
+    if(!r.ok){toast('Error al generar','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Sorteo';return;}
     renderResultado(r.resultado,r.seed);
     btn.textContent='Regenerar'; btn.disabled=false;
-  } catch(e){ toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Generar Asignaciones'; }
+  } catch(e){
+    toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Ejecutar Sorteo';
+  }
 }
 
 function renderResultado(res,seed){
   const div=document.getElementById('resultado');
   div.innerHTML='';
-
   if(res.some(op=>op.cooldown_relajado)){
     const w=document.createElement('div');w.className='alert alert-warn';w.style.marginBottom='14px';
-    w.innerHTML='<strong>Aviso:</strong> Se relajo el cooldown de 21 dias en uno o mas operativos por pool insuficiente.';
+    w.innerHTML='<strong>Aviso:</strong> Se relajo el cooldown en uno o mas operativos por pool insuficiente de personal.';
     div.appendChild(w);
   }
-
-  let h=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:15px;font-weight:800;color:var(--dcja-navy);">Asignaciones Generadas</div>
+  let h=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div style="font-size:15px;font-weight:800;color:var(--dcja-navy);">Resultado del Sorteo</div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="background:var(--dcja-navy);color:var(--dcja-gold);font-family:'DM Mono',monospace;font-size:10px;padding:5px 11px;border-radius:5px;">Semilla: ${seed}</span>
-      <button class="btn btn-g" onclick='confirmar(${JSON.stringify(res).replace(/\\/g,"\\\\").replace(/'/g,"&#39;")})'>Confirmar y Registrar</button>
+      <span style="background:var(--dcja-navy);color:var(--dcja-gold);font-family:'DM Mono',monospace;font-size:10px;padding:5px 12px;border-radius:5px;letter-spacing:1px;">Semilla: ${seed}</span>
+      <button class="btn btn-g" onclick='confirmar(${JSON.stringify(res).replace(/\\/g,"\\\\").replace(/'/g,"&#39;")})'>Confirmar y generar Plan Semanal</button>
     </div>
   </div>`;
 
   res.forEach(op=>{
-    h+=`<div style="border:1.5px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden;">
-      <div style="background:#f5f7fc;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+    h+=`<div style="border:1.5px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
+      <div style="background:#f5f7fc;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <div>
           <strong style="font-size:13px;">${op.nombre}</strong>
-          <span style="margin-left:8px;font-size:11px;color:var(--muted);">${op.provincia}${op.municipio?' / '+op.municipio:''}</span>
-          ${op.fecha?`<span class="badge b-gray" style="margin-left:6px;">${op.fecha}</span>`:''}
+          <span style="font-size:11px;color:var(--muted);margin-left:8px;">${op.provincia}${op.municipio?' / '+op.municipio:''}</span>
         </div>
-        <div style="display:flex;gap:6px;">
-          ${op.fuente=='orden_direccion'?'<span class="badge b-ord">Orden Dir.</span>':'<span class="badge b-gray">Denuncia</span>'}
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="badge b-gray">${op.fecha||'—'}</span>
           <span class="badge b-navy">${op.brigadas_asignadas.length} brigada(s)</span>
+          ${op.cooldown_relajado?'<span class="badge b-red">Cooldown relajado</span>':''}
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--border);">
         ${op.brigadas_asignadas.map(b=>`
           <div style="background:#fff;padding:14px 16px;">
             <div style="font-size:10.5px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--dcja-navy);">
-              Vehiculo ${b.num}${b.cooldown_relajado?' *':''}
+              Vehiculo ${b.num}
             </div>
             ${rp(b.coordinador,'COORDINADOR','#dbeafe','#1e40af')}
             ${rp(b.inspector,'INSPECTOR','#dcfce7','#166534')}
             ${rp(b.auxiliar,'AUXILIAR','#f3e8ff','#6d28d9')}
           </div>`).join('')}
       </div>
-
-      <!-- RESULTADO DEL OPERATIVO -->
-      <div style="padding:14px 16px;background:#f8f9fc;border-top:1px solid var(--border);" id="res-block-${op.id}">
-        <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Resultado del Operativo (registrar despues de ejecutar)</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-          <button class="btn btn-g btn-sm" onclick="setEj(${op.id},1,this)">Ejecutado</button>
-          <button class="btn btn-d btn-sm" onclick="setEj(${op.id},0,this)">No Ejecutado</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-          <div class="fg" style="grid-column:span 2">
-            <label class="fl">Observaciones</label>
-            <textarea id="obs-${op.id}" rows="2" placeholder="Detalles, novedades, razones..."></textarea>
-          </div>
-          <div class="fg">
-            <label class="fl">Decomiso</label>
-            <select id="dec-${op.id}" onchange="toggleDec(${op.id},this.value)">
-              <option value="0">No hubo decomiso</option>
-              <option value="1">Si, hubo decomiso</option>
-            </select>
-          </div>
-          <div class="fg" id="decdet-${op.id}" style="display:none;">
-            <label class="fl">Especificar lo decomisado</label>
-            <input type="text" id="decval-${op.id}" placeholder="Descripcion detallada...">
-          </div>
-        </div>
-        <button class="btn btn-p btn-sm" onclick="guardarResultado(${op.id},'${op.no_oficio||''}')">Guardar resultado</button>
-      </div>
     </div>`;
   });
-
-  div.innerHTML += h;
+  div.innerHTML+=h;
 }
 
 function rp(p,rol,bg,col){
-  if(!p) return `<div style="padding:5px 0;border-bottom:1px dashed #eef0f6;display:flex;gap:8px;align-items:center;"><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;min-width:90px;text-align:center;">${rol}</span><span style="font-size:11px;color:#94a3b8;">Sin elegibles</span></div>`;
+  if(!p) return `<div style="padding:5px 0;border-bottom:1px dashed #eef0f6;display:flex;gap:8px;align-items:center;"><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;min-width:90px;text-align:center;">${rol}</span><span style="font-size:11px;color:#94a3b8;">Sin elegibles disponibles</span></div>`;
   return `<div style="padding:5px 0;border-bottom:1px dashed #eef0f6;display:flex;gap:8px;align-items:center;"><span style="background:${bg};color:${col};padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;min-width:90px;text-align:center;">${rol}</span><div><div style="font-size:12px;font-weight:600;">${p.nombre}</div><div style="font-size:10px;color:var(--muted);">${p.zona}</div></div></div>`;
 }
 
-const ejState={};
-function setEj(id,val,btn){
-  ejState[id]=val;
-  btn.closest('div').querySelectorAll('button').forEach(b=>{b.style.outline='';});
-  btn.style.outline=val==1?'3px solid var(--dcja-gold)':'3px solid #dc2626';
-  btn.style.outlineOffset='2px';
-}
-
-function toggleDec(id,v){ document.getElementById('decdet-'+id).style.display=v=='1'?'block':'none'; }
-
-async function guardarResultado(id,oficio){
-  const ej=ejState[id]??-1;
-  const obs=document.getElementById('obs-'+id)?.value||'';
-  const dec=parseInt(document.getElementById('dec-'+id)?.value||0);
-  const decDet=document.getElementById('decval-'+id)?.value||'';
-  const r=await api('/operativo/resultado',{id,ejecutado:ej,observaciones:obs,decomiso:dec,decomiso_detalle:decDet,no_oficio:oficio,cerrar_denuncia:ej==1});
-  if(r.ok) toast('Resultado guardado');
-  else toast('Error al guardar','#dc2626');
-}
-
 async function confirmar(res){
-  if(!confirm('Confirmar estas asignaciones? Se actualizaran los contadores de carga.'))return;
+  if(!confirm('Confirmar estas asignaciones? Se generara el Plan Semanal con el personal asignado.'))return;
   const r=await api('/asignacion/confirmar',{resultado:res});
-  if(r.ok){toast('Asignaciones confirmadas','#16a34a');setTimeout(()=>window.location='/plan_semanal',1500);}
-  else toast('Error al confirmar','#dc2626');
+  if(r.ok){
+    toast('Asignaciones confirmadas. Redirigiendo al Plan Semanal...','#16a34a');
+    setTimeout(()=>window.location='/plan_semanal',1500);
+  } else toast('Error al confirmar','#dc2626');
 }
 </script>
 {% endblock %}
