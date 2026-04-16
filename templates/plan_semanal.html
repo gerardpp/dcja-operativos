@@ -2,247 +2,267 @@
 {% block title %}DCJA — Plan Semanal {{ semana }}{% endblock %}
 {% block extra_head %}
 <style>
-.form-dcja{font-family:'Libre Franklin',sans-serif;}
-.form-header{text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--dcja-navy);}
-.form-header .inst{font-size:11px;color:var(--muted);}
-.form-header .title{font-size:15px;font-weight:800;color:var(--dcja-navy);margin:4px 0;}
-.form-num{font-size:9px;font-weight:700;color:var(--muted);text-align:right;}
-.vh-block{border:1.5px solid var(--dcja-navy);border-radius:6px;margin-bottom:14px;overflow:hidden;break-inside:avoid;}
+.form-header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--dcja-navy);}
+.vh-block{border:1.5px solid var(--dcja-navy);border-radius:6px;margin-bottom:10px;overflow:hidden;break-inside:avoid;}
 .vh-title{background:var(--dcja-navy);color:#fff;padding:7px 14px;font-size:11px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between;}
-.vh-body{display:grid;grid-template-columns:1fr 220px;gap:0;}
+.vh-body{display:grid;grid-template-columns:1fr 220px;}
 .vh-personal table{width:100%;border-collapse:collapse;}
-.vh-personal th{background:#f5f7fc;padding:5px 8px;font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;border:1px solid var(--border);}
-.vh-personal td{padding:5px 8px;font-size:11.5px;border:1px solid var(--border);min-height:22px;}
-.vh-personal td.cargo{background:#f8f9fc;font-weight:700;font-size:10px;color:var(--dcja-navy);white-space:nowrap;}
-.vh-personal td.firma{min-width:120px;}
+.vh-personal th{background:#f5f7fc;padding:5px 8px;font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;border:1px solid var(--border);}
+.vh-personal td{padding:6px 8px;font-size:12px;border:1px solid var(--border);min-height:24px;}
+.vh-personal td.cargo{background:#f8f9fc;font-weight:700;font-size:10px;color:var(--dcja-navy);white-space:nowrap;width:90px;}
 .vh-info{border-left:1.5px solid var(--dcja-navy);padding:10px 12px;}
-.vh-info .info-row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
-.vh-info .info-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;width:110px;flex-shrink:0;}
-.vh-info .info-val{flex:1;border-bottom:1px solid var(--border);min-height:16px;font-size:11px;padding:1px 4px;}
-.obs-row{padding:6px 10px;background:#fafbfd;border-top:1px solid var(--border);}
-.obs-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:2px;}
-.obs-val{font-size:11px;min-height:18px;padding:2px 4px;border-bottom:1px solid var(--border);}
-.transparency-box{border:1.5px solid var(--dcja-gold);border-radius:6px;padding:14px 18px;margin-top:16px;background:#fefdf5;}
-.transparency-title{font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
-.transparency-text{font-size:11px;color:var(--text);line-height:1.6;margin-bottom:12px;}
-.firma-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:10px;}
+.info-row{display:flex;gap:8px;margin-bottom:7px;align-items:center;}
+.info-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;width:115px;flex-shrink:0;}
+.info-val{flex:1;border-bottom:1px solid var(--border);min-height:18px;font-size:11px;padding:1px 4px;}
+.obs-row{padding:7px 12px;background:#fafbfd;border-top:1px solid var(--border);}
+.transparency-box{border:1.5px solid var(--dcja-gold);border-radius:6px;padding:14px 18px;margin-top:20px;background:#fefdf5;break-inside:avoid;}
+.firma-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:12px;}
 .firma-box{text-align:center;}
-.firma-line{border-bottom:1.5px solid var(--dcja-navy);margin-bottom:6px;height:36px;}
+.firma-line{border-bottom:1.5px solid var(--dcja-navy);margin-bottom:6px;height:40px;}
 .firma-label{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+.op-header{background:var(--dcja-navy);color:#fff;padding:10px 16px;border-radius:6px 6px 0 0;}
+.op-block{border:1.5px solid var(--dcja-navy);border-radius:6px;margin-bottom:20px;break-inside:avoid;}
 @media print{
   .no-print{display:none!important;}
   .nav-top,.nav-links-bar,.footer{display:none!important;}
   body{background:#fff;font-size:11px;}
-  .vh-block{break-inside:avoid;page-break-inside:avoid;}
-  .container{padding:10px;}
+  .container{padding:8px;}
+  .op-block{break-inside:avoid;page-break-inside:avoid;}
 }
 </style>
 {% endblock %}
 {% block content %}
+
+<!-- SCREEN HEADER -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;" class="no-print">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Plan Semanal — {{ semana }}</h2>
-  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) asignado(s)</p></div>
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Plan Semanal — {{ semana }}</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) planificado(s)</p>
+  </div>
   <div style="display:flex;gap:8px;">
-    <button class="btn btn-o no-print" onclick="window.print()">Imprimir</button>
-    <a href="/ejecucion_diaria" class="btn btn-gold no-print">Ejecucion Diaria</a>
-    <a href="/asignacion" class="btn btn-p no-print">Volver</a>
+    <a href="/planificacion" class="btn btn-o no-print">Editar planificacion</a>
+    <a href="/asignacion" class="btn btn-o no-print">Asignar personal</a>
+    <button class="btn btn-p no-print" onclick="window.print()">Imprimir plan</button>
   </div>
 </div>
 
-<div class="form-dcja">
-  <!-- FORM HEADER (visible on print) -->
+{% if not operativos %}
+<div class="alert alert-warn">No hay operativos planificados para esta semana. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a> para agregarlos.</div>
+{% else %}
+
+<!-- PRINT HEADER -->
+<div style="display:none;" class="print-only">
   <div class="form-header">
-    <div class="form-num">FORM-DCJA-042 &nbsp;·&nbsp; DPD / Versión: 03 &nbsp;·&nbsp; Semana: {{ semana }}</div>
+    <div style="font-size:9px;color:var(--muted);text-align:right;margin-bottom:4px;">Semana: {{ semana }} &nbsp;·&nbsp; Generado: <span id="fgen"></span></div>
     <div style="font-size:10px;color:var(--muted);">República Dominicana — Ministerio de Hacienda y Economía</div>
-    <div class="title">Dirección de Casinos y Juegos de Azar<br>Departamento de Operaciones<br>Registro de Participantes en Operativos</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px;">Fecha de generación: <strong id="fgen"></strong></div>
+    <div style="font-size:16px;font-weight:800;color:var(--dcja-navy);margin:4px 0;">Dirección de Casinos y Juegos de Azar</div>
+    <div style="font-size:12px;font-weight:700;color:var(--dcja-navy);">Departamento de Operaciones — Registro de Participantes en Operativos</div>
+  </div>
+</div>
+
+{% for op in operativos %}
+<div class="op-block">
+
+  <!-- Operativo header -->
+  <div class="op-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div>
+      <span style="font-weight:800;font-size:14px;">{{ loop.index }}. {{ op.nombre }}</span>
+      <span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.6);">
+        {{ op.provincia }}{% if op.municipio %} / {{ op.municipio }}{% endif %}
+        {% if op.direccion %} — {{ op.direccion }}{% endif %}
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      {% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}
+      {% if op.fuente=='orden_direccion' %}<span class="badge b-ord">Orden Direccion</span>{% endif %}
+      {% if op.fecha %}<span style="background:rgba(200,160,34,.25);color:var(--dcja-gold);padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">{{ op.fecha }}</span>{% endif %}
+      {% if op.estado=='asignado' %}<span class="badge b-ok">Personal asignado</span>{% else %}<span class="badge b-gray">Sin asignar aun</span>{% endif %}
+      {% if op.no_oficio %}<span style="font-size:10px;color:rgba(255,255,255,.5);">Ref: {{ op.no_oficio }}</span>{% endif %}
+    </div>
   </div>
 
-  {% if not operativos %}
-  <div class="alert alert-warn">No hay operativos asignados para esta semana.</div>
-  {% else %}
-
-  {% for op in operativos %}
-  <div style="margin-bottom:20px;">
-    <!-- Operativo header -->
-    <div style="background:var(--dcja-navy);color:#fff;padding:9px 16px;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <div>
-        <span style="font-weight:800;font-size:13px;">{{ loop.index }}. {{ op.nombre }}</span>
-        <span style="margin-left:10px;font-size:10.5px;color:rgba(255,255,255,.65);">{{ op.provincia }}{% if op.municipio %} / {{ op.municipio }}{% endif %}{% if op.direccion %} — {{ op.direccion }}{% endif %}</span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        {% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}
-        {% if op.fuente=='orden_direccion' %}<span class="badge b-ord">Orden Direccion</span>{% endif %}
-        {% if op.fecha %}<span style="background:rgba(200,160,34,.25);color:var(--dcja-gold);padding:2px 9px;border-radius:8px;font-size:10.5px;font-weight:700;">{{ op.fecha }}</span>{% endif %}
-        {% if op.no_oficio %}<span style="font-size:10px;color:rgba(255,255,255,.5);">Ref: {{ op.no_oficio }}</span>{% endif %}
-      </div>
-    </div>
-
-    <!-- Vehicles -->
+  <!-- If brigadas assigned, show vehicle blocks -->
+  {% if op.brigadas %}
     {% for b in op.brigadas %}
     {% set vd = op.vehiculos_data[loop.index0] if op.vehiculos_data and loop.index0 < op.vehiculos_data|length else {} %}
-    <div class="vh-block">
+    <div class="vh-block" style="border-radius:0;border-left:none;border-right:none;border-top:none;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
       <div class="vh-title">
-        <span>Vehículo {{ loop.index }}</span>
+        <span>Vehiculo {{ loop.index }}</span>
         {% if op.seed %}<span style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,160,34,.7);">Semilla: {{ op.seed }}</span>{% endif %}
       </div>
       <div class="vh-body">
         <div class="vh-personal">
           <table>
-            <thead><tr><th>Cargo</th><th>Nombre</th><th class="firma">Firma</th></tr></thead>
+            <thead><tr><th>Cargo</th><th>Nombre</th><th style="min-width:120px;">Firma</th></tr></thead>
             <tbody>
               {% for rk,rl in [('coordinador','Coordinador'),('inspector','Inspector'),('auxiliar','Auxiliar')] %}
-              {% set persona = b[rk] %}
               <tr>
                 <td class="cargo">{{ rl }}</td>
-                <td>{% if persona %}{{ persona.nombre }}{% endif %}</td>
-                <td class="firma"></td>
+                <td>{% if b[rk] %}{{ b[rk].nombre }}{% endif %}</td>
+                <td></td>
               </tr>
               {% endfor %}
-              <tr><td class="cargo">Militar</td><td>{{ vd.militar if vd.militar else '' }}</td><td class="firma"></td></tr>
-              <tr><td class="cargo">Chofer</td><td>{{ vd.chofer if vd.chofer else '' }}</td><td class="firma"></td></tr>
+              <tr><td class="cargo">Militar</td><td>{{ vd.militar if vd and vd.militar else '' }}</td><td></td></tr>
+              <tr><td class="cargo">Chofer</td><td>{{ vd.chofer if vd and vd.chofer else '' }}</td><td></td></tr>
             </tbody>
           </table>
         </div>
         <div class="vh-info">
-          {% for lbl, key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designación','designacion'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
+          {% for lbl,key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designacion','designacion'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
           <div class="info-row">
             <span class="info-lbl">{{ lbl }}</span>
-            <span class="info-val">{{ vd[key] if vd and vd[key] else '' }}</span>
+            <span class="info-val">{{ vd[key] if vd and key in vd else '' }}</span>
           </div>
           {% endfor %}
         </div>
       </div>
       <div class="obs-row">
-        <div class="obs-lbl">Observaciones</div>
-        <div class="obs-val">{{ vd.observaciones if vd and vd.observaciones else '' }}</div>
-      </div>
-    </div>
-
-    <!-- Vehicle data entry (screen only) -->
-    <div class="no-print" style="background:#f8f9fc;border:1px solid var(--border);border-top:none;padding:12px 16px;border-radius:0 0 6px 6px;margin-bottom:8px;">
-      <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Completar datos del vehiculo {{ loop.index }} — Operativo {{ op.id }}</div>
-      <div class="form-grid" id="vhform-{{ op.id }}-{{ b.num }}">
-        <div class="fg"><label class="fl">Hora de Salida</label><input type="time" class="vhf" data-key="hora_salida" value="{{ vd.hora_salida if vd else '' }}"></div>
-        <div class="fg"><label class="fl">No. de Placa</label><input type="text" class="vhf" data-key="placa" value="{{ vd.placa if vd else '' }}" placeholder="Ej. A123456"></div>
-        <div class="fg"><label class="fl">No. de Flota</label><input type="text" class="vhf" data-key="flota" value="{{ vd.flota if vd else '' }}" placeholder="Ej. F-042"></div>
-        <div class="fg"><label class="fl">Designación</label><input type="text" class="vhf" data-key="designacion" value="{{ vd.designacion if vd else '' }}"></div>
-        <div class="fg"><label class="fl">Provincia Destino</label><input type="text" class="vhf" data-key="provincia_destino" value="{{ vd.provincia_destino if vd else op.provincia }}"></div>
-        <div class="fg"><label class="fl">Hora de Llegada</label><input type="time" class="vhf" data-key="hora_llegada" value="{{ vd.hora_llegada if vd else '' }}"></div>
-        <div class="fg"><label class="fl">Nombre del Militar</label><input type="text" class="vhf" data-key="militar" value="{{ vd.militar if vd else '' }}" placeholder="Nombre y apellido"></div>
-        <div class="fg"><label class="fl">Nombre del Chofer</label><input type="text" class="vhf" data-key="chofer" value="{{ vd.chofer if vd else '' }}" placeholder="Nombre y apellido"></div>
-        <div class="fg span2"><label class="fl">Observaciones del vehiculo</label><input type="text" class="vhf" data-key="observaciones" value="{{ vd.observaciones if vd else '' }}" placeholder="Observaciones adicionales"></div>
-      </div>
-      <div style="margin-top:10px;">
-        <button class="btn btn-g" onclick="guardarVehiculo({{ op.id }}, {{ b.num }}, {{ op.brigadas|length }})">Guardar datos del vehiculo {{ loop.index }}</button>
+        <span style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;">Observaciones:</span>
+        <span style="font-size:11px;margin-left:8px;">{{ vd.observaciones if vd and vd.observaciones else '' }}</span>
       </div>
     </div>
     {% endfor %}
 
-    <!-- Resultado (screen only) -->
-    <div class="no-print" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:4px;">
-      <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Resultado del Operativo</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-        <button class="btn btn-g" onclick="marcarEjecutado({{ op.id }},1,this)" {% if op.ejecutado==1 %}style="outline:3px solid var(--dcja-gold);outline-offset:2px;"{% endif %}>Ejecutado</button>
-        <button class="btn btn-d" onclick="marcarEjecutado({{ op.id }},0,this)" {% if op.ejecutado==0 %}style="outline:3px solid #dc2626;outline-offset:2px;"{% endif %}>No Ejecutado</button>
-      </div>
-      <div class="form-grid">
-        <div class="fg span2"><label class="fl">Observaciones</label>
-          <textarea id="obs-{{ op.id }}" rows="2" placeholder="Detalles del operativo...">{{ op.observaciones or '' }}</textarea></div>
-        <div class="fg"><label class="fl">Decomiso</label>
-          <select id="decomiso-{{ op.id }}" onchange="toggleDecomiso({{ op.id }},this.value)">
-            <option value="0" {% if not op.decomiso %}selected{% endif %}>No hubo decomiso</option>
-            <option value="1" {% if op.decomiso %}selected{% endif %}>Si, hubo decomiso</option>
-          </select>
+  <!-- If not yet assigned, show blank vehicle slots -->
+  {% else %}
+    {% for i in range(op.brigadas_requeridas) %}
+    <div class="vh-block" style="border-radius:0;border-left:none;border-right:none;border-top:none;">
+      <div class="vh-title"><span>Vehiculo {{ i+1 }}</span><span style="font-size:9px;color:rgba(255,255,255,.5);">Pendiente asignacion de personal</span></div>
+      <div class="vh-body">
+        <div class="vh-personal">
+          <table>
+            <thead><tr><th>Cargo</th><th>Nombre</th><th style="min-width:120px;">Firma</th></tr></thead>
+            <tbody>
+              {% for rl in ['Coordinador','Inspector','Auxiliar','Militar','Chofer'] %}
+              <tr><td class="cargo">{{ rl }}</td><td></td><td></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-        <div class="fg span2" id="decomiso-det-{{ op.id }}" {% if not op.decomiso %}style="display:none"{% endif %}>
-          <label class="fl">Especificar lo decomisado</label>
-          <input type="text" id="decomiso-val-{{ op.id }}" value="{{ op.decomiso_detalle or '' }}" placeholder="Descripcion de lo decomisado...">
+        <div class="vh-info">
+          {% for lbl in ['Hora de Salida','No. de Placa','No. de Flota','Designacion','Provincia Destino','Hora de Llegada'] %}
+          <div class="info-row">
+            <span class="info-lbl">{{ lbl }}</span>
+            <span class="info-val"></span>
+          </div>
+          {% endfor %}
         </div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-p" onclick="guardarResultado({{ op.id }},'{{ op.no_oficio }}')">Guardar resultado</button>
-      </div>
+      <div class="obs-row"><span style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;">Observaciones:</span></div>
     </div>
-  </div>
-  {% endfor %}
-
-  <!-- TRANSPARENCY BOX -->
-  <div class="transparency-box">
-    <div class="transparency-title">Declaración de Transparencia y Cumplimiento Normativo</div>
-    <div class="transparency-text">
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Los participantes en el presente operativo declaran conocer y acatar las disposiciones establecidas en la Ley No. 356 del 1964 sobre Juegos de Azar y sus modificaciones, así como las normativas internas de la Dirección de Casinos y Juegos de Azar del Ministerio de Hacienda y Economía de la República Dominicana. Asimismo, se comprometen a actuar con probidad, imparcialidad y apego a los principios de transparencia institucional durante el ejercicio de sus funciones operativas, conforme a lo establecido en la Ley No. 311-14 sobre Declaración Jurada de Patrimonio y la Ley No. 172-13 de Protección de Datos Personales.
-    </div>
-    <div class="firma-grid">
-      {% for f in ['Encargado Departamento de Operaciones','Supervisor del Operativo','Funcionario Habilitado'] %}
-      <div class="firma-box">
-        <div class="firma-line"></div>
-        <div class="firma-label">{{ f }}</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:2px;">Nombre, Firma y Fecha</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
+    {% endfor %}
   {% endif %}
+
+  <!-- Vehicle data entry (screen only) -->
+  {% if op.brigadas %}
+  <div class="no-print" style="padding:14px 16px;background:#f8f9fc;border-top:1px solid var(--border);">
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Completar datos de los vehiculos</div>
+    {% for b in op.brigadas %}
+    {% set vd = op.vehiculos_data[loop.index0] if op.vehiculos_data and loop.index0 < op.vehiculos_data|length else {} %}
+    <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:700;color:var(--dcja-navy);margin-bottom:8px;">Vehiculo {{ loop.index }}</div>
+      <div class="form-grid" id="vhform-{{ op.id }}-{{ b.num }}">
+        <div class="fg"><label class="fl">Hora Salida</label><input type="time" class="vhf" data-key="hora_salida" value="{{ vd.hora_salida if vd else '' }}"></div>
+        <div class="fg"><label class="fl">No. Placa</label><input type="text" class="vhf" data-key="placa" value="{{ vd.placa if vd else '' }}" placeholder="A123456"></div>
+        <div class="fg"><label class="fl">No. Flota</label><input type="text" class="vhf" data-key="flota" value="{{ vd.flota if vd else '' }}" placeholder="F-042"></div>
+        <div class="fg"><label class="fl">Designacion</label><input type="text" class="vhf" data-key="designacion" value="{{ vd.designacion if vd else '' }}"></div>
+        <div class="fg"><label class="fl">Provincia Destino</label><input type="text" class="vhf" data-key="provincia_destino" value="{{ vd.provincia_destino if vd else op.provincia }}"></div>
+        <div class="fg"><label class="fl">Hora Llegada</label><input type="time" class="vhf" data-key="hora_llegada" value="{{ vd.hora_llegada if vd else '' }}"></div>
+        <div class="fg"><label class="fl">Militar</label><input type="text" class="vhf" data-key="militar" value="{{ vd.militar if vd else '' }}" placeholder="Nombre y apellido"></div>
+        <div class="fg"><label class="fl">Chofer</label><input type="text" class="vhf" data-key="chofer" value="{{ vd.chofer if vd else '' }}" placeholder="Nombre y apellido"></div>
+        <div class="fg span2"><label class="fl">Observaciones</label><input type="text" class="vhf" data-key="observaciones" value="{{ vd.observaciones if vd else '' }}"></div>
+      </div>
+    </div>
+    {% endfor %}
+    <button class="btn btn-g btn-sm" onclick="guardarVehiculos({{ op.id }}, {{ op.brigadas|length }})">Guardar datos de vehiculos</button>
+  </div>
+
+  <!-- Resultado (screen only) -->
+  <div class="no-print" style="padding:14px 16px;border-top:1px solid var(--border);">
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Resultado del Operativo</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <button class="btn btn-g btn-sm" onclick="marcarEj({{ op.id }},1,this)" {% if op.ejecutado==1 %}style="outline:3px solid var(--dcja-gold);outline-offset:2px;"{% endif %}>Ejecutado</button>
+      <button class="btn btn-d btn-sm" onclick="marcarEj({{ op.id }},0,this)" {% if op.ejecutado==0 %}style="outline:3px solid #dc2626;outline-offset:2px;"{% endif %}>No Ejecutado</button>
+    </div>
+    <div class="form-grid">
+      <div class="fg span2"><label class="fl">Observaciones</label>
+        <textarea id="obs-{{ op.id }}" rows="2">{{ op.observaciones or '' }}</textarea></div>
+      <div class="fg"><label class="fl">Decomiso</label>
+        <select id="dec-{{ op.id }}" onchange="toggleDec({{ op.id }},this.value)">
+          <option value="0" {% if not op.decomiso %}selected{% endif %}>No hubo decomiso</option>
+          <option value="1" {% if op.decomiso %}selected{% endif %}>Si, hubo decomiso</option>
+        </select>
+      </div>
+      <div class="fg span2" id="decdet-{{ op.id }}" {% if not op.decomiso %}style="display:none"{% endif %}>
+        <label class="fl">Especificar lo decomisado</label>
+        <input type="text" id="decval-{{ op.id }}" value="{{ op.decomiso_detalle or '' }}" placeholder="Descripcion...">
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-p btn-sm" onclick="guardarResultado({{ op.id }},'{{ op.no_oficio or '' }}')">Guardar resultado</button>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
+{% endfor %}
+
+<!-- TRANSPARENCY -->
+<div class="transparency-box">
+  <div style="font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaracion de Transparencia y Cumplimiento Normativo</div>
+  <div style="font-size:11px;color:var(--text);line-height:1.7;margin-bottom:14px;">
+    Los participantes en el presente operativo declaran conocer y acatar las disposiciones establecidas en la Ley No. 356 del 1964 sobre Juegos de Azar y sus modificaciones, asi como las normativas internas de la Direccion de Casinos y Juegos de Azar del Ministerio de Hacienda y Economia de la Republica Dominicana. Asimismo, se comprometen a actuar con probidad, imparcialidad y apego a los principios de transparencia institucional durante el ejercicio de sus funciones operativas, conforme a lo establecido en la Ley No. 311-14 sobre Declaracion Jurada de Patrimonio y la Ley No. 172-13 de Proteccion de Datos Personales.
+  </div>
+  <div class="firma-grid">
+    {% for f in ['Encargado Departamento de Operaciones','Supervisor del Operativo','Funcionario Habilitado'] %}
+    <div class="firma-box">
+      <div class="firma-line"></div>
+      <div class="firma-label">{{ f }}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px;">Nombre, Firma y Fecha</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.getElementById('fgen').textContent = new Date().toLocaleDateString('es-DO',{year:'numeric',month:'long',day:'numeric'});
 
-function toggleDecomiso(id, val){
-  document.getElementById('decomiso-det-'+id).style.display = val=='1'?'flex':'none';
-}
+function toggleDec(id,v){ document.getElementById('decdet-'+id).style.display=v=='1'?'flex':'none'; }
 
-function marcarEjecutado(id, val, btn){
-  btn.closest('div').querySelectorAll('button').forEach(b=>{
-    b.style.outline=''; b.style.outlineOffset='';
-  });
-  btn.style.outline = val==1?'3px solid var(--dcja-gold)':'3px solid #dc2626';
+const ejState={};
+function marcarEj(id,val,btn){
+  ejState[id]=val;
+  btn.closest('div').querySelectorAll('button').forEach(b=>{b.style.outline='';b.style.outlineOffset='';});
+  btn.style.outline=val==1?'3px solid var(--dcja-gold)':'3px solid #dc2626';
   btn.style.outlineOffset='2px';
-  btn.dataset.val = val;
-  btn.dataset.opid = id;
 }
 
-async function guardarResultado(id, oficio){
-  const btn1 = document.querySelector(`button[data-opid="${id}"][data-val="1"]`);
-  const btn0 = document.querySelector(`button[data-opid="${id}"][data-val="0"]`);
-  let ejecutado = -1;
-  if(btn1 && btn1.style.outline) ejecutado=1;
-  if(btn0 && btn0.style.outline) ejecutado=0;
-  const obs = document.getElementById('obs-'+id).value;
-  const dec = document.getElementById('decomiso-'+id).value;
-  const decDet = document.getElementById('decomiso-val-'+id)?.value || '';
-  const r = await api('/operativo/resultado',{
-    id, ejecutado, observaciones:obs,
-    decomiso:parseInt(dec), decomiso_detalle:decDet,
-    no_oficio:oficio,
-    cerrar_denuncia: ejecutado==1
-  });
-  if(r.ok) toast('Resultado guardado correctamente');
+async function guardarResultado(id,oficio){
+  const ej=ejState[id]??-1;
+  const obs=document.getElementById('obs-'+id)?.value||'';
+  const dec=parseInt(document.getElementById('dec-'+id)?.value||0);
+  const decDet=document.getElementById('decval-'+id)?.value||'';
+  const r=await api('/operativo/resultado',{id,ejecutado:ej,observaciones:obs,decomiso:dec,decomiso_detalle:decDet,no_oficio:oficio,cerrar_denuncia:ej==1});
+  if(r.ok) toast('Resultado guardado');
   else toast('Error al guardar','#dc2626');
 }
 
-// Collect all vehicle data for an operativo
-function collectVhData(opId, numBrigadas){
-  const vehiculos = [];
+async function guardarVehiculos(opId, numBrigadas){
+  const vehiculos=[];
   for(let b=1;b<=numBrigadas;b++){
-    const container = document.getElementById(`vhform-${opId}-${b}`);
-    if(!container){ vehiculos.push({}); continue; }
-    const vd = {};
+    const container=document.getElementById('vhform-'+opId+'-'+b);
+    if(!container){vehiculos.push({});continue;}
+    const vd={};
     container.querySelectorAll('.vhf').forEach(inp=>{ vd[inp.dataset.key]=inp.value; });
     vehiculos.push(vd);
   }
-  return vehiculos;
-}
-
-async function guardarVehiculo(opId, brigNum, totalBrig){
-  const vehiculos = collectVhData(opId, totalBrig);
-  const r = await api('/operativo/vehiculos',{id:opId, vehiculos});
-  if(r.ok) toast('Datos del vehiculo guardados');
+  const r=await api('/operativo/vehiculos',{id:opId,vehiculos});
+  if(r.ok) toast('Datos de vehiculos guardados');
   else toast('Error al guardar','#dc2626');
 }
 </script>
-{% endblock %} 
+{% endblock %}
