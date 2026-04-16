@@ -2,13 +2,18 @@
 {% block title %}Bitacora de Inspecciones{% endblock %}
 {% block extra_head %}
 <style>
+.print-header{display:none;}
+.print-only{display:none;}
 @media print{
-  .no-print,.nav-top,.nav-links-bar,.footer{display:none!important;}
+  .no-print,.nav-top,.nav-links-bar,.footer,button{display:none!important;}
   body{background:#fff;font-size:11px;}
   .container{padding:8px;}
   .print-header{display:block!important;}
+  .print-only{display:block!important;}
+  .card{box-shadow:none;border:1px solid #ddd;}
+  table{font-size:10px;}
+  th,td{padding:5px 8px;}
 }
-.print-header{display:none;}
 </style>
 {% endblock %}
 {% block content %}
