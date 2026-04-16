@@ -61,7 +61,11 @@
             <option value="{{ wd }}">{{ wd }}</option>
             {% endfor %}
           </select>
+          {% if zona in zonas_agregadas %}
+          <button class="btn btn-o btn-sm" disabled style="opacity:.5;cursor:not-allowed;">Ya agregado</button>
+          {% else %}
           <button class="btn btn-g btn-sm" id="btn-zona-{{ loop.index }}" onclick="agregarGrupo({{ loop.index }})">Agregar</button>
+          {% endif %}
         </div>
       </div>
     {% endfor %}
@@ -148,6 +152,7 @@
 const SEMANA='{{ semana }}';
 const GRUPOS={{ grupos|tojson }};
 const ZONA_KEYS=Object.keys(GRUPOS);
+const ZONAS_AGREGADAS = {{ zonas_agregadas|tojson }};
 
 function calcInfo(){
   const v=parseInt(document.getElementById('vehiculos-input').value||0);
@@ -164,9 +169,12 @@ async function guardarRecursos(){
 
 function agregarGrupo(idx){
   const btn=document.getElementById('btn-zona-'+idx);
+  if(!btn){return;}
   const zona=ZONA_KEYS[idx-1];
   const items=GRUPOS[zona];
-  const fecha=document.getElementById('dia-'+idx).value;
+  const fechaEl=document.getElementById('dia-'+idx);
+  if(!fechaEl){return;}
+  const fecha=fechaEl.value;
   if(!fecha){alert('Selecciona la fecha de ejecucion para este grupo.');return;}
   if(!items||!items.length){toast('Error: zona no encontrada','#dc2626');return;}
   btn.disabled=true; btn.textContent='...';
