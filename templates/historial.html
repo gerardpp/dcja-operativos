@@ -8,13 +8,27 @@
   .no-print,.nav-top,.nav-links-bar,.footer,button{display:none!important;}
   .print-header{display:block!important;}
   .print-only{display:block!important;}
-  body{background:#fff;font-size:9px;margin:0;padding:0;}
-  .container{padding:6px 10px;}
+  body{background:#fff;font-size:8px;margin:0;padding:0;}
+  .container{padding:4px 8px;}
   .card{box-shadow:none;border:none;}
-  table{font-size:8.5px;width:100%;border-collapse:collapse;}
-  th{padding:4px 5px;font-size:8px;}
-  td{padding:3px 5px;}
-  @page{margin:10mm 12mm;size:A4 landscape;}
+  .tbl-wrap{overflow:visible!important;}
+  table{font-size:7.5px;width:100%;border-collapse:collapse;table-layout:fixed;}
+  th{padding:3px 4px;font-size:7px;overflow:hidden;}
+  td{padding:3px 4px;word-wrap:break-word;overflow-wrap:break-word;vertical-align:top;}
+  /* Fixed column widths that add up to 100% */
+  col.c-num{width:2%;}
+  col.c-sem{width:7%;}
+  col.c-fec{width:7%;}
+  col.c-tip{width:4%;}
+  col.c-est{width:12%;}
+  col.c-mun{width:8%;}
+  col.c-pro{width:8%;}
+  col.c-veh{width:2%;}
+  col.c-per{width:20%;}
+  col.c-eje{width:4%;}
+  col.c-dec{width:5%;}
+  col.c-obs{width:21%;}
+  @page{margin:8mm 10mm;size:A4 landscape;}
 }
 </style>
 {% endblock %}
@@ -48,6 +62,11 @@
 <div class="card">
   <div class="tbl-wrap">
     <table>
+      <colgroup>
+        <col class="c-num"><col class="c-sem"><col class="c-fec"><col class="c-tip">
+        <col class="c-est"><col class="c-mun"><col class="c-pro"><col class="c-veh">
+        <col class="c-per"><col class="c-eje"><col class="c-dec"><col class="c-obs">
+      </colgroup>
       <thead>
         <tr style="background:#0d2257;">
           <th style="color:#fff;padding:6px 8px;">#</th>
@@ -77,7 +96,7 @@
               <span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:700;">Lot.</span>
             {% endif %}
           </td>
-          <td style="font-weight:600;font-size:10.5px;max-width:130px;">{{ op.nombre }}</td>
+          <td style="font-weight:600;font-size:10.5px;">{{ op.nombre }}</td>
           <td style="font-size:10px;">{{ op.municipio or '—' }}</td>
           <td style="font-size:10px;font-weight:600;">{{ op.provincia or '—' }}</td>
           <td style="text-align:center;font-weight:700;">{{ op.brigadas|length }}</td>
@@ -100,7 +119,7 @@
             {% if op.decomiso %}<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;">Si</span>
             {% else %}<span style="color:#94a3b8;font-size:9px;">No</span>{% endif %}
           </td>
-          <td style="font-size:9.5px;color:#475569;max-width:140px;">
+          <td style="font-size:9.5px;color:#475569;">
             {{ op.observaciones or '—' }}
             {% if op.decomiso and op.decomiso_detalle %}
             <div style="color:#991b1b;font-weight:600;margin-top:1px;">{{ op.decomiso_detalle }}</div>
