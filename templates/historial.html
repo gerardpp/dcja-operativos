@@ -2,40 +2,44 @@
 {% block title %}DCJA — Historial{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Historial de Operativos</h2>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Historial de Operativos</h2>
   <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) ejecutado(s) en total</p></div>
   <button class="btn btn-o no-print" onclick="window.print()">Imprimir</button>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>#</th><th>Semana</th><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Brigadas</th><th>Personal Asignado</th><th>Resultado</th></tr></thead>
+    <thead><tr><th>#</th><th>Semana</th><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Brigadas</th><th>Personal DCJA</th><th>Ejecutado</th><th>Decomiso</th><th>Observaciones</th></tr></thead>
     <tbody>
       {% for op in operativos %}
       <tr>
         <td style="color:#94a3b8;">{{ loop.index }}</td>
         <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.semana }}</td>
-        <td style="font-size:11px;">{{ op.fecha or '—' }}</td>
-        <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Loteria</span>{% endif %}</td>
+        <td style="font-size:11px;font-weight:700;">{{ op.fecha or '—' }}</td>
+        <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Dep.</span>{% else %}<span class="badge b-lot">Lot.</span>{% endif %}</td>
         <td style="font-weight:600;">{{ op.nombre }}</td>
         <td style="font-size:11px;">{{ op.municipio }}</td>
         <td style="font-size:11px;">{{ op.provincia }}</td>
         <td style="text-align:center;">{{ op.brigadas|length }}</td>
         <td style="font-size:11px;">
           {% for b in op.brigadas %}
-          <div style="margin-bottom:4px;padding:3px 0;border-bottom:1px dashed #f0f3f8;">
-            <strong>B{{ b.num }}:</strong>
-            {% if b.coordinador %}{{ b.coordinador.nombre.split(' ')[0] }}{% endif %}
-            / {% if b.inspector %}{{ b.inspector.nombre.split(' ')[0] }}{% endif %}
-            / {% if b.auxiliar %}{{ b.auxiliar.nombre.split(' ')[0] }}{% endif %}
+          <div style="padding:2px 0;border-bottom:1px dashed #eef0f6;">
+            <strong>V{{ b.num }}:</strong>
+            {% if b.coordinador %}{{ b.coordinador.nombre.split()[0] }}{% endif %} /
+            {% if b.inspector %}{{ b.inspector.nombre.split()[0] }}{% endif %} /
+            {% if b.auxiliar %}{{ b.auxiliar.nombre.split()[0] }}{% endif %}
           </div>
           {% endfor %}
         </td>
-        <td>{% if op.resultado %}<span class="badge b-ok">{{ op.resultado }}</span>{% else %}<span class="badge b-gray">Sin registrar</span>{% endif %}</td>
+        <td>{% if op.ejecutado==1 %}<span class="badge b-ok">Si</span>
+            {% elif op.ejecutado==0 %}<span class="badge b-red">No</span>
+            {% else %}<span class="badge b-gray">—</span>{% endif %}</td>
+        <td>{% if op.decomiso %}<span class="badge b-red">Si</span>{% else %}<span class="badge b-gray">No</span>{% endif %}</td>
+        <td style="font-size:11px;color:var(--muted);max-width:180px;">{{ op.observaciones or '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8;">No hay operativos en el historial aun.</td></tr>
+      <tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;">No hay operativos en el historial aun. Los operativos aparecen aqui luego de ser confirmados en Asignacion.</td></tr>
       {% endfor %}
     </tbody>
   </table></div>
 </div>
-{% endblock %} 
+{% endblock %}
