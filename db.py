@@ -43,14 +43,22 @@ class PgWrapper:
         self.cur.execute(self._adapt(sql), params)
         return self.cur
     def executescript(self, sql):
+        # Convert SQLite syntax to PostgreSQL
+        pg_sql = sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+        pg_sql = pg_sql.replace("DEFAULT '{}'", "DEFAULT '{}'")
         # Split and run statements
-        for stmt in sql.split(';'):
+        for stmt in pg_sql.split(';'):
             s = stmt.strip()
             if s:
-                try: self.cur.execute(s)
+                try:
+                    self.cur.execute(s)
+                    self.conn.commit()
                 except Exception as e:
-                    if 'already exists' in str(e).lower(): self.conn.rollback()
-                    else: raise
+                    self.conn.rollback()
+                    if 'already exists' in str(e).lower() or 'duplicate' in str(e).lower():
+                        pass  # Table already exists, skip
+                    else:
+                        raise
         return self.cur
     def fetchone(self, sql, params=()):
         self.cur.execute(self._adapt(sql), params)
