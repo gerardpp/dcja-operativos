@@ -500,8 +500,9 @@ def guardar_vehiculos_operativo():
 def plan_semanal():
     semana=request.args.get('semana',datetime.now().strftime('%Y-W%V'))
     with get_db() as db:
+        # Show ALL operativos for the week (pendiente + asignado)
         ops=[dict(r) for r in db.execute(
-            "SELECT * FROM operativos WHERE semana=? AND estado='asignado' ORDER BY fecha,id",(semana,)).fetchall()]
+            "SELECT * FROM operativos WHERE semana=? ORDER BY fecha,id",(semana,)).fetchall()]
         sr=db.execute("SELECT * FROM semanas WHERE semana=?",(semana,)).fetchone()
     for o in ops:
         o['brigadas']=json.loads(o['brigadas_json'] or '[]')
@@ -515,10 +516,10 @@ def ejecucion_diaria():
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
         ops=[dict(r) for r in db.execute(
-            "SELECT * FROM operativos WHERE fecha=? AND estado='asignado' ORDER BY id",(fecha,)).fetchall()]
-        # All assigned ops for the week for date picker
+            "SELECT * FROM operativos WHERE fecha=? ORDER BY id",(fecha,)).fetchall()]
+        # All ops for the week for date picker
         all_ops=[dict(r) for r in db.execute(
-            "SELECT DISTINCT fecha FROM operativos WHERE semana=? AND estado='asignado' ORDER BY fecha",(semana,)).fetchall()]
+            "SELECT DISTINCT fecha FROM operativos WHERE semana=? ORDER BY fecha",(semana,)).fetchall()]
     for o in ops:
         o['brigadas']=json.loads(o['brigadas_json'] or '[]')
     return render_template('ejecucion_diaria.html', operativos=ops, fecha=fecha,
@@ -586,4 +587,4 @@ def mapa_view():
 
 if __name__=='__main__':
     port=int(os.environ.get('PORT',5000))
-    app.run(host='0.0.0.0',port=port,debug=False) 
+    app.run(host='0.0.0.0',port=port,debug=False)
