@@ -504,10 +504,14 @@ def ejecucion_diaria():
             "SELECT * FROM operativos WHERE fecha=? ORDER BY id", (fecha,))]
         all_ops = [dict(r) for r in db.fetchall(
             "SELECT DISTINCT fecha FROM operativos WHERE semana=? ORDER BY fecha", (semana,))]
+        sr = db.fetchone("SELECT * FROM semanas WHERE semana=?", (semana,))
     for o in ops:
-        o['brigadas'] = json.loads(o['brigadas_json'] or '[]')
+        o['brigadas']       = json.loads(o['brigadas_json'] or '[]')
+        o['vehiculos_data'] = json.loads(o['vehiculos_json'] or '[]')
+    vehiculos_diarios = sr['vehiculos_disponibles'] if sr else 6
     return render_template('ejecucion_diaria.html', operativos=ops, fecha=fecha,
-                           fechas_disponibles=[x['fecha'] for x in all_ops], semana=semana)
+                           fechas_disponibles=[x['fecha'] for x in all_ops],
+                           semana=semana, vehiculos_diarios=vehiculos_diarios)
 
 @app.route('/historial')
 def historial_view():
