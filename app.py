@@ -121,11 +121,28 @@ def init_db():
                 militares_disponibles INTEGER DEFAULT 6,
                 notas TEXT, estado TEXT DEFAULT 'borrador', created_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS sorteo_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seed TEXT UNIQUE,
+                operativo_id INTEGER,
+                fecha_sorteo TEXT,
+                audit_json TEXT
+            );
             CREATE TABLE IF NOT EXISTS uploads_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT, semana TEXT, archivo TEXT, pendientes_cargadas INTEGER
             );
         ''')
+        # Migration: create sorteo_audit if not exists
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS sorteo_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seed TEXT UNIQUE,
+                operativo_id INTEGER,
+                fecha_sorteo TEXT,
+                audit_json TEXT
+            )''')
+        except: pass
         # Seed personal if empty
         rows = db.fetchall('SELECT COUNT(*) as c FROM personal_state')
         count = rows[0]['c'] if rows else 0
@@ -445,21 +462,63 @@ def confirmar_asignacion():
     now = datetime.now().isoformat()
     with get_db() as db:
         for op in request.json['resultado']:
+            brigadas = op['brigadas_asignadas']
+            seed = op.get('seed','')
+            # Build audit record
+            asignados = []
+            excluidos_detail = []
+            zona = op.get('zona_operativo','') or inferir_zona(op.get('provincia',''), op.get('municipio',''))
+            fecha = op.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+            all_states = get_all_states()
+            for p in PERSONAL:
+                elegible = is_elegible(p, zona, fecha, all_states=all_states)
+                if not elegible:
+                    st = get_state(p['id'], all_states)
+                    reasons = []
+                    LOCAL = ["Distrito Nacional","SD Este","SD Norte","SD Oeste","San Cristóbal","San Cristóbal / Haina"]
+                    if zona in LOCAL and p['zona']==zona: reasons.append("Zona residencia")
+                    if st['no_disponible']: reasons.append(st.get('motivo_no_disponible') or "No disponible")
+                    if st['conflicto']: reasons.append("Conflicto")
+                    if st['ultima_asignacion']:
+                        try:
+                            ref = datetime.fromisoformat(fecha)
+                            d = (ref - datetime.fromisoformat(st['ultima_asignacion'])).days
+                            if d < COOLDOWN_DAYS: reasons.append(f"Cooldown {d}d")
+                        except: pass
+                    excluidos_detail.append({"id":p['id'],"nombre":p['nombre'],"cargo":p['cargo'],"razones":reasons})
+            for b in brigadas:
+                for role in ['coordinador','inspector','auxiliar']:
+                    p = b.get(role)
+                    if p: asignados.append({"id":p['id'],"nombre":p['nombre'],"cargo":p['cargo'],"vehiculo":b['num']})
+            audit_data = json.dumps({
+                "seed": seed,
+                "operativo_id": op['id'],
+                "operativo_nombre": op.get('nombre',''),
+                "zona": zona,
+                "fecha": fecha,
+                "timestamp": now,
+                "asignados": asignados,
+                "excluidos": excluidos_detail,
+                "total_pool": len(PERSONAL),
+                "total_elegibles": len(PERSONAL) - len(excluidos_detail),
+            })
             db.execute("""UPDATE operativos SET brigadas_json=?,seed=?,estado='asignado',confirmed_at=?
                           WHERE id=?""",
-                       (json.dumps(op['brigadas_asignadas']), op.get('seed',''), now, op['id']))
-            for b in op['brigadas_asignadas']:
+                       (json.dumps(brigadas), seed, now, op['id']))
+            # Store audit record
+            db.execute("""INSERT INTO sorteo_audit (seed, operativo_id, fecha_sorteo, audit_json)
+                          VALUES (?,?,?,?)""", (seed, op['id'], now, audit_data))
+            for b in brigadas:
                 for role in ['coordinador','inspector','auxiliar']:
                     p = b.get(role)
                     if not p: continue
-                    pid = p['id']; zona = op.get('zona_operativo','')
-                    st  = get_state(pid)
+                    pid = p['id']
+                    st  = get_state(pid, all_states)
                     zc  = json.loads(st.get('zona_counts') or '{}')
                     zc[zona] = zc.get(zona, 0) + 1
                     db.execute('''UPDATE personal_state SET carga_total=carga_total+1,
                                   ultima_asignacion=?,zona_counts=? WHERE persona_id=?''',
-                               (op.get('fecha', datetime.now().strftime('%Y-%m-%d')),
-                                json.dumps(zc), pid))
+                               (fecha, json.dumps(zc), pid))
     return jsonify(ok=True)
 
 @app.route('/operativo/resultado', methods=['POST'])
@@ -576,6 +635,18 @@ def reportes_view():
         pend_zona=pend_zona_sorted, max_pend=max_pend,
         filtro=filtro, valor=valor,
         total_pendientes=sum(1 for d in denuncias_all if d['estado']=='pendiente'))
+
+@app.route('/auditoria')
+def auditoria_view():
+    q = request.args.get('q','').strip().upper()
+    resultado = None
+    if q:
+        with get_db() as db:
+            row = db.fetchone("SELECT * FROM sorteo_audit WHERE UPPER(seed)=?", (q,))
+            if row:
+                resultado = dict(row)
+                resultado['data'] = json.loads(resultado['audit_json'])
+    return render_template('auditoria.html', q=q, resultado=resultado)
 
 @app.route('/mapa')
 def mapa_view():
