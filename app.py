@@ -746,12 +746,37 @@ def ejecucion_diaria():
 @app.route('/historial')
 @login_required
 def historial_view():
+    semana = request.args.get('semana', datetime.now().strftime('%Y-W%V'))
     with get_db() as db:
-        ops = [dict(r) for r in db.fetchall(
+        ops_semana = [dict(r) for r in db.fetchall(
+            "SELECT * FROM operativos WHERE semana=? ORDER BY fecha,id", (semana,))]
+        ops_all = [dict(r) for r in db.fetchall(
             "SELECT * FROM operativos WHERE estado='asignado' ORDER BY fecha DESC,id DESC")]
-    for o in ops:
-        o['brigadas'] = json.loads(o['brigadas_json'] or '[]')
-    return render_template('historial.html', operativos=ops)
+        semanas_list = [dict(r) for r in db.fetchall(
+            "SELECT DISTINCT semana FROM operativos ORDER BY semana DESC")]
+    for o in ops_semana: o['brigadas'] = json.loads(o['brigadas_json'] or '[]')
+    for o in ops_all:    o['brigadas'] = json.loads(o['brigadas_json'] or '[]')
+    # Weekly stats
+    dias = ['Lunes','Martes','Miercoles','Jueves','Viernes']
+    today = datetime.now()
+    monday = today - timedelta(days=today.weekday())
+    week_dates = [(monday + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(5)]
+    daily = []
+    for i,(dia,fecha) in enumerate(zip(dias,week_dates)):
+        plan = [o for o in ops_semana if o['fecha']==fecha]
+        ejec = [o for o in plan if o['ejecutado']==1]
+        pend = [o for o in plan if o['ejecutado']!=1]
+        pct  = round(len(ejec)/len(plan)*100) if plan else 0
+        daily.append({'dia':dia,'fecha':fecha,'planificadas':len(plan),'ejecutadas':len(ejec),'pendientes':len(pend),'pct':pct})
+    total_plan = sum(d['planificadas'] for d in daily)
+    total_ejec = sum(d['ejecutadas'] for d in daily)
+    total_pend = sum(d['pendientes'] for d in daily)
+    total_pct  = round(total_ejec/total_plan*100) if total_plan else 0
+    return render_template('historial.html',
+        operativos=ops_all, ops_semana=ops_semana, semana=semana,
+        semanas_list=[s['semana'] for s in semanas_list],
+        daily=daily, total_plan=total_plan, total_ejec=total_ejec,
+        total_pend=total_pend, total_pct=total_pct)
 
 @app.route('/reportes')
 @login_required
