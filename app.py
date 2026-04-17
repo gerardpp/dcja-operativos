@@ -1,14 +1,55 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 import json, os, random, secrets
 from datetime import datetime, timedelta
 import pandas as pd
 from werkzeug.utils import secure_filename
 from db import get_db
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+import bcrypt
+from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login_view'
+login_manager.login_message = 'Debes iniciar sesion para acceder.'
+
+class User(UserMixin):
+    def __init__(self, id, username, rol):
+        self.id = id
+        self.username = username
+        self.rol = rol
+
+@login_manager.user_loader
+def load_user(user_id):
+    with get_db() as db:
+        row = db.fetchone('SELECT * FROM usuarios WHERE id=?', (int(user_id),))
+        if row:
+            return User(row['id'], row['username'], row['rol'])
+    return None
+
+def rol_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        @login_required
+        def decorated(*args, **kwargs):
+            if current_user.rol not in roles:
+                return render_template('acceso_denegado.html'), 403
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+MHE_LOGO_B64 = 'data:image/png;base64,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'
+
+@app.context_processor
+def inject_globals():
+    return dict(
+        get_logo_b64=lambda: MHE_LOGO_B64,
+        current_user=current_user
+    )
 COOLDOWN_DAYS = 21
 
 PERSONAL = [
@@ -132,6 +173,15 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT, semana TEXT, archivo TEXT, pendientes_cargadas INTEGER
             );
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                nombre_completo TEXT,
+                rol TEXT NOT NULL DEFAULT 'coordinador',
+                activo INTEGER DEFAULT 1,
+                created_at TEXT
+            );
         ''')
         # Migration: create sorteo_audit if not exists
         try:
@@ -142,6 +192,16 @@ def init_db():
                 fecha_sorteo TEXT,
                 audit_json TEXT
             )''')
+        except: pass
+        # Seed: create default admin if no users exist
+        try:
+            u = db.fetchone('SELECT COUNT(*) as c FROM usuarios')
+            if not u or u['c'] == 0:
+                pw = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()
+                db.execute(
+                    "INSERT INTO usuarios (username,password_hash,nombre_completo,rol,created_at) VALUES (?,?,?,?,?)",
+                    ('admin', pw, 'Administrador del Sistema', 'admin', datetime.now().isoformat())
+                )
         except: pass
         # Seed personal if empty
         rows = db.fetchall('SELECT COUNT(*) as c FROM personal_state')
@@ -232,6 +292,90 @@ def row_to_dict(row):
     return dict(row)
 
 # ── ROUTES ────────────────────────────────────────────────────
+# ── AUTH ROUTES ──────────────────────────────────────────────
+@app.route('/login', methods=['GET','POST'])
+def login_view():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username','').strip()
+        password = request.form.get('password','').encode()
+        with get_db() as db:
+            row = db.fetchone('SELECT * FROM usuarios WHERE username=? AND activo=1', (username,))
+        if row and bcrypt.checkpw(password, row['password_hash'].encode()):
+            user = User(row['id'], row['username'], row['rol'])
+            login_user(user, remember=True)
+            return redirect(request.args.get('next') or url_for('index'))
+        error = 'Usuario o contrasena incorrectos.'
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+@login_required
+def logout_view():
+    logout_user()
+    return redirect(url_for('login_view'))
+
+@app.route('/usuarios')
+@rol_required('admin')
+def usuarios_view():
+    with get_db() as db:
+        users = [dict(r) for r in db.fetchall('SELECT * FROM usuarios ORDER BY rol,username')]
+    return render_template('usuarios.html', users=users)
+
+@app.route('/usuarios/crear', methods=['POST'])
+@rol_required('admin')
+def crear_usuario():
+    d = request.json
+    username = d.get('username','').strip()
+    password = d.get('password','').strip()
+    nombre   = d.get('nombre','').strip()
+    rol      = d.get('rol','coordinador')
+    if not username or not password:
+        return jsonify(ok=False, error='Usuario y contrasena requeridos'), 400
+    pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    try:
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO usuarios (username,password_hash,nombre_completo,rol,activo,created_at) VALUES (?,?,?,?,1,?)",
+                (username, pw, nombre, rol, datetime.now().isoformat())
+            )
+        return jsonify(ok=True)
+    except Exception as e:
+        return jsonify(ok=False, error='El nombre de usuario ya existe'), 400
+
+@app.route('/usuarios/cambiar_password', methods=['POST'])
+@login_required
+def cambiar_password():
+    d = request.json
+    # Admin can change anyone's, others only their own
+    target_id = d.get('id', current_user.id)
+    if current_user.rol != 'admin' and target_id != current_user.id:
+        return jsonify(ok=False, error='Sin permiso'), 403
+    pw = bcrypt.hashpw(d['password'].encode(), bcrypt.gensalt()).decode()
+    with get_db() as db:
+        db.execute('UPDATE usuarios SET password_hash=? WHERE id=?', (pw, target_id))
+    return jsonify(ok=True)
+
+@app.route('/usuarios/toggle', methods=['POST'])
+@rol_required('admin')
+def toggle_usuario():
+    d = request.json
+    if d['id'] == current_user.id:
+        return jsonify(ok=False, error='No puedes desactivarte a ti mismo'), 400
+    with get_db() as db:
+        db.execute('UPDATE usuarios SET activo=? WHERE id=?', (d['activo'], d['id']))
+    return jsonify(ok=True)
+
+@app.route('/usuarios/eliminar/<int:uid>', methods=['DELETE'])
+@rol_required('admin')
+def eliminar_usuario(uid):
+    if uid == current_user.id:
+        return jsonify(ok=False, error='No puedes eliminarte a ti mismo'), 400
+    with get_db() as db:
+        db.execute('DELETE FROM usuarios WHERE id=?', (uid,))
+    return jsonify(ok=True)
+
 @app.route('/')
 def index(): return render_template('index.html')
 
@@ -249,6 +393,7 @@ def api_stats():
                    militares=sem['militares_disponibles'] if sem else 6)
 
 @app.route('/personal')
+@rol_required('admin')
 def personal_view():
     all_states = get_all_states()
     personal = [{**p, **all_states.get(p['id'], {})} for p in PERSONAL]
@@ -258,6 +403,7 @@ def personal_view():
     return render_template('personal.html', personal=personal, cooldown=COOLDOWN_DAYS, logs=logs)
 
 @app.route('/personal/update', methods=['POST'])
+@rol_required('admin')
 def personal_update():
     d = request.json; pid = d['id']
     with get_db() as db:
@@ -279,12 +425,14 @@ def personal_update():
     return jsonify(ok=True)
 
 @app.route('/personal/reset_carga', methods=['POST'])
+@rol_required('admin')
 def reset_carga():
     with get_db() as db:
         db.execute("UPDATE personal_state SET carga_total=0, zona_counts='{}'")
     return jsonify(ok=True)
 
 @app.route('/denuncias')
+@login_required
 def denuncias_view():
     with get_db() as db:
         rows = [dict(r) for r in db.fetchall("SELECT * FROM denuncias ORDER BY provincia,municipio")]
@@ -295,6 +443,7 @@ def denuncias_view():
     return render_template('denuncias.html', denuncias=rows, logs=logs)
 
 @app.route('/denuncias/upload', methods=['POST'])
+@rol_required('admin')
 def denuncias_upload():
     if 'file' not in request.files: return jsonify(ok=False, error='No file'), 400
     f = request.files['file']
@@ -329,6 +478,7 @@ def denuncias_upload():
     except Exception as e: return jsonify(ok=False, error=str(e)), 500
 
 @app.route('/planificacion')
+@rol_required('admin')
 def planificacion_view():
     semana = datetime.now().strftime('%Y-W%V')
     today = datetime.now()
@@ -350,6 +500,7 @@ def planificacion_view():
                            week_days=week_days, zonas_agregadas=zonas_agregadas)
 
 @app.route('/planificacion/guardar_semana', methods=['POST'])
+@rol_required('admin')
 def guardar_semana():
     d = request.json
     with get_db() as db:
@@ -363,6 +514,7 @@ def guardar_semana():
     return jsonify(ok=True)
 
 @app.route('/planificacion/agregar_operativo', methods=['POST'])
+@rol_required('admin')
 def agregar_operativo():
     d = request.json
     br = 2 if 'DEPORTIVA' in str(d.get('tipo','')).upper() else 1
@@ -378,12 +530,14 @@ def agregar_operativo():
     return jsonify(ok=True)
 
 @app.route('/planificacion/eliminar_operativo/<int:oid>', methods=['DELETE'])
+@rol_required('admin')
 def eliminar_operativo(oid):
     with get_db() as db:
         db.execute("DELETE FROM operativos WHERE id=?", (oid,))
     return jsonify(ok=True)
 
 @app.route('/asignacion')
+@rol_required('admin')
 def asignacion_view():
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
@@ -403,6 +557,7 @@ def asignacion_view():
                            disponibles=disponibles)
 
 @app.route('/asignacion/ejecutar', methods=['POST'])
+@rol_required('admin')
 def ejecutar_asignacion():
     d = request.json; semana = d['semana']; veh = int(d.get('vehiculos', 6))
     fb = d.get('fecha_base', datetime.now().strftime('%Y-%m-%d'))
@@ -458,6 +613,7 @@ def ejecutar_asignacion():
     return jsonify(ok=True, resultado=resultado, seed=seed)
 
 @app.route('/asignacion/confirmar', methods=['POST'])
+@rol_required('admin')
 def confirmar_asignacion():
     now = datetime.now().isoformat()
     resultado = request.json['resultado']
@@ -529,6 +685,7 @@ def confirmar_asignacion():
     return jsonify(ok=True)
 
 @app.route('/operativo/resultado', methods=['POST'])
+@rol_required('admin')
 def guardar_resultado():
     d = request.json
     with get_db() as db:
@@ -541,6 +698,7 @@ def guardar_resultado():
     return jsonify(ok=True)
 
 @app.route('/operativo/vehiculos', methods=['POST'])
+@rol_required('admin')
 def guardar_vehiculos_operativo():
     d = request.json
     with get_db() as db:
@@ -549,6 +707,7 @@ def guardar_vehiculos_operativo():
     return jsonify(ok=True)
 
 @app.route('/plan_semanal')
+@login_required
 def plan_semanal():
     semana = request.args.get('semana', datetime.now().strftime('%Y-W%V'))
     with get_db() as db:
@@ -562,6 +721,7 @@ def plan_semanal():
                            semana_row=row_to_dict(sr))
 
 @app.route('/ejecucion_diaria')
+@login_required
 def ejecucion_diaria():
     today  = datetime.now().strftime('%Y-%m-%d')
     # Always use today - sorteo only happens day-of
@@ -583,6 +743,7 @@ def ejecucion_diaria():
                            today=today)
 
 @app.route('/historial')
+@login_required
 def historial_view():
     with get_db() as db:
         ops = [dict(r) for r in db.fetchall(
@@ -592,6 +753,7 @@ def historial_view():
     return render_template('historial.html', operativos=ops)
 
 @app.route('/reportes')
+@login_required
 def reportes_view():
     filtro = request.args.get('filtro', 'semana')
     valor  = request.args.get('valor', datetime.now().strftime('%Y-W%V'))
@@ -644,6 +806,7 @@ def reportes_view():
         total_pendientes=sum(1 for d in denuncias_all if d['estado']=='pendiente'))
 
 @app.route('/auditoria')
+@login_required
 def auditoria_view():
     q = request.args.get('q','').strip().upper()
     resultado = None
@@ -656,6 +819,7 @@ def auditoria_view():
     return render_template('auditoria.html', q=q, resultado=resultado)
 
 @app.route('/mapa')
+@login_required
 def mapa_view():
     with get_db() as db:
         denuncias = [dict(r) for r in db.fetchall("SELECT * FROM denuncias WHERE estado='pendiente'")]
