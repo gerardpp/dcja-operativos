@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Gestion de Usuarios{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Gestion de Usuarios</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ users|length }} usuario(s) registrado(s)</p>
+  </div>
+  <button class="btn btn-p" onclick="document.getElementById('modal-nuevo').style.display='flex'">Nuevo Usuario</button>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Acciones</th>
+      </tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr id="urow-{{ u.id }}">
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-weight:700;font-family:'DM Mono',monospace;">{{ u.username }}</td>
+          <td>{{ u.nombre_completo or '—' }}</td>
+          <td>
+            {% if u.rol == 'admin' %}
+            <span class="badge b-navy">Administrador</span>
+            {% else %}
+            <span class="badge b-gray">Coordinador</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.activo %}
+            <span class="badge b-ok">Activo</span>
+            {% else %}
+            <span class="badge b-red">Inactivo</span>
+            {% endif %}
+          </td>
+          <td style="font-size:11px;color:var(--muted);">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-o btn-sm" onclick="cambiarPassword({{ u.id }},'{{ u.username }}')">Cambiar contrasena</button>
+              {% if u.id != current_user.id %}
+              {% if u.activo %}
+              <button class="btn btn-d btn-sm" onclick="toggleUser({{ u.id }},0,this)">Desactivar</button>
+              {% else %}
+              <button class="btn btn-g btn-sm" onclick="toggleUser({{ u.id }},1,this)">Activar</button>
+              {% endif %}
+              <button class="btn btn-d btn-sm" onclick="eliminar({{ u.id }},this)">Eliminar</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO -->
+<div id="modal-nuevo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:16px;font-weight:800;color:var(--dcja-navy);margin-bottom:20px;">Nuevo Usuario</h3>
+    <div class="form-grid">
+      <div class="fg span2"><label class="fl">Usuario (login)</label>
+        <input type="text" id="nu-username" placeholder="Ej. jperez"></div>
+      <div class="fg span2"><label class="fl">Nombre completo</label>
+        <input type="text" id="nu-nombre" placeholder="Juan Perez"></div>
+      <div class="fg"><label class="fl">Rol</label>
+        <select id="nu-rol">
+          <option value="coordinador">Coordinador — Solo lectura</option>
+          <option value="admin">Administrador — Acceso total</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Contrasena inicial</label>
+        <input type="password" id="nu-password" placeholder="Min. 8 caracteres"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-nuevo').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="crearUsuario()">Crear Usuario</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function crearUsuario(){
+  const username = document.getElementById('nu-username').value.trim();
+  const nombre   = document.getElementById('nu-nombre').value.trim();
+  const rol      = document.getElementById('nu-rol').value;
+  const password = document.getElementById('nu-password').value;
+  if(!username||!password){alert('Usuario y contrasena son requeridos.');return;}
+  if(password.length<6){alert('La contrasena debe tener al menos 6 caracteres.');return;}
+  const r=await api('/usuarios/crear',{username,nombre,rol,password});
+  if(r.ok){toast('Usuario creado correctamente','#166534');setTimeout(()=>location.reload(),1000);}
+  else toast(r.error||'Error al crear usuario','#dc2626');
+}
+
+async function toggleUser(id,activo,btn){
+  const r=await api('/usuarios/toggle',{id,activo});
+  if(r.ok){toast(activo?'Usuario activado':'Usuario desactivado');setTimeout(()=>location.reload(),800);}
+  else toast(r.error||'Error','#dc2626');
+}
+
+async function cambiarPassword(id,username){
+  const pw=prompt(`Nueva contrasena para "${username}":`);
+  if(!pw||pw.length<6){if(pw!==null)alert('Minimo 6 caracteres.');return;}
+  const r=await api('/usuarios/cambiar_password',{id,password:pw});
+  if(r.ok) toast('Contrasena actualizada');
+  else toast('Error','#dc2626');
+}
+
+async function eliminar(id,btn){
+  if(!confirm('Eliminar este usuario permanentemente?'))return;
+  const r=await fetch('/usuarios/eliminar/'+id,{method:'DELETE'});
+  const d=await r.json();
+  if(d.ok){document.getElementById('urow-'+id).remove();toast('Usuario eliminado');}
+  else toast(d.error||'Error','#dc2626');
+}
+</script>
+{% endblock %}
