@@ -5,16 +5,20 @@
 .print-header{display:none;}
 .print-only{display:none;}
 @media print{
+  .no-print,.nav-top,.nav-links-bar,.footer,button{display:none!important;}
   .print-header{display:block!important;}
   .print-only{display:block!important;}
-  .no-print,.nav-top,.nav-links-bar,.footer{display:none!important;}
-  body{background:#fff;font-size:11px;}
-  .container{padding:8px;}
-  .op-row{break-inside:avoid;page-break-inside:avoid;}
+  body{background:#fff;font-size:10px;margin:0;padding:0;}
+  .container{padding:6px 12px;}
+  .card{box-shadow:none;border:1px solid #ccc;}
+  table{font-size:9px;}
+  th,td{padding:4px 6px;}
+  @page{margin:10mm 12mm;size:A4 portrait;}
 }
-.op-row{border:1px solid var(--border);border-radius:6px;margin-bottom:8px;overflow:hidden;}
-.op-row-head{background:#f5f7fc;padding:9px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.op-row-body{padding:9px 14px;font-size:11.5px;color:var(--muted);}
+.info-table td{padding:5px 10px;border:1px solid var(--border);font-size:12px;}
+.info-table td.lbl{background:#f5f7fc;font-weight:700;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;width:160px;}
+.prov-table th{background:var(--dcja-navy);color:#fff;padding:7px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.3px;}
+.prov-table td{padding:6px 10px;border-bottom:1px solid #eef0f6;font-size:12px;}
 </style>
 {% endblock %}
 {% block content %}
@@ -23,7 +27,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;" class="no-print">
   <div>
     <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Plan Semanal</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong> — {{ operativos|length }} operativo(s) programado(s)</p>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong> — {{ operativos|length }} operativo(s)</p>
   </div>
   <div style="display:flex;gap:8px;">
     <a href="/planificacion" class="btn btn-o no-print">Editar</a>
@@ -32,103 +36,188 @@
 </div>
 
 {% if not operativos %}
-<div class="alert alert-warn">No hay operativos planificados para esta semana. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a>.</div>
+<div class="alert alert-warn">No hay operativos planificados. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a>.</div>
 {% else %}
 
 <!-- PRINT HEADER -->
 <div class="print-header">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-    <div style="font-size:9px;color:#666;">Republica Dominicana — Ministerio de Hacienda y Economia</div>
-    <div style="font-size:9px;color:#666;">Codigo: DCJA-035 &nbsp;·&nbsp; Version: 01</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;">
+    <div></div>
+    <div style="font-size:8px;color:#666;text-align:right;">FORM-DCJA-035 &nbsp;·&nbsp; Version 03</div>
   </div>
-  <div style="border:2px solid #0d2257;border-radius:6px;padding:10px 16px;margin-bottom:14px;">
-    <div style="text-align:center;">
-      <div style="font-size:11px;font-weight:700;color:#0d2257;text-transform:uppercase;letter-spacing:.5px;">Direccion de Casinos y Juegos de Azar</div>
-      <div style="font-size:14px;font-weight:800;color:#0d2257;margin:3px 0;">PLAN DE OPERATIVOS SEMANAL</div>
-      <div style="font-size:11px;color:#666;">Departamento de Operaciones de Control</div>
+  <div style="text-align:center;border-bottom:2px solid #0d2257;padding-bottom:8px;margin-bottom:10px;">
+    <div style="font-size:11px;font-weight:700;color:#0d2257;text-transform:uppercase;letter-spacing:.5px;">Direccion de Casinos y Juegos de Azar</div>
+    <div style="font-size:10px;color:#666;">Departamento de Operativos de Control</div>
+    <div style="font-size:14px;font-weight:800;color:#0d2257;margin:3px 0;">Planificador Semanal de Operativos</div>
+    <div style="font-size:10px;color:#666;">Fecha: <span id="fgen"></span> &nbsp;·&nbsp; Semana: {{ semana }}</div>
+  </div>
+</div>
+
+<!-- INFORMACIÓN GENERAL -->
+<div class="card" style="margin-bottom:14px;">
+  <div class="card-head"><div class="card-num">I</div><h2>Informacion General</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 220px;gap:0;">
+
+    <div style="padding:14px 16px;">
+      <table class="info-table" style="width:100%;border-collapse:collapse;">
+        <!-- Fecha de Inicio / Fin -->
+        <tr>
+          <td class="lbl">Fecha de Inicio</td>
+          <td>
+            {% set fechas = operativos|map(attribute='fecha')|select|list|sort %}
+            {{ fechas[0] if fechas else '—' }}
+          </td>
+          <td class="lbl">Fecha de Finalizacion</td>
+          <td>{{ fechas[-1] if fechas else '—' }}</td>
+        </tr>
+        <!-- Objetivos -->
+        <tr>
+          <td class="lbl">Objetivos a realizar</td>
+          <td colspan="3">
+            Inspeccion y control de {{ operativos|length }} establecimiento(s) de juegos de azar
+          </td>
+        </tr>
+        <!-- Ciudades -->
+        <tr>
+          <td class="lbl">Ciudades a visitar</td>
+          <td colspan="3">
+            {% set ciudades = [] %}
+            {% for op in operativos %}{% if op.municipio and op.municipio not in ciudades %}{% set _ = ciudades.append(op.municipio) %}{% endif %}{% endfor %}
+            {{ ciudades|join(', ') or '—' }}
+          </td>
+        </tr>
+        <!-- Tipos -->
+        <tr>
+          <td class="lbl">Tipos de Operativos</td>
+          <td colspan="3">
+            {% set ns = namespace(lot=0, dep=0) %}
+            {% for op in operativos %}
+              {% if 'DEPORTIVA' in op.tipo|upper %}{% set ns.dep = ns.dep + 1 %}
+              {% else %}{% set ns.lot = ns.lot + 1 %}{% endif %}
+            {% endfor %}
+            {% if ns.lot > 0 %}Bancas de Loteria ({{ ns.lot }}){% endif %}
+            {% if ns.dep > 0 %}{% if ns.lot > 0 %} — {% endif %}Bancas Deportivas ({{ ns.dep }}){% endif %}
+          </td>
+        </tr>
+        <!-- Otros -->
+        <tr>
+          <td class="lbl">Otros</td>
+          <td colspan="3">&nbsp;</td>
+        </tr>
+      </table>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid #ddd;">
-      <div><span style="font-size:9px;font-weight:700;text-transform:uppercase;color:#666;">Semana:</span><br><span style="font-size:11px;font-weight:700;">{{ semana }}</span></div>
-      <div><span style="font-size:9px;font-weight:700;text-transform:uppercase;color:#666;">Vehiculos disponibles:</span><br><span style="font-size:11px;font-weight:700;">{{ semana_row.vehiculos_disponibles if semana_row else '—' }}</span></div>
-      <div><span style="font-size:9px;font-weight:700;text-transform:uppercase;color:#666;">Militares disponibles:</span><br><span style="font-size:11px;font-weight:700;">{{ semana_row.militares_disponibles if semana_row else '—' }}</span></div>
+
+    <!-- PERSONAL SUMMARY -->
+    <div style="border-left:1.5px solid var(--border);padding:14px 16px;">
+      <div style="font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Personal</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#f5f7fc;">
+          <th style="padding:5px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);">Cargo</th>
+          <th style="padding:5px 8px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);">Cantidad</th>
+        </tr></thead>
+        <tbody>
+          {% set ns2 = namespace(total_brig=0) %}
+          {% for op in operativos %}{% set ns2.total_brig = ns2.total_brig + op.brigadas_requeridas %}{% endfor %}
+          {% for cargo, lbl in [('Coordinadores', ns2.total_brig), ('Inspectores', ns2.total_brig), ('Choferes', ns2.total_brig), ('Militares', semana_row.militares_disponibles if semana_row else '—'), ('Auxiliares', ns2.total_brig)] %}
+          <tr style="border-bottom:1px solid #eef0f6;">
+            <td style="padding:5px 8px;">{{ cargo }}</td>
+            <td style="padding:5px 8px;text-align:center;font-weight:700;">{{ lbl }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="background:#f5f7fc;font-weight:800;">
+            <td style="padding:6px 8px;border-top:2px solid var(--border);">Total Personal</td>
+            <td style="padding:6px 8px;text-align:center;border-top:2px solid var(--border);">{{ ns2.total_brig * 4 }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<!-- OPERATIVOS TABLE - clean for print -->
-<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px;">
-  <table style="width:100%;border-collapse:collapse;font-size:12px;">
-    <thead>
-      <tr style="background:var(--dcja-navy);">
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:30px;">#</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Fecha</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Tipo</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Establecimiento / Nombre</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Municipio</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Provincia</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Direccion</th>
-        <th style="padding:9px 12px;text-align:center;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Brigadas</th>
-        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Fuente</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for op in operativos %}
-      <tr style="border-bottom:1px solid #eef0f6;{% if loop.index is odd %}background:#fafbfd;{% endif %}">
-        <td style="padding:8px 12px;color:#94a3b8;font-size:11px;">{{ loop.index }}</td>
-        <td style="padding:8px 12px;font-weight:700;color:var(--dcja-blue);">{{ op.fecha or '—' }}</td>
-        <td style="padding:8px 12px;">
-          {% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Deportiva</span>
-          {% else %}<span class="badge b-lot">Loteria</span>{% endif %}
-        </td>
-        <td style="padding:8px 12px;font-weight:600;">{{ op.nombre }}</td>
-        <td style="padding:8px 12px;font-size:11px;">{{ op.municipio or '—' }}</td>
-        <td style="padding:8px 12px;font-size:11px;font-weight:600;">{{ op.provincia or '—' }}</td>
-        <td style="padding:8px 12px;font-size:11px;color:var(--muted);">{{ op.direccion or '—' }}</td>
-        <td style="padding:8px 12px;text-align:center;font-weight:700;">{{ op.brigadas_requeridas }}</td>
-        <td style="padding:8px 12px;">
-          {% if op.fuente=='orden_direccion' %}<span class="badge b-ord">Orden Dir.</span>
-          {% else %}<span class="badge b-gray">Denuncia</span>{% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<!-- TABLA POR PROVINCIA -->
+<div class="card" style="margin-bottom:14px;">
+  <div class="card-head"><div class="card-num">II</div><h2>Detalle de Operativos por Provincia</h2></div>
+  <div class="tbl-wrap">
+    <table class="prov-table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Provincia</th>
+          <th>Municipio</th>
+          <th>Establecimiento</th>
+          <th>Tipo</th>
+          <th style="text-align:center;">Cant. Vehiculos</th>
+          <th style="text-align:center;">Cant. Militares</th>
+          <th style="text-align:center;">Cant. Coordinadores</th>
+          <th style="text-align:center;">Cant. Inspectores</th>
+          <th style="text-align:center;">Cant. Auxiliares</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for op in operativos %}
+        <tr style="{% if loop.index is odd %}background:#fafbfd;{% endif %}">
+          <td style="color:#94a3b8;font-size:11px;">{{ loop.index }}</td>
+          <td style="font-weight:600;">{{ op.provincia or '—' }}</td>
+          <td style="font-size:11px;">{{ op.municipio or '—' }}</td>
+          <td style="font-weight:600;">{{ op.nombre }}</td>
+          <td>
+            {% if 'DEPORTIVA' in op.tipo|upper %}
+              <span class="badge b-dep">Deportiva</span>
+            {% else %}
+              <span class="badge b-lot">Loteria</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;font-weight:700;">{{ op.brigadas_requeridas }}</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">{{ op.brigadas_requeridas }}</td>
+          <td style="text-align:center;">{{ op.brigadas_requeridas }}</td>
+          <td style="text-align:center;">{{ op.brigadas_requeridas }}</td>
+          <td style="font-weight:700;color:var(--dcja-blue);">{{ op.fecha or '—' }}</td>
+        </tr>
+        {% endfor %}
+        <!-- TOTALS ROW -->
+        {% set ns3 = namespace(total_brig=0) %}
+        {% for op in operativos %}{% set ns3.total_brig = ns3.total_brig + op.brigadas_requeridas %}{% endfor %}
+        <tr style="background:#f5f7fc;font-weight:800;border-top:2px solid var(--border);">
+          <td colspan="5" style="padding:7px 10px;text-align:right;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);">Totales</td>
+          <td style="text-align:center;padding:7px 10px;">{{ ns3.total_brig }}</td>
+          <td style="text-align:center;padding:7px 10px;">{{ operativos|length }}</td>
+          <td style="text-align:center;padding:7px 10px;">{{ ns3.total_brig }}</td>
+          <td style="text-align:center;padding:7px 10px;">{{ ns3.total_brig }}</td>
+          <td style="text-align:center;padding:7px 10px;">{{ ns3.total_brig }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<!-- RESUMEN -->
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
-  <div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;text-align:center;">
-    <div style="font-size:22px;font-weight:800;color:var(--dcja-navy);">{{ operativos|length }}</div>
-    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Total Operativos</div>
-  </div>
-  <div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;text-align:center;">
-    {% set ns = namespace(total_brig=0) %}
-    {% for op in operativos %}{% set ns.total_brig = ns.total_brig + op.brigadas_requeridas %}{% endfor %}
-    <div style="font-size:22px;font-weight:800;color:var(--dcja-navy);">{{ ns.total_brig }}</div>
-    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Brigadas Requeridas</div>
-  </div>
-  <div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;text-align:center;">
-    <div style="font-size:22px;font-weight:800;color:var(--dcja-navy);">{{ semana_row.vehiculos_disponibles if semana_row else '—' }}</div>
-    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Vehiculos Disponibles</div>
+<!-- FIRMA DE APROBACION -->
+<div style="border:1.5px solid var(--dcja-gold);border-radius:6px;padding:14px 20px;background:#fefdf5;" class="print-only" style="margin-top:10px;">
+  <div style="font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px;">Firma de Aprobacion</div>
+  <div style="max-width:340px;margin:0 auto;text-align:center;">
+    <div style="border-bottom:1.5px solid #0d2257;height:44px;margin-bottom:7px;"></div>
+    <div style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;letter-spacing:.3px;">Encargado Departamento de Operativos de Control</div>
+    <div style="font-size:9px;color:#94a3b8;margin-top:2px;">Nombre, Firma y Fecha</div>
   </div>
 </div>
 
-<!-- FIRMAS -->
-<div style="border:1.5px solid var(--dcja-gold);border-radius:6px;padding:16px 20px;margin-top:10px;">
-  <div style="font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">Aprobacion del Plan Semanal</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;">
-    {% for f in ['Elaborado por — Encargado de Operaciones','Revisado por — Supervisor','Aprobado por — Director(a)'] %}
-    <div style="text-align:center;">
-      <div style="border-bottom:1.5px solid var(--dcja-navy);height:44px;margin-bottom:6px;"></div>
-      <div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;">{{ f }}</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:2px;">Nombre, Firma y Fecha</div>
-    </div>
-    {% endfor %}
+<!-- FIRMA SCREEN -->
+<div style="border:1.5px solid var(--dcja-gold);border-radius:6px;padding:14px 20px;background:#fefdf5;" class="no-print">
+  <div style="font-size:10px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px;">Firma de Aprobacion</div>
+  <div style="max-width:340px;margin:0 auto;text-align:center;">
+    <div style="border-bottom:1.5px solid var(--dcja-navy);height:44px;margin-bottom:7px;"></div>
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;">Encargado Departamento de Operativos de Control</div>
+    <div style="font-size:9.5px;color:#94a3b8;margin-top:2px;">Nombre, Firma y Fecha</div>
   </div>
 </div>
 
 {% endif %}
 {% endblock %}
 {% block scripts %}
-<script>document.getElementById('fgen') && (document.getElementById('fgen').textContent=new Date().toLocaleDateString('es-DO',{year:'numeric',month:'long',day:'numeric'}));</script>
+<script>
+const fgen=document.getElementById('fgen');
+if(fgen) fgen.textContent=new Date().toLocaleDateString('es-DO',{year:'numeric',month:'long',day:'numeric'});
+</script>
 {% endblock %}
