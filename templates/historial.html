@@ -1,80 +1,171 @@
 {% extends "base.html" %}
-{% block title %}Bitacora de Inspecciones{% endblock %}
+{% block title %}Bitacora de Ejecucion Semanal{% endblock %}
 {% block extra_head %}
 <style>
 .print-header{display:none;}
 .print-only{display:none;}
+.resumen-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.res-card{border:1.5px solid var(--border);border-radius:8px;padding:12px 16px;text-align:center;}
+.res-card .val{font-size:26px;font-weight:800;color:var(--dcja-navy);}
+.res-card .lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:3px;}
+.res-card.ok{border-color:#86efac;background:#f0fdf4;}.res-card.ok .val{color:#166534;}
+.res-card.warn{border-color:#fde68a;background:#fefce8;}.res-card.warn .val{color:#92400e;}
+.res-card.red{border-color:#fca5a5;background:#fef2f2;}.res-card.red .val{color:#991b1b;}
+.res-card.gold{border-color:var(--dcja-gold);background:#fefdf5;}.res-card.gold .val{color:var(--dcja-navy);}
 @media print{
-  .no-print,.nav-top,.nav-links-bar,.footer,button{display:none!important;}
+  .no-print,.nav-top,.nav-links-bar,.footer,button,select{display:none!important;}
   .print-header{display:block!important;}
   .print-only{display:block!important;}
-  body{background:#fff;font-size:8px;margin:0;padding:0;}
+  body{background:#fff;font-size:8.5px;margin:0;padding:0;}
   .container{padding:4px 8px;}
-  .card{box-shadow:none;border:none;}
+  .card{box-shadow:none;border:1px solid #ccc;margin-bottom:6px;}
+  .card-head{padding:4px 10px;}
+  .card-head h2{font-size:8.5px!important;}
+  .card-body{padding:6px 10px;}
+  table{font-size:8px;width:100%;border-collapse:collapse;}
+  th{padding:3px 4px!important;font-size:7px!important;}
+  td{padding:3px 4px!important;word-wrap:break-word;overflow-wrap:break-word;vertical-align:top;}
+  .resumen-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;}
+  .res-card{padding:6px 10px;}
+  .res-card .val{font-size:18px;}
+  .res-card .lbl{font-size:7.5px;}
   .tbl-wrap{overflow:visible!important;}
-  table{font-size:7.5px;width:100%;border-collapse:collapse;table-layout:fixed;}
-  th{padding:3px 4px;font-size:7px;overflow:hidden;}
-  td{padding:3px 4px;word-wrap:break-word;overflow-wrap:break-word;vertical-align:top;}
-  /* Fixed column widths that add up to 100% */
-  col.c-num{width:2%;}
-  col.c-sem{width:7%;}
-  col.c-fec{width:7%;}
-  col.c-tip{width:4%;}
-  col.c-est{width:12%;}
-  col.c-mun{width:8%;}
-  col.c-pro{width:8%;}
-  col.c-veh{width:2%;}
-  col.c-per{width:20%;}
-  col.c-eje{width:4%;}
-  col.c-dec{width:5%;}
-  col.c-obs{width:21%;}
-  @page{margin:8mm 10mm;size:A4 landscape;}
+  colgroup col{width:auto;}
+  @page{margin:7mm 9mm;size:A4 landscape;}
 }
 </style>
 {% endblock %}
 {% block content %}
 
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;" class="no-print">
+<!-- SCREEN HEADER -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;" class="no-print">
   <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Bitacora de Inspecciones</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) registrado(s)</p>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Bitacora de Ejecucion Semanal</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ operativos|length }} operativo(s) en el historial total</p>
   </div>
-  <button class="btn btn-p no-print" onclick="window.print()">Imprimir Bitacora</button>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="fg no-print" style="margin:0;">
+      <select onchange="window.location='/historial?semana='+this.value" style="font-size:11px;padding:6px 10px;">
+        {% for s in semanas_list %}
+        <option value="{{ s }}" {% if s==semana %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-p no-print" onclick="window.print()">Imprimir DCJA-039</button>
+  </div>
 </div>
 
 <!-- PRINT HEADER -->
-<div class="print-header" style="margin-bottom:8px;">
-  <table style="width:100%;border-collapse:collapse;padding-bottom:6px;margin-bottom:6px;border-bottom:2px solid #0d2257;">
+<div class="print-header">
+  {% set mhe = 'data:image/png;base64,' %}
+  <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #0d2257;padding-bottom:6px;margin-bottom:8px;">
     <tr>
       <td style="width:72px;vertical-align:middle;padding-right:8px;">
-        <img src="data:image/png;base64,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" style="width:68px;height:auto;">
+        <img src="{{ get_logo_b64() }}" style="width:68px;height:auto;">
       </td>
       <td style="vertical-align:middle;text-align:center;border-left:2px solid #0d2257;border-right:2px solid #0d2257;padding:3px 10px;">
         <div style="font-size:8px;font-weight:700;color:#0d2257;text-transform:uppercase;letter-spacing:.4px;">Direccion de Casinos y Juegos de Azar</div>
         <div style="font-size:7px;color:#666;">Departamento de Operativos de Control</div>
-        <div style="font-size:13px;font-weight:800;color:#0d2257;margin:2px 0;">Bitacora de Inspecciones</div>
+        <div style="font-size:13px;font-weight:800;color:#0d2257;margin:2px 0;">Bitacora de Ejecucion Semanal</div>
+        <div style="font-size:7.5px;color:#666;">Semana: {{ semana }} &nbsp;·&nbsp; Generado: <span id="fgen"></span></div>
       </td>
-      <td style="width:90px;vertical-align:top;text-align:right;padding-left:8px;">
-        <div style="font-size:7.5px;font-weight:700;color:#0d2257;">DCJA-039</div>
+      <td style="width:72px;vertical-align:top;text-align:right;padding-left:8px;">
+        <div style="font-size:7.5px;font-weight:700;color:#0d2257;">FORM-DCJA-039</div>
         <div style="font-size:7px;color:#999;">Version: 01</div>
-        <div style="font-size:7px;color:#666;margin-top:3px;">Generado: <span id="fgen"></span></div>
-        <div style="font-size:7px;color:#666;">Registros: { operativos|length }</div>
+        <div style="font-size:7px;color:#666;margin-top:3px;">Registros: {{ operativos|length }}</div>
       </td>
     </tr>
   </table>
 </div>
 
-<!-- TABLE -->
+<!-- RESUMEN EJECUTIVO -->
 <div class="card">
+  <div class="card-head"><div class="card-num">I</div><h2>Resumen Ejecutivo — Semana {{ semana }}</h2></div>
+  <div class="card-body">
+    <div class="resumen-grid">
+      <div class="res-card"><div class="val">{{ total_plan }}</div><div class="lbl">Operativos Planificados</div></div>
+      <div class="res-card ok"><div class="val">{{ total_ejec }}</div><div class="lbl">Operativos Ejecutados</div></div>
+      <div class="res-card {% if total_pend > 0 %}warn{% else %}ok{% endif %}"><div class="val">{{ total_pend }}</div><div class="lbl">Operativos Pendientes</div></div>
+      <div class="res-card gold"><div class="val">{{ total_pct }}%</div><div class="lbl">% de Ejecucion Semanal</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- EJECUCION DIARIA CONSOLIDADA -->
+<div class="card">
+  <div class="card-head"><div class="card-num">II</div><h2>Ejecucion Diaria Consolidada</h2></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr style="background:var(--dcja-navy);">
+          <th style="color:#fff;text-align:left;padding:7px 10px;">Dia</th>
+          <th style="color:#fff;text-align:left;padding:7px 10px;">Fecha</th>
+          <th style="color:#fff;text-align:center;padding:7px 10px;">Planificadas</th>
+          <th style="color:#fff;text-align:center;padding:7px 10px;">Ejecutadas</th>
+          <th style="color:#fff;text-align:center;padding:7px 10px;">Pendientes</th>
+          <th style="color:#fff;text-align:center;padding:7px 10px;">% Ejecucion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in daily %}
+        <tr style="border-bottom:1px solid #eef0f6;">
+          <td style="font-weight:600;padding:7px 10px;">{{ d.dia }}</td>
+          <td style="font-size:11px;padding:7px 10px;color:var(--dcja-blue);font-weight:700;">{{ d.fecha }}</td>
+          <td style="text-align:center;padding:7px 10px;font-weight:700;">{{ d.planificadas or '—' }}</td>
+          <td style="text-align:center;padding:7px 10px;">
+            {% if d.ejecutadas > 0 %}<span class="badge b-ok">{{ d.ejecutadas }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
+          </td>
+          <td style="text-align:center;padding:7px 10px;">
+            {% if d.pendientes > 0 %}<span class="badge b-red">{{ d.pendientes }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
+          </td>
+          <td style="text-align:center;padding:7px 10px;">
+            <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
+              <div style="width:60px;height:6px;background:#eee;border-radius:3px;overflow:hidden;">
+                <div style="height:6px;background:{% if d.pct==100 %}#16a34a{% elif d.pct>50 %}#ca8a04{% else %}#dc2626{% endif %};width:{{ d.pct }}%;border-radius:3px;"></div>
+              </div>
+              <strong>{{ d.pct }}%</strong>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#f5f7fc;font-weight:800;border-top:2px solid var(--border);">
+          <td colspan="2" style="padding:7px 10px;text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--muted);">Total Semanal</td>
+          <td style="text-align:center;padding:7px 10px;">{{ total_plan }}</td>
+          <td style="text-align:center;padding:7px 10px;color:#166534;">{{ total_ejec }}</td>
+          <td style="text-align:center;padding:7px 10px;color:{% if total_pend>0 %}#92400e{% else %}#166534{% endif %};">{{ total_pend }}</td>
+          <td style="text-align:center;padding:7px 10px;color:var(--dcja-navy);">{{ total_pct }}%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- OBSERVACIONES GENERALES -->
+<div class="card no-print">
+  <div class="card-head"><div class="card-num">III</div><h2>Observaciones Generales de la Semana</h2></div>
+  <div class="card-body">
+    <textarea id="obs-generales" rows="3" style="width:100%;font-family:'Libre Franklin',sans-serif;font-size:12px;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;resize:vertical;" placeholder="Observaciones generales del encargado sobre la semana..."></textarea>
+  </div>
+</div>
+<div class="print-only" style="margin-bottom:10px;">
+  <div style="border:1px solid #ccc;border-radius:5px;padding:8px 12px;">
+    <div style="font-size:8px;font-weight:700;color:#0d2257;text-transform:uppercase;margin-bottom:6px;">Observaciones Generales del Dia</div>
+    <div style="min-height:40px;border-bottom:1px solid #ddd;"></div>
+  </div>
+</div>
+
+<!-- DETALLE COMPLETO -->
+<div class="card">
+  <div class="card-head"><div class="card-num">IV</div><h2>Detalle de Operativos — Historial Completo</h2></div>
   <div class="tbl-wrap">
     <table>
       <colgroup>
-        <col class="c-num"><col class="c-sem"><col class="c-fec"><col class="c-tip">
-        <col class="c-est"><col class="c-mun"><col class="c-pro"><col class="c-veh">
-        <col class="c-per"><col class="c-eje"><col class="c-dec"><col class="c-obs">
+        <col style="width:2%;"><col style="width:7%;"><col style="width:6%;"><col style="width:4%;">
+        <col style="width:12%;"><col style="width:7%;"><col style="width:8%;"><col style="width:3%;">
+        <col style="width:20%;"><col style="width:4%;"><col style="width:5%;"><col style="width:22%;">
       </colgroup>
       <thead>
-        <tr style="background:#0d2257;">
+        <tr style="background:var(--dcja-navy);">
           <th style="color:#fff;padding:6px 8px;">#</th>
           <th style="color:#fff;padding:6px 8px;">Semana</th>
           <th style="color:#fff;padding:6px 8px;">Fecha</th>
@@ -93,18 +184,12 @@
         {% for op in operativos %}
         <tr style="border-bottom:1px solid #eef0f6;{% if loop.index is odd %}background:#fafbfd;{% endif %}">
           <td style="color:#94a3b8;font-size:10px;">{{ loop.index }}</td>
-          <td style="font-family:'DM Mono',monospace;font-size:9.5px;white-space:nowrap;">{{ op.semana }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10px;white-space:nowrap;">{{ op.semana }}</td>
           <td style="font-weight:700;font-size:10.5px;white-space:nowrap;color:#0d2257;">{{ op.fecha or '—' }}</td>
-          <td>
-            {% if 'DEPORTIVA' in op.tipo|upper %}
-              <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:700;">Dep.</span>
-            {% else %}
-              <span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:700;">Lot.</span>
-            {% endif %}
-          </td>
-          <td style="font-weight:600;font-size:10.5px;">{{ op.nombre }}</td>
-          <td style="font-size:10px;">{{ op.municipio or '—' }}</td>
-          <td style="font-size:10px;font-weight:600;">{{ op.provincia or '—' }}</td>
+          <td>{% if 'DEPORTIVA' in op.tipo|upper %}<span class="badge b-dep">Dep.</span>{% else %}<span class="badge b-lot">Lot.</span>{% endif %}</td>
+          <td style="font-weight:600;">{{ op.nombre }}</td>
+          <td style="font-size:10.5px;">{{ op.municipio or '—' }}</td>
+          <td style="font-size:10.5px;font-weight:600;">{{ op.provincia or '—' }}</td>
           <td style="text-align:center;font-weight:700;">{{ op.brigadas|length }}</td>
           <td style="font-size:9.5px;">
             {% for b in op.brigadas %}
@@ -117,43 +202,36 @@
             {% endfor %}
           </td>
           <td style="text-align:center;">
-            {% if op.ejecutado==1 %}<span style="background:#dcfce7;color:#166534;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;">Si</span>
-            {% elif op.ejecutado==0 %}<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;">No</span>
+            {% if op.ejecutado==1 %}<span class="badge b-ok">Si</span>
+            {% elif op.ejecutado==0 %}<span class="badge b-red">No</span>
             {% else %}<span style="color:#94a3b8;font-size:9px;">—</span>{% endif %}
           </td>
           <td style="text-align:center;">
-            {% if op.decomiso %}<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;">Si</span>
-            {% else %}<span style="color:#94a3b8;font-size:9px;">No</span>{% endif %}
+            {% if op.decomiso %}<span class="badge b-red">Si</span>{% else %}<span style="color:#94a3b8;font-size:9px;">No</span>{% endif %}
           </td>
           <td style="font-size:9.5px;color:#475569;">
             {{ op.observaciones or '—' }}
-            {% if op.decomiso and op.decomiso_detalle %}
-            <div style="color:#991b1b;font-weight:600;margin-top:1px;">{{ op.decomiso_detalle }}</div>
-            {% endif %}
+            {% if op.decomiso and op.decomiso_detalle %}<div style="color:#991b1b;font-weight:600;">{{ op.decomiso_detalle }}</div>{% endif %}
           </td>
         </tr>
         {% else %}
-        <tr>
-          <td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;">
-            No hay operativos en la bitacora aun.
-          </td>
-        </tr>
+        <tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;">No hay operativos en el historial.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 
-<!-- PRINT FOOTER / FIRMA -->
-<div class="print-only" style="margin-top:14px;border-top:1.5px solid #c8a022;padding-top:10px;">
+<!-- FIRMA PRINT -->
+<div class="print-only" style="border-top:1.5px solid #c8a022;padding-top:10px;margin-top:6px;">
   <div style="font-size:7.5px;color:#666;margin-bottom:10px;">
-    Certifico que la presente bitacora refleja fielmente los operativos de control realizados por el Departamento de Operaciones de la Direccion de Casinos y Juegos de Azar durante el periodo indicado.
+    Certifico que la presente bitacora refleja fielmente los operativos de control realizados por el Departamento de Operativos de Control de la Direccion de Casinos y Juegos de Azar durante el periodo indicado.
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
-    {% for f in ['Encargado Departamento de Operaciones','Director(a) de Casinos y Juegos de Azar'] %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:50px;">
+    {% for f in ['Encargado Departamento de Operativos de Control','Director(a) de Casinos y Juegos de Azar'] %}
     <div style="text-align:center;">
       <div style="border-bottom:1.5px solid #0d2257;height:36px;margin-bottom:5px;"></div>
-      <div style="font-size:8px;font-weight:700;color:#5a6480;text-transform:uppercase;letter-spacing:.3px;">{{ f }}</div>
+      <div style="font-size:8px;font-weight:700;color:#5a6480;text-transform:uppercase;">{{ f }}</div>
       <div style="font-size:7.5px;color:#94a3b8;margin-top:1px;">Nombre, Firma y Fecha</div>
     </div>
     {% endfor %}
