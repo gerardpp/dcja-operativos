@@ -146,13 +146,9 @@
         <table>
           <thead><tr><th>Cargo</th><th>Nombre</th><th style="min-width:120px;">Firma</th></tr></thead>
           <tbody>
-            {% for rk,rl in [('coordinador','Coordinador'),('inspector','Inspector'),('auxiliar','Auxiliar')] %}
-            <tr>
-              <td class="cargo">{{ rl }}</td>
-              <td>{% if b[rk] %}{{ b[rk].nombre }}{% endif %}</td>
-              <td></td>
-            </tr>
-            {% endfor %}
+            <tr><td class="cargo">Coordinador</td><td>{% if b.coordinador %}{{ b.coordinador.nombre }}{% endif %}</td><td></td></tr>
+            <tr><td class="cargo">Inspector</td><td>{% if b.inspector %}{{ b.inspector.nombre }}{% endif %}</td><td></td></tr>
+            <tr><td class="cargo">Auxiliar</td><td>{% if b.auxiliar %}{{ b.auxiliar.nombre }}{% endif %}</td><td></td></tr>
             <tr><td class="cargo">Militar</td><td id="mil-{{ op.id }}-{{ b.num }}" class="editable-cell">{{ vd.militar if vd and vd.militar else '' }}</td><td></td></tr>
             <tr><td class="cargo">Chofer</td><td id="cho-{{ op.id }}-{{ b.num }}" class="editable-cell">{{ vd.chofer if vd and vd.chofer else '' }}</td><td></td></tr>
           </tbody>
@@ -199,18 +195,15 @@
 
   <!-- TRANSPARENCY -->
   <div class="transparency-box">
-    <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaracion de Transparencia y Cumplimiento Normativo</div>
-    <div style="font-size:10.5px;line-height:1.7;margin-bottom:12px;">
-      Los participantes en el presente operativo declaran conocer y acatar las disposiciones establecidas en la Ley No. 356 del 1964 sobre Juegos de Azar y sus modificaciones, asi como las normativas internas de la Direccion de Casinos y Juegos de Azar del Ministerio de Hacienda y Economia. Se comprometen a actuar con probidad, imparcialidad y apego a los principios de transparencia institucional, conforme a la Ley No. 311-14 sobre Declaracion Jurada de Patrimonio y la Ley No. 172-13 de Proteccion de Datos Personales.
+    <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaracion</div>
+    <div style="font-size:10.5px;line-height:1.7;margin-bottom:16px;">
+      Confirmo mi compromiso de discrecion, confidencialidad y normas ISO-37001:2017 Sistema de Gestion Antisoborno e ISO-37301:2021 Sistema de Gestion del Compliance.
     </div>
-    <div class="firma-grid">
-      {% for f in ['Encargado Departamento de Operaciones','Supervisor del Operativo','Funcionario Habilitado'] %}
-      <div style="text-align:center;">
-        <div class="firma-line"></div>
-        <div style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;letter-spacing:.3px;">{{ f }}</div>
-        <div style="font-size:9px;color:#5a6480;margin-top:2px;">Nombre, Firma y Fecha</div>
-      </div>
-      {% endfor %}
+    <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">Firma de Aprobacion</div>
+    <div style="max-width:340px;margin:0 auto;text-align:center;">
+      <div class="firma-line"></div>
+      <div style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;letter-spacing:.3px;">Encargado Departamento de Operativos de Control</div>
+      <div style="font-size:9px;color:#5a6480;margin-top:2px;">Nombre, Firma y Fecha</div>
     </div>
   </div>
 
