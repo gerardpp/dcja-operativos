@@ -92,24 +92,31 @@
 <div class="op-print-block">
 
   <!-- PRINT HEADER (per operativo) -->
-  <div class="print-header" style="margin-bottom:10px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-      <div style="font-size:9px;color:#666;">Republica Dominicana — Ministerio de Hacienda y Economia</div>
-      <div style="font-size:9px;color:#666;">Codigo: DCJA-042 &nbsp;·&nbsp; DPD / Version: 03</div>
+  <div class="print-header" style="margin-bottom:8px;">
+    <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #0d2257;padding-bottom:6px;margin-bottom:6px;">
+      <tr>
+        <td style="width:75px;vertical-align:middle;">
+          <img src="https://www.hacienda.gob.do/wp-content/uploads/2022/04/Logo-MH-color.png"
+               style="width:70px;height:auto;" onerror="this.style.display='none'">
+        </td>
+        <td style="vertical-align:middle;text-align:center;border-left:2px solid #0d2257;border-right:2px solid #0d2257;padding:3px 10px;">
+          <div style="font-size:8.5px;font-weight:700;color:#0d2257;text-transform:uppercase;letter-spacing:.4px;">Direccion de Casinos y Juegos de Azar</div>
+          <div style="font-size:7.5px;color:#666;">Departamento de Operativos de Control</div>
+          <div style="font-size:12px;font-weight:800;color:#0d2257;margin:2px 0;">Registro de Participantes en Operativos</div>
+        </td>
+        <td style="width:75px;vertical-align:top;text-align:right;padding-left:8px;">
+          <div style="font-size:7.5px;font-weight:700;color:#0d2257;">FORM-DCJA-042</div>
+          <div style="font-size:7px;color:#999;">DPD / Version 04</div>
+        </td>
+      </tr>
+    </table>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:8.5px;margin-bottom:5px;background:#f5f7fc;padding:4px 8px;border:1px solid #ddd;border-radius:3px;">
+      <div><strong>Fecha:</strong> {{ op.fecha }}</div>
+      <div><strong>Tipo:</strong> {{ op.tipo }}</div>
+      <div><strong>Provincia:</strong> {{ op.provincia }}</div>
+      <div><strong>No. Oficio:</strong> {{ op.no_oficio or '—' }}</div>
     </div>
-    <div style="border:2px solid #0d2257;border-radius:6px;padding:9px 14px;margin-bottom:10px;">
-      <div style="text-align:center;margin-bottom:8px;">
-        <div style="font-size:11px;font-weight:700;color:#0d2257;text-transform:uppercase;">Direccion de Casinos y Juegos de Azar</div>
-        <div style="font-size:13px;font-weight:800;color:#0d2257;margin:2px 0;">REGISTRO DE PARTICIPANTES EN OPERATIVO</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:10px;">
-        <div><strong>Fecha:</strong> {{ op.fecha }}</div>
-        <div><strong>Tipo:</strong> {{ op.tipo }}</div>
-        <div><strong>Provincia:</strong> {{ op.provincia }}</div>
-        <div><strong>No. Oficio:</strong> {{ op.no_oficio or '—' }}</div>
-      </div>
-    </div>
-    <div style="font-size:12px;font-weight:800;color:#0d2257;margin-bottom:6px;">{{ op.nombre }}{% if op.municipio %} — {{ op.municipio }}{% endif %}{% if op.direccion %} · {{ op.direccion }}{% endif %}</div>
+    <div style="font-size:11px;font-weight:800;color:#0d2257;margin-bottom:5px;">{{ op.nombre }}{% if op.municipio %} — {{ op.municipio }}{% endif %}{% if op.direccion %} · {{ op.direccion }}{% endif %}</div>
   </div>
 
   <!-- SCREEN OPERATIVO HEADER -->
