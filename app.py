@@ -377,6 +377,7 @@ def eliminar_usuario(uid):
     return jsonify(ok=True)
 
 @app.route('/')
+@login_required
 def index(): return render_template('index.html')
 
 @app.route('/api/stats')
