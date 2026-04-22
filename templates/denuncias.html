@@ -2,79 +2,266 @@
 {% block title %}DCJA — Denuncias{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--navy);">Denuncias Pendientes</h2>
-  <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Cargar el Excel actualizado cada viernes. El sistema extrae automáticamente las pendientes.</p></div>
-</div>
-<div class="card">
-  <div class="card-head"><div class="card-num">1</div><h2>Cargar Excel de Denuncias</h2></div>
-  <div class="card-body">
-    <div class="alert alert-blue">Sube el archivo <strong>DATA_RECEPCION_Y_SEGUIMIENTO.xlsx</strong>. El sistema extrae las filas con estado <strong>PENDIENTES</strong> y reemplaza el listado anterior.</div>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <input type="file" id="file-input" accept=".xlsx,.xls" style="font-size:12px;width:auto;">
-      <button class="btn btn-p" onclick="subirExcel()">Subir y Procesar</button>
-      <span id="upload-status" style="font-size:12px;color:var(--muted);"></span>
-    </div>
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Denuncias
+      {% if nuevas_count > 0 %}<span style="background:#dc2626;color:#fff;font-size:11px;padding:2px 9px;border-radius:10px;margin-left:8px;">{{ nuevas_count }} pendiente(s)</span>{% endif %}
+    </h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ denuncias|length }} denuncia(s) en total</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    {% if current_user.rol in ['admin','operaciones','denuncias'] %}
+    <button class="btn btn-p" onclick="document.getElementById('modal-nueva').style.display='flex'">Nueva Denuncia</button>
+    {% endif %}
+    {% if current_user.rol in ['admin','operaciones'] %}
+    <button class="btn btn-o" onclick="document.getElementById('modal-excel').style.display='flex'">Cargar Excel</button>
+    {% endif %}
   </div>
 </div>
-{% if logs %}
+
+<!-- DENUNCIAS TABLE -->
 <div class="card">
-  <div class="card-head"><div class="card-num">2</div><h2>Registro de Cargas — Ultimas 10</h2></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>#</th><th>Fecha / Hora</th><th>Semana</th><th>Archivo</th><th>Pendientes Cargadas</th></tr></thead>
+      <thead><tr>
+        <th>#</th><th>No. Oficio</th><th>Fecha</th><th>Tipo</th><th>Nombre</th>
+        <th>Municipio</th><th>Provincia</th><th>Zona</th><th>Dias</th>
+        <th>Ingresado por</th><th>Estado</th>
+        {% if current_user.rol in ['admin','operaciones'] %}<th>Acciones</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for d in denuncias %}
+        <tr id="den-{{ d.id }}">
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10.5px;">{{ d.no_oficio or '—' }}</td>
+          <td style="font-size:11px;white-space:nowrap;">{{ d.fecha_entrada or '—' }}</td>
+          <td>{% if 'DEPORTIVA' in d.tipo|upper %}<span class="badge b-dep">Dep.</span>{% else %}<span class="badge b-lot">Lot.</span>{% endif %}</td>
+          <td style="font-weight:600;">{{ d.nombre }}</td>
+          <td style="font-size:11px;">{{ d.municipio or '—' }}</td>
+          <td style="font-size:11px;font-weight:600;">{{ d.provincia }}</td>
+          <td><span class="badge b-gray" style="font-size:9.5px;">{{ d.zona_inferida or '—' }}</span></td>
+          <td>
+            <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;
+              {% if d.dias > 90 %}background:#fee2e2;color:#991b1b;
+              {% elif d.dias > 30 %}background:#fef3c7;color:#92400e;
+              {% else %}background:#dcfce7;color:#166534;{% endif %}">
+              {{ d.dias }}d
+            </span>
+          </td>
+          <td style="font-size:10.5px;color:var(--muted);">{{ d.ingresado_por or 'Excel' }}</td>
+          <td>
+            {% if d.estado == 'pendiente' %}<span class="badge b-red">Pendiente</span>
+            {% elif d.estado == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Planificada</span>
+            {% elif d.estado == 'en_ejecucion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">En Ejecucion</span>
+            {% elif d.estado == 'cerrada' %}<span class="badge b-ok">Cerrada</span>
+            {% else %}<span class="badge b-gray">{{ d.estado }}</span>{% endif %}
+          </td>
+          {% if current_user.rol in ['admin','operaciones'] %}
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="btn btn-o btn-sm" onclick="verTimeline({{ d.id }}, '{{ d.nombre|replace("'","") }}')">Historial</button>
+              <button class="btn btn-p btn-sm" onclick="abrirEstado({{ d.id }}, '{{ d.estado }}', '{{ d.nombre|replace("'","") }}')">Actualizar</button>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;">
+          {% if current_user.rol == 'denuncias' %}No has ingresado denuncias aun.
+          {% else %}No hay denuncias registradas.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- LOGS CARGA -->
+{% if logs and current_user.rol in ['admin','operaciones'] %}
+<div class="card">
+  <div class="card-head"><div class="card-num">H</div><h2>Historial de Cargas por Excel</h2></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Semana</th><th>Archivo</th><th>Pendientes cargadas</th></tr></thead>
       <tbody>
         {% for l in logs %}
-        <tr><td style="color:#94a3b8;">{{ loop.index }}</td><td>{{ l.fecha }}</td><td style="font-family:'DM Mono',monospace;font-size:11px;">{{ l.semana }}</td><td style="font-size:11px;color:var(--muted);">{{ l.archivo }}</td><td><strong>{{ l.pendientes_cargadas }}</strong></td></tr>
+        <tr><td style="font-size:11px;">{{ l.fecha }}</td><td style="font-family:'DM Mono',monospace;font-size:10px;">{{ l.semana }}</td>
+        <td style="font-size:11px;">{{ l.archivo }}</td><td style="font-weight:700;">{{ l.pendientes_cargadas }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 {% endif %}
-<div class="card">
-  <div class="card-head"><div class="card-num">3</div><h2>Listado Actual de Pendientes — {{ denuncias|length }}</h2></div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>#</th><th>No. Oficio</th><th>Fecha Entrada</th><th>Dias</th><th>Tipo</th><th>Nombre</th><th>Municipio</th><th>Provincia</th><th>Zona</th></tr></thead>
-      <tbody>
-        {% for d in denuncias %}
-        <tr>
-          <td style="color:#94a3b8;">{{ loop.index }}</td>
-          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ d.no_oficio }}</td>
-          <td style="font-size:11px;">{{ d.fecha_entrada }}</td>
-          <td>
-            {% if d.dias > 90 %}<span class="badge b-red">{{ d.dias }}d</span>
-            {% elif d.dias > 30 %}<span class="badge" style="background:#fef3c7;color:#92400e;">{{ d.dias }}d</span>
-            {% else %}<span class="badge b-ok">{{ d.dias }}d</span>{% endif %}
-          </td>
-          <td>{% if 'DEPORTIVA' in d.tipo.upper() %}<span class="badge b-dep">Deportiva</span>{% else %}<span class="badge b-lot">Lotería</span>{% endif %}</td>
-          <td style="font-weight:600;">{{ d.nombre }}</td>
-          <td style="font-size:11px;">{{ d.municipio }}</td>
-          <td style="font-size:11px;font-weight:600;">{{ d.provincia }}</td>
-          <td><span class="badge b-gray">{{ d.zona_inferida }}</span></td>
-        </tr>
-        {% else %}
-        <tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8;">No hay denuncias pendientes. Sube el Excel para cargarlas.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+<!-- MODAL NUEVA DENUNCIA -->
+<div id="modal-nueva" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto;">
+    <h3 style="font-size:16px;font-weight:800;color:var(--dcja-navy);margin-bottom:18px;">Nueva Denuncia</h3>
+    <div class="form-grid">
+      <div class="fg"><label class="fl">No. de Oficio</label><input type="text" id="nd-oficio" placeholder="Ej. MHE-2026-001"></div>
+      <div class="fg"><label class="fl">Tipo</label>
+        <select id="nd-tipo">
+          <option value="BANCAS DE LOTERIA">Banca de Loteria</option>
+          <option value="BANCA DE APUESTAS DEPORTIVAS">Banca Deportiva</option>
+          <option value="Casino">Casino</option>
+          <option value="Bingo">Bingo</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="fg span2"><label class="fl">Nombre del establecimiento *</label><input type="text" id="nd-nombre" placeholder="Nombre completo"></div>
+      <div class="fg"><label class="fl">Sector</label><input type="text" id="nd-sector" placeholder="Sector o barrio"></div>
+      <div class="fg"><label class="fl">Municipio</label><input type="text" id="nd-municipio"></div>
+      <div class="fg"><label class="fl">Provincia *</label><input type="text" id="nd-provincia" placeholder="Ej. Santo Domingo"></div>
+      <div class="fg span2"><label class="fl">Direccion completa</label><input type="text" id="nd-direccion" placeholder="Calle, numero, edificio..."></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-nueva').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="ingresarDenuncia()">Registrar Denuncia</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EXCEL (admin/operaciones) -->
+{% if current_user.rol in ['admin','operaciones'] %}
+<div id="modal-excel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:16px;font-weight:800;color:var(--dcja-navy);margin-bottom:8px;">Carga Masiva por Excel</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Sube el archivo Excel de denuncias. Esto reemplaza las denuncias pendientes actuales.</p>
+    <div class="alert alert-warn" style="margin-bottom:14px;">Esta accion reemplaza todas las denuncias en estado "pendiente".</div>
+    <input type="file" id="excel-file" accept=".xlsx,.xls" style="margin-bottom:14px;width:100%;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-excel').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="subirExcel()">Cargar Excel</button>
+    </div>
+    <div id="excel-msg" style="margin-top:10px;font-size:12px;"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- MODAL TIMELINE -->
+<div id="modal-timeline" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:85vh;overflow-y:auto;">
+    <h3 style="font-size:16px;font-weight:800;color:var(--dcja-navy);margin-bottom:16px;" id="tl-title">Historial de Denuncia</h3>
+    <div id="tl-body"></div>
+    <div style="margin-top:18px;text-align:right;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-timeline').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ACTUALIZAR ESTADO -->
+<div id="modal-estado" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:16px;font-weight:800;color:var(--dcja-navy);margin-bottom:16px;" id="est-title">Actualizar Estado</h3>
+    <input type="hidden" id="est-id">
+    <div class="form-grid">
+      <div class="fg"><label class="fl">Nuevo Estado</label>
+        <select id="est-estado">
+          <option value="pendiente">Pendiente</option>
+          <option value="planificada">Planificada</option>
+          <option value="en_ejecucion">En Ejecucion</option>
+          <option value="cerrada">Cerrada</option>
+        </select>
+      </div>
+      <div class="fg span2"><label class="fl">Hallazgos / Notas</label>
+        <textarea id="est-hallazgos" rows="3" placeholder="Describe los hallazgos o novedades..."></textarea>
+      </div>
+      <div class="fg span2"><label class="fl">Resolucion</label>
+        <textarea id="est-resolucion" rows="2" placeholder="Resolucion o accion tomada..."></textarea>
+      </div>
+      <div class="fg span2"><label class="fl">Nota interna</label>
+        <input type="text" id="est-nota" placeholder="Nota para el registro de trazabilidad...">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-estado').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarEstado()">Guardar</button>
+    </div>
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
+async function ingresarDenuncia(){
+  const nombre   = document.getElementById('nd-nombre').value.trim();
+  const provincia= document.getElementById('nd-provincia').value.trim();
+  if(!nombre||!provincia){ alert('Nombre y provincia son requeridos.'); return; }
+  const r = await api('/denuncias/ingresar',{
+    no_oficio:  document.getElementById('nd-oficio').value.trim(),
+    tipo:       document.getElementById('nd-tipo').value,
+    nombre, sector: document.getElementById('nd-sector').value.trim(),
+    municipio:  document.getElementById('nd-municipio').value.trim(),
+    provincia,
+    direccion:  document.getElementById('nd-direccion').value.trim(),
+  });
+  if(r.ok){ toast('Denuncia registrada correctamente','#166534'); setTimeout(()=>location.reload(),1000); }
+  else toast(r.error||'Error al registrar','#dc2626');
+}
+
 async function subirExcel(){
-  const input=document.getElementById('file-input');
-  const status=document.getElementById('upload-status');
-  if(!input.files[0]){alert('Selecciona un archivo Excel.');return;}
-  const fd=new FormData(); fd.append('file',input.files[0]);
-  status.textContent='Procesando...';
-  try{
-    const r=await fetch('/denuncias/upload',{method:'POST',body:fd});
-    const d=await r.json();
-    if(d.ok){toast(d.inserted+' denuncias cargadas correctamente','#166534');setTimeout(()=>location.reload(),1200);}
-    else{status.textContent='Error: '+d.error;toast('Error al procesar el archivo','#b91c1c');}
-  }catch(e){status.textContent='Error de conexión';}
+  const f = document.getElementById('excel-file').files[0];
+  if(!f){ alert('Selecciona un archivo Excel.'); return; }
+  const fd = new FormData(); fd.append('file', f);
+  const msg = document.getElementById('excel-msg');
+  msg.textContent = 'Procesando...'; msg.style.color='#1e40af';
+  const r = await fetch('/denuncias/upload',{method:'POST',body:fd});
+  const d = await r.json();
+  if(d.ok){ msg.textContent=`✓ ${d.inserted} denuncias cargadas`; msg.style.color='#166534'; setTimeout(()=>location.reload(),1500); }
+  else{ msg.textContent='Error: '+d.error; msg.style.color='#dc2626'; }
+}
+
+async function verTimeline(id, nombre){
+  document.getElementById('tl-title').textContent = 'Historial — ' + nombre;
+  document.getElementById('modal-timeline').style.display='flex';
+  const r = await fetch('/denuncias/timeline/'+id);
+  const d = await r.json();
+  if(!d.ok){ document.getElementById('tl-body').innerHTML='<p style="color:#94a3b8;">No hay historial disponible.</p>'; return; }
+  const estados = {'pendiente':'#fee2e2|#991b1b','planificada':'#dbeafe|#1e40af','en_ejecucion':'#fef3c7|#92400e','cerrada':'#dcfce7|#166534'};
+  let html = d.timeline.length ? '' : '<p style="color:#94a3b8;font-size:12px;">Sin cambios de estado registrados aun.</p>';
+  d.timeline.forEach(t => {
+    const [bg,col] = (estados[t.estado_nuevo]||'#f1f5f9|#475569').split('|');
+    html += `<div style="display:flex;gap:12px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #eef0f6;">
+      <div style="flex-shrink:0;width:8px;height:8px;border-radius:50%;background:${col};margin-top:5px;"></div>
+      <div>
+        <div style="font-size:10.5px;color:#94a3b8;font-family:'DM Mono',monospace;">${t.fecha?t.fecha.slice(0,16).replace('T',' '):'—'}</div>
+        <div style="font-size:12px;font-weight:700;margin:2px 0;">
+          <span style="background:${bg};color:${col};padding:1px 7px;border-radius:8px;">${t.estado_nuevo||'—'}</span>
+          <span style="color:#94a3b8;margin:0 4px;">por</span>
+          <strong>${t.username||'sistema'}</strong>
+          <span style="background:#f1f5f9;color:#475569;padding:1px 6px;border-radius:6px;font-size:10px;margin-left:4px;">${t.rol||''}</span>
+        </div>
+        ${t.nota?`<div style="font-size:11.5px;color:#475569;margin-top:3px;">${t.nota}</div>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('tl-body').innerHTML = html;
+}
+
+function abrirEstado(id, estadoActual, nombre){
+  document.getElementById('est-id').value = id;
+  document.getElementById('est-title').textContent = 'Actualizar: ' + nombre;
+  document.getElementById('est-estado').value = estadoActual;
+  document.getElementById('est-hallazgos').value = '';
+  document.getElementById('est-resolucion').value = '';
+  document.getElementById('est-nota').value = '';
+  document.getElementById('modal-estado').style.display = 'flex';
+}
+
+async function guardarEstado(){
+  const id = document.getElementById('est-id').value;
+  const r = await api('/denuncias/actualizar_estado',{
+    id: parseInt(id),
+    estado:     document.getElementById('est-estado').value,
+    hallazgos:  document.getElementById('est-hallazgos').value,
+    resolucion: document.getElementById('est-resolucion').value,
+    nota:       document.getElementById('est-nota').value,
+  });
+  if(r.ok){
+    toast('Estado actualizado','#166534');
+    document.getElementById('modal-estado').style.display='none';
+    setTimeout(()=>location.reload(),1000);
+  } else toast(r.error||'Error','#dc2626');
 }
 </script>
-{% endblock %} 
+{% endblock %}
