@@ -222,14 +222,11 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT NOT NULL,
                 usuario_id INTEGER,
-                username TEXT,
-                rol TEXT,
+                username TEXT, rol TEXT,
                 accion TEXT NOT NULL,
-                entidad TEXT,
-                entidad_id INTEGER,
+                entidad TEXT, entidad_id INTEGER,
                 detalle TEXT,
-                estado_anterior TEXT,
-                estado_nuevo TEXT
+                estado_anterior TEXT, estado_nuevo TEXT
             );
             CREATE TABLE IF NOT EXISTS denuncias_estados (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -244,29 +241,20 @@ def init_db():
             );
             CREATE TABLE IF NOT EXISTS actividad_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
+                fecha TEXT NOT NULL,
                 usuario_id INTEGER,
-                username TEXT,
-                rol TEXT,
+                username TEXT, rol TEXT,
                 accion TEXT NOT NULL,
-                modulo TEXT,
-                descripcion TEXT,
-                referencia_id INTEGER,
-                referencia_tipo TEXT,
-                estado_anterior TEXT,
-                estado_nuevo TEXT
+                entidad TEXT, entidad_id INTEGER,
+                detalle TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT
             );
-            CREATE TABLE IF NOT EXISTS denuncia_historial (
+            CREATE TABLE IF NOT EXISTS denuncias_estados (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 denuncia_id INTEGER NOT NULL,
-                timestamp TEXT NOT NULL,
-                usuario_id INTEGER,
-                username TEXT,
-                rol TEXT,
-                accion TEXT,
-                estado_anterior TEXT,
-                estado_nuevo TEXT,
-                nota TEXT
+                fecha TEXT NOT NULL,
+                usuario_id INTEGER, username TEXT, rol TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT
             );
         ''')
         # Migration: create new tables if not exist
@@ -370,119 +358,6 @@ def init_db():
 init_db()
 
 # ── HELPERS ──────────────────────────────────────────────────
-def log_actividad(accion, modulo, descripcion, ref_id=None, ref_tipo=None, estado_ant=None, estado_new=None):
-    """Registra una accion en el log de trazabilidad."""
-    try:
-        from flask_login import current_user
-        uid  = current_user.id       if current_user.is_authenticated else None
-        uname= current_user.username  if current_user.is_authenticated else 'sistema'
-        urol = current_user.rol       if current_user.is_authenticated else 'sistema'
-    except:
-        uid, uname, urol = None, 'sistema', 'sistema'
-    with get_db() as db:
-        db.execute("""INSERT INTO actividad_log
-            (timestamp,usuario_id,username,rol,accion,modulo,descripcion,
-             referencia_id,referencia_tipo,estado_anterior,estado_nuevo)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (datetime.now().isoformat(), uid, uname, urol, accion, modulo,
-             descripcion, ref_id, ref_tipo, estado_ant, estado_new))
-
-def log_denuncia(denuncia_id, accion, estado_ant=None, estado_new=None, nota=None):
-    """Registra un cambio en el historial de una denuncia."""
-    try:
-        from flask_login import current_user
-        uid  = current_user.id        if current_user.is_authenticated else None
-        uname= current_user.username   if current_user.is_authenticated else 'sistema'
-        urol = current_user.rol        if current_user.is_authenticated else 'sistema'
-    except:
-        uid, uname, urol = None, 'sistema', 'sistema'
-    with get_db() as db:
-        db.execute("""INSERT INTO denuncia_historial
-            (denuncia_id,timestamp,usuario_id,username,rol,accion,
-             estado_anterior,estado_nuevo,nota)
-            VALUES (?,?,?,?,?,?,?,?,?)""",
-            (denuncia_id, datetime.now().isoformat(), uid, uname, urol,
-             accion, estado_ant, estado_new, nota))
-
-def get_all_states():
-    with get_db() as db:
-        rows = db.fetchall('SELECT * FROM personal_state')
-        return {r['persona_id']: dict(r) for r in rows}
-
-def get_state(pid, all_states=None):
-    if all_states:
-        return all_states.get(pid, {"persona_id":pid,"carga_total":0,"no_disponible":0,
-            "motivo_no_disponible":"","motivo_detalle":"","conflicto":0,
-            "ultima_asignacion":None,"zona_counts":"{}"})
-    with get_db() as db:
-        row = db.fetchone('SELECT * FROM personal_state WHERE persona_id=?', (pid,))
-        return dict(row) if row else {"persona_id":pid,"carga_total":0,"no_disponible":0,
-            "motivo_no_disponible":"","motivo_detalle":"","conflicto":0,
-            "ultima_asignacion":None,"zona_counts":"{}"}
-
-def zona_count(pid, zona, all_states=None):
-    st = get_state(pid, all_states)
-    return json.loads(st.get('zona_counts') or '{}').get(zona, 0)
-
-def is_elegible(p, zona, fecha, skip_cooldown=False, all_states=None):
-    st = get_state(p['id'], all_states)
-    LOCAL = ["Distrito Nacional","SD Este","SD Norte","SD Oeste","San Cristóbal","San Cristóbal / Haina"]
-    if zona in LOCAL and p['zona'] == zona: return False
-    if st['no_disponible']: return False
-    if st['conflicto']: return False
-    if not skip_cooldown and st['ultima_asignacion']:
-        try:
-            ref = datetime.fromisoformat(fecha) if fecha else datetime.now()
-            d = (ref - datetime.fromisoformat(st['ultima_asignacion'])).days
-            if d < COOLDOWN_DAYS: return False
-        except: pass
-    return True
-
-def select_fair(pool, n, zona, all_states=None):
-    if not pool: return []
-    scored = sorted(
-        [(zona_count(p['id'],zona,all_states), get_state(p['id'],all_states)['carga_total'], p)
-         for p in pool],
-        key=lambda x:(x[0],x[1])
-    )
-    mn,mx = scored[0][0],scored[-1][0]; rng=mx-mn
-    t = lambda zc: 1 if rng==0 else (1 if zc<=mn+rng/3 else (2 if zc<=mn+2*rng/3 else 3))
-    t1=[x[2] for x in scored if t(x[0])==1]; random.shuffle(t1)
-    t2=[x[2] for x in scored if t(x[0])==2]; random.shuffle(t2)
-    t3=[x[2] for x in scored if t(x[0])==3]; random.shuffle(t3)
-    return (t1+t2+t3)[:n]
-
-def inferir_zona(prov, mun):
-    p = str(prov).upper() if prov and str(prov).lower() not in ['nan','none',''] else ''
-    m = str(mun).upper() if mun and str(mun).lower() not in ['nan','none',''] else ''
-    if not p: return 'Sin especificar'
-    if 'DAJABON' in p or 'DAJABÓN' in p: return 'Dajabón'
-    if 'ESPAILLAT' in p: return 'Espaillat'
-    if 'SAN JUAN' in p: return 'San Juan'
-    if 'SAN PEDRO' in p: return 'San Pedro de Macorís'
-    if 'SAN CRISTOBAL' in p or 'SAN CRISTÓBAL' in p:
-        return 'San Cristóbal / Haina' if 'HAINA' in m or 'BAJOS' in m else 'San Cristóbal'
-    if 'SANTO DOMINGO' in p:
-        if 'NORTE' in m: return 'SD Norte'
-        if 'ESTE' in m: return 'SD Este'
-        if 'OESTE' in m: return 'SD Oeste'
-        return 'Distrito Nacional'
-    if 'DISTRITO NACIONAL' in p: return 'Distrito Nacional'
-    for k,v in [('SANTIAGO','Santiago'),('LA VEGA','La Vega'),('PUERTO PLATA','Puerto Plata'),
-                ('LA ROMANA','La Romana'),('BARAHONA','Barahona'),('PERAVIA','Baní / Peravia'),
-                ('MONTE PLATA','Monte Plata'),('DUARTE','Duarte'),('ALTAGRACIA','La Altagracia')]:
-        if k in p: return v
-    return prov.strip().title()
-
-def dias_pendiente(fecha_str):
-    try: return (datetime.now() - datetime.fromisoformat(str(fecha_str)[:10])).days
-    except: return 0
-
-def row_to_dict(row):
-    if row is None: return None
-    return dict(row)
-
-# ── ROUTES ────────────────────────────────────────────────────
 # ── AUTH ROUTES ──────────────────────────────────────────────
 @app.route('/login', methods=['GET','POST'])
 def login_view():
@@ -497,7 +372,7 @@ def login_view():
         if row and bcrypt.checkpw(password, row['password_hash'].encode()):
             user = User(row['id'], row['username'], row['rol'])
             login_user(user, remember=True)
-            log_actividad('LOGIN','auth',f"Inicio de sesion: {username}",ref_tipo='usuario')
+            log_actividad('LOGIN','auth',None,f'Inicio de sesion: {username}')
             return redirect(request.args.get('next') or url_for('index'))
         error = 'Usuario o contrasena incorrectos.'
     return render_template('login.html', error=error)
