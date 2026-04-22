@@ -22,10 +22,11 @@
           <td style="font-weight:700;font-family:'DM Mono',monospace;">{{ u.username }}</td>
           <td>{{ u.nombre_completo or '—' }}</td>
           <td>
-            {% if u.rol == 'admin' %}<span class="badge b-navy">Administrador</span>
-            {% elif u.rol == 'operaciones' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Operaciones</span>
-            {% elif u.rol == 'denuncias' %}<span class="badge b-ok">Denuncias</span>
-            {% else %}<span class="badge b-gray">Coordinador</span>{% endif %}
+            {% if u.rol == 'admin' %}
+            <span class="badge b-navy">Administrador</span>
+            {% else %}
+            <span class="badge b-gray">Coordinador</span>
+            {% endif %}
           </td>
           <td>
             {% if u.activo %}
@@ -66,8 +67,6 @@
         <input type="text" id="nu-nombre" placeholder="Juan Perez"></div>
       <div class="fg"><label class="fl">Rol</label>
         <select id="nu-rol">
-          <option value="denuncias">Denuncias — Ingreso de denuncias</option>
-          <option value="operaciones">Operaciones — Planificacion y ejecucion</option>
           <option value="coordinador">Coordinador — Solo lectura</option>
           <option value="admin">Administrador — Acceso total</option>
         </select>
