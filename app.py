@@ -3,7 +3,7 @@ import json, os, random, secrets
 from datetime import datetime, timedelta
 import pandas as pd
 from werkzeug.utils import secure_filename
-from db import get_db, get_db_schema
+from db import get_db
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import bcrypt
 from functools import wraps
@@ -30,13 +30,6 @@ def load_user(user_id):
             return User(row['id'], row['username'], row['rol'])
     return None
 
-ROLES = {
-    'admin':      'Administrador',
-    'operaciones':'Operaciones',
-    'denuncias':  'Denuncias',
-    'coordinador':'Coordinador',
-}
-
 def rol_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -47,35 +40,6 @@ def rol_required(*roles):
             return f(*args, **kwargs)
         return decorated
     return decorator
-
-def log_actividad(accion, entidad=None, entidad_id=None, detalle=None,
-                  estado_anterior=None, estado_nuevo=None):
-    """Registra una accion en el log de trazabilidad."""
-    try:
-        uid  = current_user.id   if current_user.is_authenticated else None
-        uname= current_user.username if current_user.is_authenticated else 'sistema'
-        urol = current_user.rol  if current_user.is_authenticated else 'sistema'
-        with get_db() as db:
-            db.execute('''INSERT INTO actividad_log
-                (fecha,usuario_id,username,rol,accion,entidad,entidad_id,detalle,estado_anterior,estado_nuevo)
-                VALUES (?,?,?,?,?,?,?,?,?,?)''',
-                (datetime.now().isoformat(), uid, uname, urol,
-                 accion, entidad, entidad_id, detalle, estado_anterior, estado_nuevo))
-    except: pass
-
-def log_estado_denuncia(denuncia_id, estado_anterior, estado_nuevo, nota=''):
-    """Registra un cambio de estado en una denuncia."""
-    try:
-        uid  = current_user.id   if current_user.is_authenticated else None
-        uname= current_user.username if current_user.is_authenticated else 'sistema'
-        urol = current_user.rol  if current_user.is_authenticated else 'sistema'
-        with get_db() as db:
-            db.execute('''INSERT INTO denuncias_estados
-                (denuncia_id,fecha,usuario_id,username,rol,estado_anterior,estado_nuevo,nota)
-                VALUES (?,?,?,?,?,?,?,?)''',
-                (denuncia_id, datetime.now().isoformat(),
-                 uid, uname, urol, estado_anterior, estado_nuevo, nota))
-    except: pass
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 MHE_LOGO_B64 = 'data:image/png;base64,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'
@@ -148,7 +112,7 @@ PROV_COORDS = {
 }
 
 def init_db():
-    with get_db_schema() as db:
+    with get_db() as db:
         db.executescript('''
             CREATE TABLE IF NOT EXISTS personal_state (
                 persona_id INTEGER PRIMARY KEY,
@@ -218,70 +182,7 @@ def init_db():
                 activo INTEGER DEFAULT 1,
                 created_at TEXT
             );
-            CREATE TABLE IF NOT EXISTS actividad_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha TEXT NOT NULL,
-                usuario_id INTEGER,
-                username TEXT, rol TEXT,
-                accion TEXT NOT NULL,
-                entidad TEXT, entidad_id INTEGER,
-                detalle TEXT,
-                estado_anterior TEXT, estado_nuevo TEXT
-            );
-            CREATE TABLE IF NOT EXISTS denuncias_estados (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                denuncia_id INTEGER NOT NULL,
-                fecha TEXT NOT NULL,
-                usuario_id INTEGER,
-                username TEXT,
-                rol TEXT,
-                estado_anterior TEXT,
-                estado_nuevo TEXT,
-                nota TEXT
-            );
-            CREATE TABLE IF NOT EXISTS actividad_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha TEXT NOT NULL,
-                usuario_id INTEGER,
-                username TEXT, rol TEXT,
-                accion TEXT NOT NULL,
-                entidad TEXT, entidad_id INTEGER,
-                detalle TEXT,
-                estado_anterior TEXT, estado_nuevo TEXT
-            );
-            CREATE TABLE IF NOT EXISTS denuncias_estados (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                denuncia_id INTEGER NOT NULL,
-                fecha TEXT NOT NULL,
-                usuario_id INTEGER, username TEXT, rol TEXT,
-                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT
-            );
         ''')
-        # Migration: create new tables if not exist
-        for create_sql in [
-            """CREATE TABLE IF NOT EXISTS actividad_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                usuario_id INTEGER, username TEXT, rol TEXT,
-                accion TEXT NOT NULL, modulo TEXT, descripcion TEXT,
-                referencia_id INTEGER, referencia_tipo TEXT,
-                estado_anterior TEXT, estado_nuevo TEXT
-            )""",
-            """CREATE TABLE IF NOT EXISTS denuncia_historial (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                denuncia_id INTEGER NOT NULL, timestamp TEXT NOT NULL,
-                usuario_id INTEGER, username TEXT, rol TEXT,
-                accion TEXT, estado_anterior TEXT, estado_nuevo TEXT, nota TEXT
-            )""",
-            "ALTER TABLE denuncias ADD COLUMN ingresado_por TEXT",
-            "ALTER TABLE denuncias ADD COLUMN ingresado_por_id INTEGER",
-            "ALTER TABLE denuncias ADD COLUMN fecha_ingreso TEXT",
-            "ALTER TABLE denuncias ADD COLUMN hallazgos TEXT",
-            "ALTER TABLE denuncias ADD COLUMN fecha_cierre TEXT",
-            "ALTER TABLE denuncias ADD COLUMN cerrado_por TEXT",
-        ]:
-            try: db.execute(create_sql)
-            except: pass
         # Migration: create sorteo_audit if not exists
         try:
             db.execute('''CREATE TABLE IF NOT EXISTS sorteo_audit (
@@ -291,58 +192,6 @@ def init_db():
                 fecha_sorteo TEXT,
                 audit_json TEXT
             )''')
-        except: pass
-        # Migration: actividad_log - drop and recreate if has old schema
-        try:
-            # Check if old schema (timestamp column) exists
-            db.execute("SELECT timestamp FROM actividad_log LIMIT 1")
-            # If we get here, old schema exists - drop and recreate
-            db.execute("DROP TABLE actividad_log")
-        except: pass
-        try:
-            db.execute('''CREATE TABLE IF NOT EXISTS actividad_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha TEXT NOT NULL,
-                usuario_id INTEGER,
-                username TEXT,
-                rol TEXT,
-                accion TEXT NOT NULL,
-                entidad TEXT,
-                entidad_id INTEGER,
-                detalle TEXT,
-                estado_anterior TEXT,
-                estado_nuevo TEXT
-            )''')
-        except: pass
-        # Migration: denuncias_estados
-        try:
-            db.execute('''CREATE TABLE IF NOT EXISTS denuncias_estados (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                denuncia_id INTEGER NOT NULL,
-                fecha TEXT NOT NULL,
-                usuario_id INTEGER,
-                username TEXT,
-                rol TEXT,
-                estado_anterior TEXT,
-                estado_nuevo TEXT,
-                nota TEXT
-            )''')
-        except: pass
-        # Migration: add ingresado_por to denuncias
-        try:
-            db.execute("ALTER TABLE denuncias ADD COLUMN ingresado_por TEXT DEFAULT ''")
-        except: pass
-        try:
-            db.execute("ALTER TABLE denuncias ADD COLUMN usuario_id INTEGER")
-        except: pass
-        try:
-            db.execute("ALTER TABLE denuncias ADD COLUMN direccion TEXT DEFAULT ''")
-        except: pass
-        try:
-            db.execute("ALTER TABLE denuncias ADD COLUMN hallazgos TEXT DEFAULT ''")
-        except: pass
-        try:
-            db.execute("ALTER TABLE denuncias ADD COLUMN resolucion TEXT DEFAULT ''")
         except: pass
         # Seed: create default admin if no users exist
         try:
@@ -364,6 +213,85 @@ def init_db():
 init_db()
 
 # ── HELPERS ──────────────────────────────────────────────────
+def get_all_states():
+    with get_db() as db:
+        rows = db.fetchall('SELECT * FROM personal_state')
+        return {r['persona_id']: dict(r) for r in rows}
+
+def get_state(pid, all_states=None):
+    if all_states:
+        return all_states.get(pid, {"persona_id":pid,"carga_total":0,"no_disponible":0,
+            "motivo_no_disponible":"","motivo_detalle":"","conflicto":0,
+            "ultima_asignacion":None,"zona_counts":"{}"})
+    with get_db() as db:
+        row = db.fetchone('SELECT * FROM personal_state WHERE persona_id=?', (pid,))
+        return dict(row) if row else {"persona_id":pid,"carga_total":0,"no_disponible":0,
+            "motivo_no_disponible":"","motivo_detalle":"","conflicto":0,
+            "ultima_asignacion":None,"zona_counts":"{}"}
+
+def zona_count(pid, zona, all_states=None):
+    st = get_state(pid, all_states)
+    return json.loads(st.get('zona_counts') or '{}').get(zona, 0)
+
+def is_elegible(p, zona, fecha, skip_cooldown=False, all_states=None):
+    st = get_state(p['id'], all_states)
+    LOCAL = ["Distrito Nacional","SD Este","SD Norte","SD Oeste","San Cristóbal","San Cristóbal / Haina"]
+    if zona in LOCAL and p['zona'] == zona: return False
+    if st['no_disponible']: return False
+    if st['conflicto']: return False
+    if not skip_cooldown and st['ultima_asignacion']:
+        try:
+            ref = datetime.fromisoformat(fecha) if fecha else datetime.now()
+            d = (ref - datetime.fromisoformat(st['ultima_asignacion'])).days
+            if d < COOLDOWN_DAYS: return False
+        except: pass
+    return True
+
+def select_fair(pool, n, zona, all_states=None):
+    if not pool: return []
+    scored = sorted(
+        [(zona_count(p['id'],zona,all_states), get_state(p['id'],all_states)['carga_total'], p)
+         for p in pool],
+        key=lambda x:(x[0],x[1])
+    )
+    mn,mx = scored[0][0],scored[-1][0]; rng=mx-mn
+    t = lambda zc: 1 if rng==0 else (1 if zc<=mn+rng/3 else (2 if zc<=mn+2*rng/3 else 3))
+    t1=[x[2] for x in scored if t(x[0])==1]; random.shuffle(t1)
+    t2=[x[2] for x in scored if t(x[0])==2]; random.shuffle(t2)
+    t3=[x[2] for x in scored if t(x[0])==3]; random.shuffle(t3)
+    return (t1+t2+t3)[:n]
+
+def inferir_zona(prov, mun):
+    p = str(prov).upper() if prov and str(prov).lower() not in ['nan','none',''] else ''
+    m = str(mun).upper() if mun and str(mun).lower() not in ['nan','none',''] else ''
+    if not p: return 'Sin especificar'
+    if 'DAJABON' in p or 'DAJABÓN' in p: return 'Dajabón'
+    if 'ESPAILLAT' in p: return 'Espaillat'
+    if 'SAN JUAN' in p: return 'San Juan'
+    if 'SAN PEDRO' in p: return 'San Pedro de Macorís'
+    if 'SAN CRISTOBAL' in p or 'SAN CRISTÓBAL' in p:
+        return 'San Cristóbal / Haina' if 'HAINA' in m or 'BAJOS' in m else 'San Cristóbal'
+    if 'SANTO DOMINGO' in p:
+        if 'NORTE' in m: return 'SD Norte'
+        if 'ESTE' in m: return 'SD Este'
+        if 'OESTE' in m: return 'SD Oeste'
+        return 'Distrito Nacional'
+    if 'DISTRITO NACIONAL' in p: return 'Distrito Nacional'
+    for k,v in [('SANTIAGO','Santiago'),('LA VEGA','La Vega'),('PUERTO PLATA','Puerto Plata'),
+                ('LA ROMANA','La Romana'),('BARAHONA','Barahona'),('PERAVIA','Baní / Peravia'),
+                ('MONTE PLATA','Monte Plata'),('DUARTE','Duarte'),('ALTAGRACIA','La Altagracia')]:
+        if k in p: return v
+    return prov.strip().title()
+
+def dias_pendiente(fecha_str):
+    try: return (datetime.now() - datetime.fromisoformat(str(fecha_str)[:10])).days
+    except: return 0
+
+def row_to_dict(row):
+    if row is None: return None
+    return dict(row)
+
+# ── ROUTES ────────────────────────────────────────────────────
 # ── AUTH ROUTES ──────────────────────────────────────────────
 @app.route('/login', methods=['GET','POST'])
 def login_view():
@@ -378,9 +306,6 @@ def login_view():
         if row and bcrypt.checkpw(password, row['password_hash'].encode()):
             user = User(row['id'], row['username'], row['rol'])
             login_user(user, remember=True)
-            log_actividad('LOGIN','auth',None,f'Inicio de sesion: {username}')
-            if row['rol'] == 'denuncias':
-                return redirect(url_for('denuncias_view'))
             return redirect(request.args.get('next') or url_for('index'))
         error = 'Usuario o contrasena incorrectos.'
     return render_template('login.html', error=error)
@@ -508,30 +433,15 @@ def reset_carga():
     return jsonify(ok=True)
 
 @app.route('/denuncias')
-@rol_required('admin','operaciones','denuncias','coordinador')
+@login_required
 def denuncias_view():
     with get_db() as db:
-        # Denuncias role: only see what they ingresed
-        if current_user.rol == 'denuncias':
-            rows = [dict(r) for r in db.fetchall(
-                "SELECT * FROM denuncias WHERE usuario_id=? ORDER BY fecha_entrada DESC",
-                (current_user.id,))]
-        else:
-            rows = [dict(r) for r in db.fetchall(
-                """SELECT * FROM denuncias ORDER BY
-                   CASE estado WHEN 'pendiente' THEN 0 WHEN 'planificada' THEN 1
-                   WHEN 'en_ejecucion' THEN 2 ELSE 3 END, fecha_entrada""")]
-        logs = [dict(r) for r in db.fetchall(
-            "SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10")]
-        nuevas_count = db.fetchone(
-            "SELECT COUNT(*) as c FROM denuncias WHERE estado='pendiente'"
-        )['c'] or 0
+        rows = [dict(r) for r in db.fetchall("SELECT * FROM denuncias ORDER BY provincia,municipio")]
+        logs = [dict(r) for r in db.fetchall("SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10")]
     for r in rows:
-        r['zona_inferida'] = inferir_zona(r.get('provincia',''), r.get('municipio',''))
-        r['dias'] = dias_pendiente(r.get('fecha_entrada',''))
-    return render_template('denuncias.html', denuncias=rows, logs=logs,
-                           nuevas_count=nuevas_count)
-
+        r['zona_inferida'] = inferir_zona(r['provincia'], r['municipio'])
+        r['dias'] = dias_pendiente(r['fecha_entrada'])
+    return render_template('denuncias.html', denuncias=rows, logs=logs)
 
 @app.route('/denuncias/upload', methods=['POST'])
 @rol_required('admin')
@@ -618,9 +528,6 @@ def agregar_operativo():
              d.get('direccion',''), d.get('municipio',''), d.get('provincia',''),
              d.get('zona',''), br, d.get('fuente','denuncia'),
              d.get('no_oficio',''), datetime.now().isoformat()))
-    log_actividad('OPERATIVO_PLANIFICADO','planificacion',
-                  f"Agregado: {d.get('nombre','')} — {d.get('provincia','')} — {d.get('fecha','')}",
-                  ref_tipo='operativo')
     return jsonify(ok=True)
 
 @app.route('/planificacion/eliminar_operativo/<int:oid>', methods=['DELETE'])
@@ -776,9 +683,6 @@ def confirmar_asignacion():
                     db.execute('''UPDATE personal_state SET carga_total=carga_total+1,
                                   ultima_asignacion=?,zona_counts=? WHERE persona_id=?''',
                                (fecha, json.dumps(zc), pid))
-    log_actividad('SORTEO_CONFIRMADO','asignacion',
-                  f"Semana {resultado[0].get('semana','') if resultado else ''} — {len(resultado)} operativo(s) asignado(s)",
-                  ref_tipo='sorteo')
     return jsonify(ok=True)
 
 @app.route('/operativo/resultado', methods=['POST'])
@@ -792,10 +696,6 @@ def guardar_resultado():
                     d.get('decomiso',0), d.get('decomiso_detalle',''), d['id']))
         if d.get('cerrar_denuncia') and d.get('no_oficio'):
             db.execute("UPDATE denuncias SET estado='cerrada' WHERE no_oficio=?", (d['no_oficio'],))
-    log_actividad('RESULTADO_OPERATIVO','ejecucion',
-                  f"Operativo #{d['id']}: {'Ejecutado' if d.get('ejecutado')==1 else 'No ejecutado' if d.get('ejecutado')==0 else 'Sin registro'}",
-                  ref_id=d['id'], ref_tipo='operativo',
-                  estado_new='ejecutado' if d.get('ejecutado')==1 else 'no_ejecutado')
     return jsonify(ok=True)
 
 @app.route('/operativo/vehiculos', methods=['POST'])
@@ -944,54 +844,6 @@ def auditoria_view():
                 resultado['data'] = json.loads(resultado['audit_json'])
     return render_template('auditoria.html', q=q, resultado=resultado)
 
-
-@app.route('/denuncias/exportar_excel')
-@rol_required('admin','operaciones','denuncias')
-def exportar_denuncias_excel():
-    import io
-    from flask import send_file
-    with get_db() as db:
-        if current_user.rol == 'denuncias':
-            rows = [dict(r) for r in db.fetchall(
-                "SELECT * FROM denuncias WHERE usuario_id=? ORDER BY fecha_entrada DESC",
-                (current_user.id,))]
-        else:
-            rows = [dict(r) for r in db.fetchall(
-                "SELECT * FROM denuncias ORDER BY fecha_entrada DESC")]
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
-        wb = openpyxl.Workbook()
-        ws = wb.active; ws.title = 'Denuncias'
-        hf = PatternFill('solid', fgColor='0D2257')
-        hft = Font(color='FFFFFF', bold=True, size=10)
-        cols = ['#','No. Oficio','Fecha','Tipo','Nombre','Sector',
-                'Municipio','Provincia','Direccion','Zona','Estado',
-                'Ingresado por','Hallazgos','Resolucion']
-        for ci,col in enumerate(cols,1):
-            c = ws.cell(row=1,column=ci,value=col)
-            c.fill=hf; c.font=hft; c.alignment=Alignment(horizontal='center')
-        for ri,r in enumerate(rows,2):
-            vals=[ri-1,r.get('no_oficio',''),r.get('fecha_entrada',''),
-                  r.get('tipo',''),r.get('nombre',''),r.get('sector',''),
-                  r.get('municipio',''),r.get('provincia',''),r.get('direccion',''),
-                  r.get('zona_inferida','') or inferir_zona(r.get('provincia',''),r.get('municipio','')),
-                  r.get('estado',''),r.get('ingresado_por','Excel'),
-                  r.get('hallazgos',''),r.get('resolucion','')]
-            for ci,v in enumerate(vals,1):
-                ws.cell(row=ri,column=ci,value=v)
-        for col in ws.columns:
-            ws.column_dimensions[col[0].column_letter].width = min(
-                max((len(str(c.value or '')) for c in col),default=8)+4, 40)
-        buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-        fname = f"Denuncias_DCJA_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
-        log_actividad('EXPORTAR_EXCEL','denuncia',None,f'{len(rows)} denuncias exportadas')
-        return send_file(buf, download_name=fname,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True)
-    except Exception as e:
-        return jsonify(ok=False, error=str(e)), 500
-
 @app.route('/mapa')
 @login_required
 def mapa_view():
@@ -1012,65 +864,3 @@ def mapa_view():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-@app.route('/denuncias/ingresar', methods=['POST'])
-@rol_required('admin','operaciones','denuncias')
-def denuncias_ingresar():
-    d = request.json
-    nombre   = d.get('nombre','').strip()
-    provincia= d.get('provincia','').strip()
-    if not nombre or not provincia:
-        return jsonify(ok=False, error='Nombre y provincia son requeridos'), 400
-    municipio= d.get('municipio','').strip()
-    pv = provincia; mu = municipio
-    semana = datetime.now().strftime('%Y-W%V')
-    with get_db() as db:
-        db.execute("""INSERT INTO denuncias
-            (no_oficio,fecha_entrada,tipo,nombre,sector,municipio,provincia,
-             direccion,zona_inferida,estado,cargado_semana,ingresado_por,usuario_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (d.get('no_oficio',''), datetime.now().strftime('%Y-%m-%d'),
-             d.get('tipo','BANCAS DE LOTERIA'), nombre,
-             d.get('sector','').strip(), mu, pv,
-             d.get('direccion','').strip(),
-             inferir_zona(pv, mu), 'pendiente', semana,
-             current_user.username, current_user.id))
-        # Get last inserted id - works for both SQLite and PostgreSQL
-        try:
-            row = db.fetchone("SELECT lastval() as id")  # PostgreSQL
-        except:
-            try:
-                row = db.fetchone("SELECT last_insert_rowid() as id")  # SQLite
-            except:
-                row = None
-        did = row['id'] if row else None
-    log_actividad('INGRESO_DENUNCIA','denuncia', did,
-                  f"{nombre} — {pv}", None, 'pendiente')
-    if did:
-        log_estado_denuncia(did, None, 'pendiente',
-                           f"Ingresada manualmente por {current_user.username}")
-    return jsonify(ok=True, id=did)
-
-
-@app.route('/denuncias/actualizar_estado', methods=['POST'])
-@rol_required('admin','operaciones')
-def denuncias_actualizar_estado():
-    d = request.json
-    did      = d['id']
-    estado   = d['estado']
-    hallazgos= d.get('hallazgos','').strip()
-    resolucion=d.get('resolucion','').strip()
-    nota     = d.get('nota','').strip()
-    with get_db() as db:
-        den = db.fetchone('SELECT * FROM denuncias WHERE id=?', (did,))
-        if not den: return jsonify(ok=False, error='Denuncia no encontrada'), 404
-        anterior = den['estado']
-        db.execute(
-            "UPDATE denuncias SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
-            (estado, hallazgos, resolucion, did))
-    log_actividad('ESTADO_DENUNCIA','denuncia', did,
-                  f"{den['nombre']} — {anterior} → {estado}" + (f" | {nota}" if nota else ''),
-                  anterior, estado)
-    log_estado_denuncia(did, anterior, estado, nota or hallazgos[:100] if hallazgos else '')
-    return jsonify(ok=True)
-
-
