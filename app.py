@@ -292,7 +292,13 @@ def init_db():
                 audit_json TEXT
             )''')
         except: pass
-        # Migration: actividad_log
+        # Migration: actividad_log - drop and recreate if has old schema
+        try:
+            # Check if old schema (timestamp column) exists
+            db.execute("SELECT timestamp FROM actividad_log LIMIT 1")
+            # If we get here, old schema exists - drop and recreate
+            db.execute("DROP TABLE actividad_log")
+        except: pass
         try:
             db.execute('''CREATE TABLE IF NOT EXISTS actividad_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1028,7 +1034,14 @@ def denuncias_ingresar():
              d.get('direccion','').strip(),
              inferir_zona(pv, mu), 'pendiente', semana,
              current_user.username, current_user.id))
-        row = db.fetchone("SELECT last_insert_rowid() as id")
+        # Get last inserted id - works for both SQLite and PostgreSQL
+        try:
+            row = db.fetchone("SELECT lastval() as id")  # PostgreSQL
+        except:
+            try:
+                row = db.fetchone("SELECT last_insert_rowid() as id")  # SQLite
+            except:
+                row = None
         did = row['id'] if row else None
     log_actividad('INGRESO_DENUNCIA','denuncia', did,
                   f"{nombre} — {pv}", None, 'pendiente')
@@ -1058,6 +1071,6 @@ def denuncias_actualizar_estado():
                   f"{den['nombre']} — {anterior} → {estado}" + (f" | {nota}" if nota else ''),
                   anterior, estado)
     log_estado_denuncia(did, anterior, estado, nota or hallazgos[:100] if hallazgos else '')
-    return jsonify(ok=True) 
+    return jsonify(ok=True)
 
 
