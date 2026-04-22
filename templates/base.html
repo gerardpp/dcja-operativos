@@ -118,8 +118,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
       {% if current_user.is_authenticated %}
       <div style="display:flex;align-items:center;gap:7px;justify-content:flex-end;">
         <span style="font-size:10px;font-weight:700;color:var(--text);">{{ current_user.username }}</span>
-        <span style="font-size:9px;background:{% if current_user.rol=='admin' %}var(--dcja-gold){% else %}#e2e8f0{% endif %};color:{% if current_user.rol=='admin' %}var(--dcja-navy){% else %}#475569{% endif %};padding:1px 7px;border-radius:8px;font-weight:700;">
-          {% if current_user.rol=='admin' %}Administrador{% else %}Coordinador{% endif %}
+        <span style="font-size:9px;background:{% if current_user.rol=='admin' %}var(--dcja-gold){% elif current_user.rol=='operaciones' %}#dbeafe{% elif current_user.rol=='denuncias' %}#dcfce7{% else %}#e2e8f0{% endif %};color:{% if current_user.rol=='admin' %}var(--dcja-navy){% elif current_user.rol=='operaciones' %}#1e40af{% elif current_user.rol=='denuncias' %}#166534{% else %}#475569{% endif %};padding:1px 7px;border-radius:8px;font-weight:700;">
+          {% if current_user.rol=='admin' %}Administrador
+          {% elif current_user.rol=='operaciones' %}Operaciones
+          {% elif current_user.rol=='denuncias' %}Denuncias
+          {% else %}Coordinador{% endif %}
         </span>
         <a href="/logout" style="display:inline-flex;align-items:center;padding:3px 10px;background:#fee2e2;color:#991b1b;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;border:1px solid #fca5a5;">Salir</a>
       </div>
@@ -131,7 +134,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 <div class="nav-links-bar">
   <div class="nav-links-inner">
     <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
-    <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias">Denuncias</a>
+    <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias" id="nav-denuncias">
+      Denuncias
+      <span id="badge-nuevas" style="display:none;background:#dc2626;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;"></span>
+    </a>
     <a class="nav-link {% if request.endpoint=='planificacion_view' %}active{% endif %}" href="/planificacion">Planificación</a>
     <a class="nav-link {% if request.endpoint in ['plan_semanal','asignacion_view'] %}active{% endif %}" href="/plan_semanal">Plan Semanal</a>
     <a class="nav-link {% if request.endpoint=='ejecucion_diaria' %}active{% endif %}" href="/ejecucion_diaria">Ejecucion Diaria</a>
@@ -140,6 +146,9 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     <a class="nav-link {% if request.endpoint=='auditoria_view' %}active{% endif %}" href="/auditoria">Auditoria</a>
     <a class="nav-link {% if request.endpoint=='mapa_view' %}active{% endif %}" href="/mapa">Mapa</a>
     <a class="nav-link {% if request.endpoint=='personal_view' %}active{% endif %}" href="/personal">Personal</a>
+    {% if current_user.is_authenticated and current_user.rol in ['admin','operaciones'] %}
+    <a class="nav-link {% if request.endpoint=='trazabilidad_view' %}active{% endif %}" href="/trazabilidad">Trazabilidad</a>
+    {% endif %}
     {% if current_user.is_authenticated and current_user.rol=='admin' %}
     <a class="nav-link {% if request.endpoint=='usuarios_view' %}active{% endif %}" href="/usuarios">Usuarios</a>
     {% endif %}
