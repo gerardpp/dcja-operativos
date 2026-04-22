@@ -14,6 +14,20 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return SqliteWrapper(conn)
 
+def get_db_schema():
+    """Separate connection for schema migrations — uses autocommit so each
+    CREATE TABLE is independent and a failure does not abort the transaction."""
+    if DATABASE_URL:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.autocommit = True          # Each statement is its own transaction
+        return PgSchemaWrapper(conn)
+    else:
+        conn = sqlite3.connect('dcja.db')
+        conn.row_factory = sqlite3.Row
+        return SqliteWrapper(conn)
+
+# ── SQLite ────────────────────────────────────────────────────
 class SqliteWrapper:
     def __init__(self, conn): self.conn = conn
     def execute(self, sql, params=()):
@@ -30,14 +44,28 @@ class SqliteWrapper:
     def __enter__(self): return self
     def __exit__(self, *a): self.conn.commit(); self.conn.close()
 
-class PgWrapper:
-    def __init__(self, conn):
-        self.conn = conn
+# ── PostgreSQL — schema migrations (autocommit) ───────────────
+class PgSchemaWrapper:
+    """Used only in init_db(). autocommit=True means each statement is atomic."""
+    def __init__(self, conn): self.conn = conn
 
     def _q(self, sql):
         sql = sql.replace('?', '%s')
         sql = sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
         return sql
+
+    def executescript(self, sql):
+        stmts = [s.strip() for s in self._q(sql).split(';') if s.strip()]
+        for stmt in stmts:
+            try:
+                cur = self.conn.cursor()
+                cur.execute(stmt)
+            except Exception as e:
+                err = str(e).lower()
+                if 'already exists' in err or 'duplicate' in err:
+                    pass   # normal — table already created
+                else:
+                    raise
 
     def execute(self, sql, params=()):
         cur = self.conn.cursor()
@@ -57,23 +85,50 @@ class PgWrapper:
         cur.execute(self._q(sql), params)
         return [dict(r) for r in cur.fetchall()]
 
+    def commit(self): pass   # autocommit — nothing to do
+    def close(self): self.conn.close()
+    def __enter__(self): return self
+    def __exit__(self, *a): self.conn.close()
+
+# ── PostgreSQL — regular queries (transactional) ─────────────
+class PgWrapper:
+    def __init__(self, conn): self.conn = conn
+
+    def _q(self, sql):
+        sql = sql.replace('?', '%s')
+        sql = sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+        return sql
+
+    def execute(self, sql, params=()):
+        cur = self.conn.cursor()
+        cur.execute(self._q(sql), params)
+        return cur
+
     def executescript(self, sql):
-        """Run each statement in its own savepoint so one failure doesn't kill the whole transaction."""
-        pg_sql = self._q(sql)
-        statements = [s.strip() for s in pg_sql.split(';') if s.strip()]
-        for stmt in statements:
+        # Should not be called on regular PgWrapper — delegate to schema wrapper
+        stmts = [s.strip() for s in self._q(sql).split(';') if s.strip()]
+        for stmt in stmts:
             try:
-                self.conn.execute('SAVEPOINT sp_migrate')
                 cur = self.conn.cursor()
                 cur.execute(stmt)
-                self.conn.execute('RELEASE SAVEPOINT sp_migrate')
+                self.conn.commit()
             except Exception as e:
-                self.conn.execute('ROLLBACK TO SAVEPOINT sp_migrate')
-                err = str(e).lower()
-                if 'already exists' in err or 'duplicate' in err:
-                    pass  # Table/column already exists — skip silently
-                else:
-                    raise  # Real error — re-raise
+                self.conn.rollback()
+                if 'already exists' in str(e).lower(): pass
+                else: raise
+
+    def fetchone(self, sql, params=()):
+        import psycopg2.extras
+        cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(self._q(sql), params)
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+    def fetchall(self, sql, params=()):
+        import psycopg2.extras
+        cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(self._q(sql), params)
+        return [dict(r) for r in cur.fetchall()]
 
     def commit(self): self.conn.commit()
     def close(self): self.conn.close()
