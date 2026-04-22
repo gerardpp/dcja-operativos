@@ -3,7 +3,7 @@ import json, os, random, secrets
 from datetime import datetime, timedelta
 import pandas as pd
 from werkzeug.utils import secure_filename
-from db import get_db
+from db import get_db, get_db_schema
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import bcrypt
 from functools import wraps
@@ -148,7 +148,7 @@ PROV_COORDS = {
 }
 
 def init_db():
-    with get_db() as db:
+    with get_db_schema() as db:
         db.executescript('''
             CREATE TABLE IF NOT EXISTS personal_state (
                 persona_id INTEGER PRIMARY KEY,
