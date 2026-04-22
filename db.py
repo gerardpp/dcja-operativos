@@ -136,4 +136,4 @@ class PgWrapper:
     def __exit__(self, *a):
         try: self.conn.commit()
         except: self.conn.rollback()
-        self.conn.close()
+        self.conn.close() 
