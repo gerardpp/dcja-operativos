@@ -1058,6 +1058,6 @@ def denuncias_actualizar_estado():
                   f"{den['nombre']} — {anterior} → {estado}" + (f" | {nota}" if nota else ''),
                   anterior, estado)
     log_estado_denuncia(did, anterior, estado, nota or hallazgos[:100] if hallazgos else '')
-    return jsonify(ok=True)
+    return jsonify(ok=True) 
 
 
