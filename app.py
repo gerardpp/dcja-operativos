@@ -373,6 +373,8 @@ def login_view():
             user = User(row['id'], row['username'], row['rol'])
             login_user(user, remember=True)
             log_actividad('LOGIN','auth',None,f'Inicio de sesion: {username}')
+            if row['rol'] == 'denuncias':
+                return redirect(url_for('denuncias_view'))
             return redirect(request.args.get('next') or url_for('index'))
         error = 'Usuario o contrasena incorrectos.'
     return render_template('login.html', error=error)
@@ -936,6 +938,53 @@ def auditoria_view():
                 resultado['data'] = json.loads(resultado['audit_json'])
     return render_template('auditoria.html', q=q, resultado=resultado)
 
+
+@app.route('/denuncias/exportar_excel')
+@rol_required('admin','operaciones','denuncias')
+def exportar_denuncias_excel():
+    import io
+    from flask import send_file
+    with get_db() as db:
+        if current_user.rol == 'denuncias':
+            rows = [dict(r) for r in db.fetchall(
+                "SELECT * FROM denuncias WHERE usuario_id=? ORDER BY fecha_entrada DESC",
+                (current_user.id,))]
+        else:
+            rows = [dict(r) for r in db.fetchall(
+                "SELECT * FROM denuncias ORDER BY fecha_entrada DESC")]
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        wb = openpyxl.Workbook()
+        ws = wb.active; ws.title = 'Denuncias'
+        hf = PatternFill('solid', fgColor='0D2257')
+        hft = Font(color='FFFFFF', bold=True, size=10)
+        cols = ['#','No. Oficio','Fecha','Tipo','Nombre','Sector',
+                'Municipio','Provincia','Direccion','Zona','Estado',
+                'Ingresado por','Hallazgos','Resolucion']
+        for ci,col in enumerate(cols,1):
+            c = ws.cell(row=1,column=ci,value=col)
+            c.fill=hf; c.font=hft; c.alignment=Alignment(horizontal='center')
+        for ri,r in enumerate(rows,2):
+            vals=[ri-1,r.get('no_oficio',''),r.get('fecha_entrada',''),
+                  r.get('tipo',''),r.get('nombre',''),r.get('sector',''),
+                  r.get('municipio',''),r.get('provincia',''),r.get('direccion',''),
+                  r.get('zona_inferida','') or inferir_zona(r.get('provincia',''),r.get('municipio','')),
+                  r.get('estado',''),r.get('ingresado_por','Excel'),
+                  r.get('hallazgos',''),r.get('resolucion','')]
+            for ci,v in enumerate(vals,1):
+                ws.cell(row=ri,column=ci,value=v)
+        for col in ws.columns:
+            ws.column_dimensions[col[0].column_letter].width = min(
+                max((len(str(c.value or '')) for c in col),default=8)+4, 40)
+        buf = io.BytesIO(); wb.save(buf); buf.seek(0)
+        fname = f"Denuncias_DCJA_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        log_actividad('EXPORTAR_EXCEL','denuncia',None,f'{len(rows)} denuncias exportadas')
+        return send_file(buf, download_name=fname,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
 
 @app.route('/mapa')
 @login_required
