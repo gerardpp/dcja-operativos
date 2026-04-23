@@ -146,6 +146,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 
       <table>
         <thead><tr>
           <th>#</th>
+          <th>Origen</th>
           <th>No. Oficio</th>
           <th>Fecha</th>
           <th>Tipo</th>
@@ -158,6 +159,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 
           {% for d in denuncias %}
           <tr>
             <td style="color:#94a3b8;">{{ loop.index }}</td>
+            <td>
+              {% if d.fuente == 'manual' %}
+              <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:9px;">Manual</span>
+              {% else %}
+              <span class="badge b-gray" style="font-size:9px;">Excel</span>
+              {% endif %}
+            </td>
             <td style="font-family:'DM Mono',monospace;font-size:10.5px;">{{ d.no_oficio or '—' }}</td>
             <td style="font-size:11px;white-space:nowrap;">{{ d.fecha_entrada or '—' }}</td>
             <td>
@@ -187,7 +195,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">
+          <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
             No has ingresado denuncias aun. Usa el boton <strong>Nueva Denuncia</strong> para registrar un caso.
           </td></tr>
           {% endfor %}
