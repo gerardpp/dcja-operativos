@@ -168,11 +168,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 
             <td style="font-size:11px;">{{ d.municipio or '—' }}</td>
             <td style="font-size:11px;font-weight:600;">{{ d.provincia }}</td>
             <td>
-              {% if d.estado == 'pendiente' %}<span class="badge b-pend">Pendiente</span>
-              {% elif d.estado == 'planificada' %}<span class="badge b-plan">Planificada</span>
-              {% elif d.estado == 'en_ejecucion' %}<span class="badge b-ejec">En Ejecucion</span>
-              {% elif d.estado == 'cerrada' %}<span class="badge b-done">Cerrada</span>
-              {% else %}<span class="badge b-gray">{{ d.estado }}</span>{% endif %}
+              {% set est = d.estado or 'pendiente' %}
+              {% if est == 'pendiente' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#dc2626;"></div><span class="badge b-pend">Pendiente</span></div>
+              {% elif est == 'planificada' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#2563eb;"></div><span class="badge b-plan">Planificada</span></div>
+              {% elif est == 'en_ejecucion' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#d97706;"></div><span class="badge b-ejec">En Ejecucion</span></div>
+              {% elif est == 'ejecutada' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#16a34a;"></div><span class="badge b-done">Ejecutada ✓</span></div>
+              {% elif est == 'no_ejecutada' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#dc2626;"></div><span class="badge b-pend">No Ejecutada</span></div>
+              {% elif est == 'con_decomiso' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#9d174d;"></div><span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso</span></div>
+              {% elif est == 'cerrada' %}
+                <div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:50%;background:#16a34a;"></div><span class="badge b-done">Cerrada ✓</span></div>
+              {% else %}<span class="badge b-gray">{{ est }}</span>{% endif %}
             </td>
           </tr>
           {% else %}
