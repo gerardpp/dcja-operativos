@@ -173,6 +173,24 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT, semana TEXT, archivo TEXT, pendientes_cargadas INTEGER
             );
+            CREATE TABLE IF NOT EXISTS denuncias_manual (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                no_oficio TEXT,
+                fecha_entrada TEXT,
+                tipo TEXT,
+                nombre TEXT,
+                sector TEXT,
+                municipio TEXT,
+                provincia TEXT,
+                direccion TEXT,
+                zona_inferida TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                ingresado_por TEXT,
+                usuario_id INTEGER,
+                hallazgos TEXT DEFAULT '',
+                resolucion TEXT DEFAULT '',
+                created_at TEXT
+            );
             CREATE TABLE IF NOT EXISTS usuarios (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -202,6 +220,27 @@ def init_db():
                     "INSERT INTO usuarios (username,password_hash,nombre_completo,rol,created_at) VALUES (?,?,?,?,?)",
                     ('admin', pw, 'Administrador del Sistema', 'admin', datetime.now().isoformat())
                 )
+        except: pass
+        # Migration: denuncias_manual
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS denuncias_manual (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                no_oficio TEXT,
+                fecha_entrada TEXT,
+                tipo TEXT,
+                nombre TEXT,
+                sector TEXT,
+                municipio TEXT,
+                provincia TEXT,
+                direccion TEXT,
+                zona_inferida TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                ingresado_por TEXT,
+                usuario_id INTEGER,
+                hallazgos TEXT DEFAULT '',
+                resolucion TEXT DEFAULT '',
+                created_at TEXT
+            )''')
         except: pass
         # Seed personal if empty
         rows = db.fetchall('SELECT COUNT(*) as c FROM personal_state')
@@ -306,6 +345,8 @@ def login_view():
         if row and bcrypt.checkpw(password, row['password_hash'].encode()):
             user = User(row['id'], row['username'], row['rol'])
             login_user(user, remember=True)
+            if row['rol'] == 'denuncias':
+                return redirect(url_for('mis_denuncias_view'))
             return redirect(request.args.get('next') or url_for('index'))
         error = 'Usuario o contrasena incorrectos.'
     return render_template('login.html', error=error)
@@ -843,6 +884,121 @@ def auditoria_view():
                 resultado = dict(row)
                 resultado['data'] = json.loads(resultado['audit_json'])
     return render_template('auditoria.html', q=q, resultado=resultado)
+
+# ── DENUNCIAS DPTO ROUTES ─────────────────────────────────────
+@app.route('/mis_denuncias')
+@login_required
+def mis_denuncias_view():
+    """Vista exclusiva del perfil denuncias."""
+    if current_user.rol not in ['denuncias']:
+        return redirect(url_for('index'))
+    with get_db() as db:
+        rows = [dict(r) for r in db.fetchall(
+            "SELECT * FROM denuncias_manual WHERE usuario_id=? ORDER BY created_at DESC",
+            (current_user.id,))]
+    return render_template('mis_denuncias.html', denuncias=rows)
+
+@app.route('/mis_denuncias/ingresar', methods=['POST'])
+@login_required
+def ingresar_denuncia():
+    if current_user.rol not in ['denuncias','admin']:
+        return jsonify(ok=False, error='Sin permiso'), 403
+    d = request.json
+    nombre   = d.get('nombre','').strip()
+    provincia= d.get('provincia','').strip()
+    if not nombre or not provincia:
+        return jsonify(ok=False, error='Nombre y provincia son requeridos'), 400
+    municipio = d.get('municipio','').strip()
+    with get_db() as db:
+        db.execute("""INSERT INTO denuncias_manual
+            (no_oficio,fecha_entrada,tipo,nombre,sector,municipio,provincia,
+             direccion,zona_inferida,estado,ingresado_por,usuario_id,created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (d.get('no_oficio','').strip(),
+             datetime.now().strftime('%Y-%m-%d'),
+             d.get('tipo','BANCAS DE LOTERIA'), nombre,
+             d.get('sector','').strip(), municipio, provincia,
+             d.get('direccion','').strip(),
+             inferir_zona(provincia, municipio),
+             'pendiente', current_user.username, current_user.id,
+             datetime.now().isoformat()))
+    return jsonify(ok=True)
+
+@app.route('/mis_denuncias/exportar')
+@login_required
+def exportar_mis_denuncias():
+    if current_user.rol not in ['denuncias','admin']:
+        return jsonify(ok=False), 403
+    import io
+    from flask import send_file
+    with get_db() as db:
+        if current_user.rol == 'denuncias':
+            rows = [dict(r) for r in db.fetchall(
+                "SELECT * FROM denuncias_manual WHERE usuario_id=? ORDER BY created_at DESC",
+                (current_user.id,))]
+        else:
+            rows = [dict(r) for r in db.fetchall(
+                "SELECT * FROM denuncias_manual ORDER BY created_at DESC")]
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        wb = openpyxl.Workbook()
+        ws = wb.active; ws.title = 'Denuncias'
+        hfill = PatternFill('solid', fgColor='0D2257')
+        hfont = Font(color='FFFFFF', bold=True, size=10)
+        cols = ['#','No. Oficio','Fecha','Tipo','Nombre','Sector',
+                'Municipio','Provincia','Direccion','Zona','Estado','Ingresado por']
+        for ci, col in enumerate(cols, 1):
+            c = ws.cell(row=1, column=ci, value=col)
+            c.fill = hfill; c.font = hfont
+            c.alignment = Alignment(horizontal='center')
+        for ri, r in enumerate(rows, 2):
+            vals = [ri-1, r.get('no_oficio',''), r.get('fecha_entrada',''),
+                    r.get('tipo',''), r.get('nombre',''), r.get('sector',''),
+                    r.get('municipio',''), r.get('provincia',''),
+                    r.get('direccion',''), r.get('zona_inferida',''),
+                    r.get('estado',''), r.get('ingresado_por','')]
+            for ci, v in enumerate(vals, 1):
+                ws.cell(row=ri, column=ci, value=v)
+        for col in ws.columns:
+            ws.column_dimensions[col[0].column_letter].width = min(
+                max((len(str(c.value or '')) for c in col), default=8) + 4, 40)
+        buf = io.BytesIO(); wb.save(buf); buf.seek(0)
+        fname = f"Denuncias_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return send_file(buf, download_name=fname,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+@app.route('/operaciones/denuncias')
+@login_required
+def operaciones_denuncias_view():
+    """Vista del admin/operaciones para gestionar denuncias del dpto."""
+    if current_user.rol not in ['admin','operaciones']:
+        return redirect(url_for('index'))
+    with get_db() as db:
+        rows = [dict(r) for r in db.fetchall(
+            "SELECT * FROM denuncias_manual ORDER BY CASE estado WHEN 'pendiente' THEN 0 WHEN 'planificada' THEN 1 WHEN 'en_ejecucion' THEN 2 ELSE 3 END, created_at DESC")]
+    for r in rows:
+        r['dias'] = dias_pendiente(r.get('fecha_entrada',''))
+    pendientes = sum(1 for r in rows if r['estado'] == 'pendiente')
+    return render_template('operaciones_denuncias.html', denuncias=rows, pendientes=pendientes)
+
+@app.route('/operaciones/denuncias/actualizar', methods=['POST'])
+@login_required
+def actualizar_estado_denuncia():
+    if current_user.rol not in ['admin','operaciones']:
+        return jsonify(ok=False, error='Sin permiso'), 403
+    d = request.json
+    did = d['id']; estado = d['estado']
+    hallazgos  = d.get('hallazgos','').strip()
+    resolucion = d.get('resolucion','').strip()
+    with get_db() as db:
+        db.execute(
+            "UPDATE denuncias_manual SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
+            (estado, hallazgos, resolucion, did))
+    return jsonify(ok=True)
 
 @app.route('/mapa')
 @login_required
