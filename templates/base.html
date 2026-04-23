@@ -143,9 +143,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     <a class="nav-link {% if request.endpoint=='auditoria_view' %}active{% endif %}" href="/auditoria">Auditoria</a>
     <a class="nav-link {% if request.endpoint=='mapa_view' %}active{% endif %}" href="/mapa">Mapa</a>
     <a class="nav-link {% if request.endpoint=='personal_view' %}active{% endif %}" href="/personal">Personal</a>
-    {% if current_user.is_authenticated and current_user.rol in ['admin','operaciones'] %}
-    <a class="nav-link {% if request.endpoint=='operaciones_denuncias_view' %}active{% endif %}" href="/operaciones/denuncias">Denuncias Dpto.</a>
-    {% endif %}
     {% if current_user.is_authenticated and current_user.rol=='admin' %}
     <a class="nav-link {% if request.endpoint=='usuarios_view' %}active{% endif %}" href="/usuarios">Usuarios</a>
     {% endif %}
