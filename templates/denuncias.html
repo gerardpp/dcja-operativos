@@ -96,9 +96,7 @@
             {% else %}<span class="badge b-gray">{{ d.estado }}</span>{% endif %}
           </td>
           <td>
-            {% if d.fuente == 'manual' %}
-            <button class="btn btn-o btn-sm" onclick="actualizarEstado('{{ d.id }}','{{ d.estado or 'pendiente' }}','{{ d.nombre|replace("'","") }}')">Actualizar</button>
-            {% endif %}
+            <button class="btn btn-o btn-sm" onclick="actualizarEstado('{{ d.id }}','{{ d.fuente }}','{{ d.estado or 'pendiente' }}','{{ d.nombre|replace("'","") }}')">Actualizar</button>
           </td>
         </tr>
         {% else %}
@@ -114,6 +112,7 @@
   <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
     <h3 style="font-size:15px;font-weight:800;color:var(--dcja-navy);margin-bottom:16px;" id="modal-nombre">Actualizar Estado</h3>
     <input type="hidden" id="est-id">
+    <input type="hidden" id="est-fuente">
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div class="fg"><label class="fl">Nuevo Estado</label>
         <select id="est-estado">
@@ -128,6 +127,9 @@
       </div>
       <div class="fg"><label class="fl">Resolucion</label>
         <textarea id="est-resolucion" rows="2" placeholder="Accion tomada o resolucion final..."></textarea>
+      </div>
+      <div class="fg"><label class="fl">Nota interna</label>
+        <input type="text" id="est-nota" placeholder="Razon del cambio de estado (queda en el historial)...">
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
@@ -152,25 +154,80 @@ async function subirExcel(){
   else { status.textContent = 'Error: ' + d.error; status.style.color='#dc2626'; }
 }
 
-function actualizarEstado(id, estado, nombre){
+function actualizarEstado(id, fuente, estado, nombre){
   document.getElementById('est-id').value = id;
+  document.getElementById('est-fuente').value = fuente;
   document.getElementById('modal-nombre').textContent = nombre;
   document.getElementById('est-estado').value = estado;
   document.getElementById('est-hallazgos').value = '';
   document.getElementById('est-resolucion').value = '';
+  document.getElementById('est-nota').value = '';
   document.getElementById('modal-estado').style.display = 'flex';
 }
 
 async function guardarEstado(){
-  const id = document.getElementById('est-id').value;
+  const id     = document.getElementById('est-id').value;
+  const fuente = document.getElementById('est-fuente').value;
   const r  = await api('/denuncias_manual/actualizar', {
-    id: parseInt(id),
+    id: parseInt(id), fuente,
     estado:     document.getElementById('est-estado').value,
     hallazgos:  document.getElementById('est-hallazgos').value,
     resolucion: document.getElementById('est-resolucion').value,
+    nota:       document.getElementById('est-nota').value,
   });
   if(r.ok){ toast('Estado actualizado','#166534'); document.getElementById('modal-estado').style.display='none'; setTimeout(()=>location.reload(),1000); }
   else toast('Error al guardar','#dc2626');
 }
+
+async function verHistorial(id, fuente, nombre){
+  document.getElementById('ht-title').textContent = 'Historial — ' + nombre;
+  document.getElementById('modal-historial').style.display = 'flex';
+  document.getElementById('ht-body').innerHTML = '<p style="color:#94a3b8;font-size:12px;">Cargando...</p>';
+  const r = await fetch('/denuncias/historial/'+fuente+'/'+id);
+  const d = await r.json();
+  if(!d.ok || !d.historial.length){
+    document.getElementById('ht-body').innerHTML = '<p style="color:#94a3b8;font-size:12px;">Sin cambios de estado registrados aun.</p>';
+    return;
+  }
+  const colores = {
+    'pendiente':    '#fee2e2|#991b1b',
+    'planificada':  '#dbeafe|#1e40af',
+    'en_ejecucion': '#fef3c7|#92400e',
+    'ejecutada':    '#dcfce7|#166534',
+    'no_ejecutada': '#fee2e2|#991b1b',
+    'con_decomiso': '#fce7f3|#9d174d',
+    'cerrada':      '#dcfce7|#166534',
+  };
+  let html = '<div style="padding-left:12px;border-left:2px solid #e2e8f0;">';
+  d.historial.forEach(h => {
+    const [bg,col] = (colores[h.estado_nuevo]||'#f1f5f9|#475569').split('|');
+    html += `<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed #eef0f6;">
+      <div style="font-size:10px;color:#94a3b8;font-family:'DM Mono',monospace;margin-bottom:4px;">${h.fecha.slice(0,16).replace('T',' ')}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+        ${h.estado_anterior?`<span style="background:#f1f5f9;color:#475569;padding:1px 7px;border-radius:6px;font-size:10px;">${h.estado_anterior}</span><span style="color:#94a3b8;font-size:12px;">→</span>`:''}
+        <span style="background:${bg};color:${col};padding:2px 9px;border-radius:8px;font-size:11px;font-weight:700;">${h.estado_nuevo}</span>
+      </div>
+      <div style="font-size:11.5px;">
+        <strong style="color:#1a2440;">${h.usuario}</strong>
+        <span style="background:#f1f5f9;color:#475569;padding:1px 6px;border-radius:5px;font-size:10px;margin-left:4px;">${h.rol}</span>
+        ${h.nota?`<div style="margin-top:3px;color:#64748b;font-size:11px;font-style:italic;">${h.nota}</div>`:''}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('ht-body').innerHTML = html;
+}
 </script>
+
+<!-- MODAL HISTORIAL -->
+<div id="modal-historial" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1001;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:15px;font-weight:800;color:var(--dcja-navy);margin-bottom:16px;" id="ht-title">Historial</h3>
+    <div id="ht-body"></div>
+    <div style="text-align:right;margin-top:16px;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-historial').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
