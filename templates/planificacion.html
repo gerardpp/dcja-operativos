@@ -48,6 +48,7 @@
           {% for item in items %}
           <div style="font-size:11px;padding:2px 0;border-bottom:1px dashed #eef0f6;display:flex;gap:8px;align-items:center;">
             <span style="color:var(--muted);">—</span>
+            {% if item.fuente == 'manual' %}<span style="background:#ede9fe;color:#5b21b6;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;">MANUAL</span>{% endif %}
             <span style="font-weight:600;">{{ item.nombre }}</span>
             <span style="color:var(--muted);">{{ item.municipio }}</span>
             {% if 'DEPORTIVA' in item.tipo|upper %}<span class="badge b-dep" style="font-size:9px;">DEP</span>{% endif %}
@@ -71,7 +72,7 @@
     {% endfor %}
     </div>
     {% else %}
-    <div style="text-align:center;padding:32px;color:#94a3b8;">No hay denuncias pendientes. Ve a <a href="/denuncias" style="color:var(--dcja-blue);font-weight:700;">Denuncias</a> y sube el Excel.</div>
+    <div style="text-align:center;padding:32px;color:#94a3b8;">No hay denuncias pendientes. Ve a <a href="/denuncias" style="color:var(--dcja-blue);font-weight:700;">Denuncias</a> para subir el Excel o espera que el Dpto. de Denuncias ingrese casos.</div>
     {% endif %}
   </div>
 </div>
@@ -183,6 +184,8 @@ function agregarGrupoByBtn(btn, idx){
   btn.disabled=true; btn.textContent='...';
   const tieneD = items.some(i=>i.tipo.toUpperCase().includes('DEPORTIVA'));
   const tipo = tieneD ? 'BANCA DE APUESTAS DEPORTIVAS' : 'BANCAS DE LOTERIA';
+  // Pass denuncia_manual_id if first item is manual
+  const primeraManual = items[0].fuente === 'manual' ? items[0].id : null;
   api('/planificacion/agregar_operativo',{
     semana:SEMANA, tipo,
     nombre: items.map(i=>i.nombre).join(' / '),
@@ -192,6 +195,7 @@ function agregarGrupoByBtn(btn, idx){
     zona: zona,
     fuente: 'denuncia',
     no_oficio: items.map(i=>i.no_oficio).join(', '),
+    denuncia_manual_id: primeraManual,
     fecha: fecha
   }).then(r=>{
     if(r.ok){ toast('Operativo agregado — '+zona); setTimeout(()=>location.reload(),800); }
@@ -229,4 +233,4 @@ calcInfo();
 document.getElementById('vehiculos-input').addEventListener('input',calcInfo);
 document.getElementById('militares-input').addEventListener('input',calcInfo);
 </script>
-{% endblock %} 
+{% endblock %}
