@@ -211,6 +211,55 @@ def init_db():
                 audit_json TEXT
             )''')
         except: pass
+        # Migration: denuncia_manual_id on operativos
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN denuncia_manual_id INTEGER")
+        except: pass
+        # Migration: historial_estados table
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tabla TEXT NOT NULL,
+                registro_id INTEGER NOT NULL,
+                fecha TEXT NOT NULL,
+                usuario TEXT NOT NULL,
+                rol TEXT NOT NULL,
+                estado_anterior TEXT,
+                estado_nuevo TEXT NOT NULL,
+                nota TEXT DEFAULT ''
+            )''')
+        except: pass
+        # Migration: denuncias_manual table
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS denuncias_manual (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                no_oficio TEXT,
+                fecha_entrada TEXT,
+                tipo TEXT,
+                nombre TEXT,
+                sector TEXT,
+                municipio TEXT,
+                provincia TEXT,
+                direccion TEXT,
+                zona_inferida TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                ingresado_por TEXT,
+                usuario_id INTEGER,
+                hallazgos TEXT DEFAULT '',
+                resolucion TEXT DEFAULT '',
+                created_at TEXT
+            )''')
+        except: pass
+        # Migration: hallazgos/resolucion/estado on denuncias (excel table)
+        try:
+            db.execute("ALTER TABLE denuncias ADD COLUMN estado TEXT DEFAULT 'pendiente'")
+        except: pass
+        try:
+            db.execute("ALTER TABLE denuncias ADD COLUMN hallazgos TEXT DEFAULT ''")
+        except: pass
+        try:
+            db.execute("ALTER TABLE denuncias ADD COLUMN resolucion TEXT DEFAULT ''")
+        except: pass
         # Seed: create default admin if no users exist
         try:
             u = db.fetchone('SELECT COUNT(*) as c FROM usuarios')
