@@ -576,14 +576,24 @@ def planificacion_view():
     monday = today - timedelta(days=today.weekday())
     week_days = [(monday + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(5)]
     with get_db() as db:
-        dp  = [dict(r) for r in db.fetchall(
-            "SELECT * FROM denuncias WHERE estado='pendiente' ORDER BY provincia,municipio")]
+        # Excel-loaded denuncias
+        dp_excel = [dict(r) for r in db.fetchall(
+            "SELECT *, 'excel' as fuente FROM denuncias WHERE estado='pendiente' ORDER BY provincia,municipio")]
+        # Manually entered denuncias (any non-closed state)
+        dp_manual = [dict(r) for r in db.fetchall(
+            """SELECT *, 'manual' as fuente FROM denuncias_manual
+               WHERE estado NOT IN ('cerrada','ejecutada','con_decomiso')
+               ORDER BY created_at DESC""")]
         sr  = db.fetchone("SELECT * FROM semanas WHERE semana=?", (semana,))
         ops = [dict(r) for r in db.fetchall(
             "SELECT * FROM operativos WHERE semana=? ORDER BY fecha,id", (semana,))]
+    # Combine both sources
+    dp = dp_excel + dp_manual
+    for d in dp:
+        d['zona_inferida'] = inferir_zona(d.get('provincia',''), d.get('municipio',''))
     grupos = {}
     for d in dp:
-        z = inferir_zona(d['provincia'], d['municipio'])
+        z = d['zona_inferida']
         grupos.setdefault(z, []).append(d)
     zonas_agregadas = list({o['zona_operativo'] for o in ops if o['zona_operativo']})
     return render_template('planificacion.html', grupos=grupos, semana=semana,
