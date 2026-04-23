@@ -225,7 +225,7 @@ async function eliminarOp(id,btn){
   btn.disabled=true;
   const r=await fetch('/planificacion/eliminar_operativo/'+id,{method:'DELETE'});
   const d=await r.json();
-  if(d.ok){document.getElementById('op-row-'+id).remove();toast('Operativo eliminado');}
+  if(d.ok){ toast('Operativo eliminado'); setTimeout(()=>location.reload(), 800); }
   else btn.disabled=false;
 }
 
