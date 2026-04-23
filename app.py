@@ -477,12 +477,23 @@ def reset_carga():
 @login_required
 def denuncias_view():
     with get_db() as db:
-        rows = [dict(r) for r in db.fetchall("SELECT * FROM denuncias ORDER BY provincia,municipio")]
-        logs = [dict(r) for r in db.fetchall("SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10")]
-    for r in rows:
+        excel_rows = [dict(r) for r in db.fetchall(
+            "SELECT * FROM denuncias ORDER BY provincia,municipio")]
+        manual_rows = [dict(r) for r in db.fetchall(
+            "SELECT * FROM denuncias_manual ORDER BY created_at DESC")]
+        logs = [dict(r) for r in db.fetchall(
+            "SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10")]
+    for r in excel_rows:
         r['zona_inferida'] = inferir_zona(r['provincia'], r['municipio'])
         r['dias'] = dias_pendiente(r['fecha_entrada'])
-    return render_template('denuncias.html', denuncias=rows, logs=logs)
+        r['fuente'] = 'excel'
+    for r in manual_rows:
+        r['zona_inferida'] = r.get('zona_inferida') or inferir_zona(r.get('provincia',''), r.get('municipio',''))
+        r['dias'] = dias_pendiente(r.get('fecha_entrada',''))
+        r['fuente'] = 'manual'
+    rows = manual_rows + excel_rows
+    pendientes = sum(1 for r in rows if r.get('estado') == 'pendiente')
+    return render_template('denuncias.html', denuncias=rows, logs=logs, pendientes=pendientes)
 
 @app.route('/denuncias/upload', methods=['POST'])
 @rol_required('admin')
@@ -560,15 +571,18 @@ def guardar_semana():
 def agregar_operativo():
     d = request.json
     br = 2 if 'DEPORTIVA' in str(d.get('tipo','')).upper() else 1
+    den_id = d.get('denuncia_manual_id')
     with get_db() as db:
         db.execute('''INSERT INTO operativos
             (semana,fecha,tipo,nombre,direccion,municipio,provincia,
-             zona_operativo,brigadas_requeridas,fuente,no_oficio,created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+             zona_operativo,brigadas_requeridas,fuente,no_oficio,created_at,denuncia_manual_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
             (d['semana'], d.get('fecha',''), d.get('tipo',''), d.get('nombre',''),
              d.get('direccion',''), d.get('municipio',''), d.get('provincia',''),
              d.get('zona',''), br, d.get('fuente','denuncia'),
-             d.get('no_oficio',''), datetime.now().isoformat()))
+             d.get('no_oficio',''), datetime.now().isoformat(), den_id))
+        if den_id:
+            db.execute("UPDATE denuncias_manual SET estado='planificada' WHERE id=?", (den_id,))
     return jsonify(ok=True)
 
 @app.route('/planificacion/eliminar_operativo/<int:oid>', methods=['DELETE'])
@@ -730,13 +744,31 @@ def confirmar_asignacion():
 @rol_required('admin')
 def guardar_resultado():
     d = request.json
+    ejecutado = d.get('ejecutado', -1)
     with get_db() as db:
         db.execute('''UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,
                       decomiso=?,decomiso_detalle=? WHERE id=?''',
-                   (d.get('ejecutado',-1), d.get('resultado',''), d.get('observaciones',''),
+                   (ejecutado, d.get('resultado',''), d.get('observaciones',''),
                     d.get('decomiso',0), d.get('decomiso_detalle',''), d['id']))
+        # Auto-update linked denuncia_manual status based on result
+        op = db.fetchone('SELECT denuncia_manual_id FROM operativos WHERE id=?', (d['id'],))
+        if op and op.get('denuncia_manual_id'):
+            nuevo = 'cerrada' if ejecutado == 1 else 'en_ejecucion'
+            db.execute("UPDATE denuncias_manual SET estado=? WHERE id=?",
+                       (nuevo, op['denuncia_manual_id']))
         if d.get('cerrar_denuncia') and d.get('no_oficio'):
             db.execute("UPDATE denuncias SET estado='cerrada' WHERE no_oficio=?", (d['no_oficio'],))
+    return jsonify(ok=True)
+
+@app.route('/denuncias_manual/actualizar', methods=['POST'])
+@login_required
+def actualizar_denuncia_manual():
+    if current_user.rol not in ['admin','operaciones']:
+        return jsonify(ok=False, error='Sin permiso'), 403
+    d = request.json
+    with get_db() as db:
+        db.execute("UPDATE denuncias_manual SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
+            (d['estado'], d.get('hallazgos',''), d.get('resolucion',''), d['id']))
     return jsonify(ok=True)
 
 @app.route('/operativo/vehiculos', methods=['POST'])
