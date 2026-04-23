@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Denuncias del Departamento{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Denuncias — Departamento de Denuncias</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">
+      {{ denuncias|length }} denuncia(s) en total
+      {% if pendientes > 0 %}<span style="background:#dc2626;color:#fff;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;">{{ pendientes }} pendiente(s)</span>{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th>
+        <th>No. Oficio</th>
+        <th>Fecha</th>
+        <th>Tipo</th>
+        <th>Nombre</th>
+        <th>Municipio</th>
+        <th>Provincia</th>
+        <th>Dias</th>
+        <th>Ingresado por</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr></thead>
+      <tbody>
+        {% for d in denuncias %}
+        <tr id="den-{{ d.id }}">
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10.5px;">{{ d.no_oficio or '—' }}</td>
+          <td style="font-size:11px;white-space:nowrap;">{{ d.fecha_entrada or '—' }}</td>
+          <td>
+            {% if 'DEPORTIVA' in d.tipo|upper %}<span class="badge b-dep">Dep.</span>
+            {% else %}<span class="badge b-lot">Lot.</span>{% endif %}
+          </td>
+          <td style="font-weight:600;">{{ d.nombre }}</td>
+          <td style="font-size:11px;">{{ d.municipio or '—' }}</td>
+          <td style="font-size:11px;font-weight:600;">{{ d.provincia }}</td>
+          <td>
+            <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;
+              {% if d.dias > 90 %}background:#fee2e2;color:#991b1b;
+              {% elif d.dias > 30 %}background:#fef3c7;color:#92400e;
+              {% else %}background:#dcfce7;color:#166534;{% endif %}">
+              {{ d.dias }}d
+            </span>
+          </td>
+          <td style="font-size:11px;color:var(--muted);">{{ d.ingresado_por or '—' }}</td>
+          <td>
+            {% if d.estado == 'pendiente' %}<span class="badge b-red">Pendiente</span>
+            {% elif d.estado == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Planificada</span>
+            {% elif d.estado == 'en_ejecucion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">En Ejecucion</span>
+            {% elif d.estado == 'cerrada' %}<span class="badge b-ok">Cerrada</span>
+            {% else %}<span class="badge b-gray">{{ d.estado }}</span>{% endif %}
+          </td>
+          <td>
+            <button class="btn btn-p btn-sm" onclick="abrirActualizar({{ d.id }},'{{ d.estado }}','{{ d.nombre|replace("'","") }}','{{ d.hallazgos|replace("'","") }}','{{ d.resolucion|replace("'","") }}')">
+              Actualizar estado
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11" style="text-align:center;padding:40px;color:#94a3b8;">
+          No hay denuncias ingresadas por el departamento aun.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL ACTUALIZAR ESTADO -->
+<div id="modal-estado" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:15px;font-weight:800;color:var(--dcja-navy);margin-bottom:6px;" id="modal-den-nombre"></h3>
+    <p style="font-size:11.5px;color:var(--muted);margin-bottom:16px;">Actualiza el estado y agrega hallazgos o resolucion. El departamento de denuncias vera el estado actualizado.</p>
+    <input type="hidden" id="est-id">
+    <div class="form-grid" style="gap:12px;">
+      <div class="fg" style="grid-column:span 2;">
+        <label class="fl">Nuevo Estado</label>
+        <select id="est-estado" style="font-size:13px;padding:8px 11px;">
+          <option value="pendiente">Pendiente</option>
+          <option value="planificada">Planificada</option>
+          <option value="en_ejecucion">En Ejecucion</option>
+          <option value="cerrada">Cerrada</option>
+        </select>
+      </div>
+      <div class="fg" style="grid-column:span 2;">
+        <label class="fl">Hallazgos</label>
+        <textarea id="est-hallazgos" rows="3" style="font-size:12.5px;padding:8px 11px;border:1.5px solid var(--border);border-radius:6px;width:100%;font-family:'Libre Franklin',sans-serif;" placeholder="Describe los hallazgos del operativo..."></textarea>
+      </div>
+      <div class="fg" style="grid-column:span 2;">
+        <label class="fl">Resolucion</label>
+        <textarea id="est-resolucion" rows="2" style="font-size:12.5px;padding:8px 11px;border:1.5px solid var(--border);border-radius:6px;width:100%;font-family:'Libre Franklin',sans-serif;" placeholder="Accion tomada o resolucion final..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-estado').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirActualizar(id, estado, nombre, hallazgos, resolucion){
+  document.getElementById('est-id').value = id;
+  document.getElementById('modal-den-nombre').textContent = nombre;
+  document.getElementById('est-estado').value = estado;
+  document.getElementById('est-hallazgos').value = hallazgos;
+  document.getElementById('est-resolucion').value = resolucion;
+  document.getElementById('modal-estado').style.display = 'flex';
+}
+
+async function guardarEstado(){
+  const id = document.getElementById('est-id').value;
+  const r = await api('/operaciones/denuncias/actualizar', {
+    id: parseInt(id),
+    estado:     document.getElementById('est-estado').value,
+    hallazgos:  document.getElementById('est-hallazgos').value,
+    resolucion: document.getElementById('est-resolucion').value,
+  });
+  if(r.ok){
+    toast('Estado actualizado correctamente', '#166534');
+    document.getElementById('modal-estado').style.display = 'none';
+    setTimeout(()=>location.reload(), 1000);
+  } else {
+    toast('Error al guardar', '#dc2626');
+  }
+}
+</script>
+{% endblock %}
