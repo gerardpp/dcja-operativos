@@ -270,7 +270,11 @@ def init_db():
             for p in PERSONAL:
                 db.execute('INSERT INTO personal_state (persona_id, zona_counts) VALUES (?,?)', (p['id'],'{}'))
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    import logging
+    logging.error(f"init_db failed: {e}")
 
 # ── HELPERS ──────────────────────────────────────────────────
 def get_all_states():
@@ -1005,9 +1009,22 @@ def mis_denuncias_view():
     if current_user.rol not in ['denuncias']:
         return redirect(url_for('index'))
     with get_db() as db:
-        rows = [dict(r) for r in db.fetchall(
+        # Manual denuncias ingresadas por este usuario
+        manual_rows = [dict(r) for r in db.fetchall(
             "SELECT * FROM denuncias_manual WHERE usuario_id=? ORDER BY created_at DESC",
             (current_user.id,))]
+        # Excel denuncias (visible to all denuncias profiles)
+        excel_rows = [dict(r) for r in db.fetchall(
+            "SELECT * FROM denuncias ORDER BY fecha_entrada DESC")]
+    for r in manual_rows:
+        r['fuente'] = 'manual'
+        r['dias'] = dias_pendiente(r.get('fecha_entrada',''))
+    for r in excel_rows:
+        r['fuente'] = 'excel'
+        r['dias'] = dias_pendiente(r.get('fecha_entrada',''))
+        r['zona_inferida'] = inferir_zona(r.get('provincia',''), r.get('municipio',''))
+    # Merge: manual first then excel
+    rows = manual_rows + excel_rows
     return render_template('mis_denuncias.html', denuncias=rows)
 
 @app.route('/mis_denuncias/ingresar', methods=['POST'])
@@ -1045,9 +1062,12 @@ def exportar_mis_denuncias():
     from flask import send_file
     with get_db() as db:
         if current_user.rol == 'denuncias':
-            rows = [dict(r) for r in db.fetchall(
+            manual = [dict(r) for r in db.fetchall(
                 "SELECT * FROM denuncias_manual WHERE usuario_id=? ORDER BY created_at DESC",
                 (current_user.id,))]
+            excel  = [dict(r) for r in db.fetchall(
+                "SELECT * FROM denuncias ORDER BY fecha_entrada DESC")]
+            rows = manual + excel
         else:
             rows = [dict(r) for r in db.fetchall(
                 "SELECT * FROM denuncias_manual ORDER BY created_at DESC")]
