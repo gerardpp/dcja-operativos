@@ -221,6 +221,27 @@ def init_db():
                     ('admin', pw, 'Administrador del Sistema', 'admin', datetime.now().isoformat())
                 )
         except: pass
+        # Migration: add estado/hallazgos/resolucion to excel denuncias
+        try: db.execute("ALTER TABLE denuncias ADD COLUMN estado TEXT DEFAULT 'pendiente'")
+        except: pass
+        try: db.execute("ALTER TABLE denuncias ADD COLUMN hallazgos TEXT DEFAULT ''")
+        except: pass
+        try: db.execute("ALTER TABLE denuncias ADD COLUMN resolucion TEXT DEFAULT ''")
+        except: pass
+        # Migration: historial_estados - trazabilidad de cambios de estado
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tabla TEXT NOT NULL,
+                registro_id INTEGER NOT NULL,
+                fecha TEXT NOT NULL,
+                usuario TEXT NOT NULL,
+                rol TEXT NOT NULL,
+                estado_anterior TEXT,
+                estado_nuevo TEXT NOT NULL,
+                nota TEXT DEFAULT ''
+            )''')
+        except: pass
         # Migration: denuncias_manual
         try:
             db.execute('''CREATE TABLE IF NOT EXISTS denuncias_manual (
@@ -299,6 +320,19 @@ def select_fair(pool, n, zona, all_states=None):
     t2=[x[2] for x in scored if t(x[0])==2]; random.shuffle(t2)
     t3=[x[2] for x in scored if t(x[0])==3]; random.shuffle(t3)
     return (t1+t2+t3)[:n]
+
+def registrar_cambio_estado(tabla, registro_id, estado_anterior, estado_nuevo, nota=''):
+    """Registra cualquier cambio de estado con trazabilidad completa."""
+    try:
+        usuario = current_user.username if current_user.is_authenticated else 'sistema'
+        rol     = current_user.rol      if current_user.is_authenticated else 'sistema'
+        with get_db() as db:
+            db.execute('''INSERT INTO historial_estados
+                (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
+                VALUES (?,?,?,?,?,?,?,?)''',
+                (tabla, registro_id, datetime.now().isoformat(),
+                 usuario, rol, estado_anterior, estado_nuevo, nota))
+    except: pass
 
 def inferir_zona(prov, mun):
     p = str(prov).upper() if prov and str(prov).lower() not in ['nan','none',''] else ''
@@ -740,24 +774,53 @@ def confirmar_asignacion():
                                (fecha, json.dumps(zc), pid))
     return jsonify(ok=True)
 
+# Estado mapping from operativo result to denuncia estado
+ESTADO_MAP = {
+    1:  'ejecutada',      # Ejecutado = Si
+    0:  'no_ejecutada',   # Ejecutado = No
+    2:  'con_decomiso',   # Ejecutado con decomiso
+}
+
 @app.route('/operativo/resultado', methods=['POST'])
 @rol_required('admin')
 def guardar_resultado():
     d = request.json
     ejecutado = d.get('ejecutado', -1)
+    decomiso  = d.get('decomiso', 0)
+    # Determine denuncia estado from result
+    if ejecutado == 1 and decomiso == 1:
+        nuevo_estado_den = 'con_decomiso'
+    elif ejecutado == 1:
+        nuevo_estado_den = 'ejecutada'
+    elif ejecutado == 0:
+        nuevo_estado_den = 'no_ejecutada'
+    else:
+        nuevo_estado_den = None
     with get_db() as db:
         db.execute('''UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,
                       decomiso=?,decomiso_detalle=? WHERE id=?''',
                    (ejecutado, d.get('resultado',''), d.get('observaciones',''),
-                    d.get('decomiso',0), d.get('decomiso_detalle',''), d['id']))
-        # Auto-update linked denuncia_manual status based on result
-        op = db.fetchone('SELECT denuncia_manual_id FROM operativos WHERE id=?', (d['id'],))
-        if op and op.get('denuncia_manual_id'):
-            nuevo = 'cerrada' if ejecutado == 1 else 'en_ejecucion'
-            db.execute("UPDATE denuncias_manual SET estado=? WHERE id=?",
-                       (nuevo, op['denuncia_manual_id']))
+                    decomiso, d.get('decomiso_detalle',''), d['id']))
+        # Auto-update linked denuncia_manual with traceability
+        if nuevo_estado_den:
+            op = db.fetchone('SELECT denuncia_manual_id FROM operativos WHERE id=?', (d['id'],))
+            if op and op.get('denuncia_manual_id'):
+                actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?',
+                                     (op['denuncia_manual_id'],))
+                anterior = actual['estado'] if actual else None
+                db.execute("UPDATE denuncias_manual SET estado=? WHERE id=?",
+                           (nuevo_estado_den, op['denuncia_manual_id']))
+                registrar_cambio_estado('denuncias_manual', op['denuncia_manual_id'],
+                    anterior, nuevo_estado_den,
+                    f"Automatico — Ejecucion Diaria: {d.get('observaciones','')[:80]}")
         if d.get('cerrar_denuncia') and d.get('no_oficio'):
-            db.execute("UPDATE denuncias SET estado='cerrada' WHERE no_oficio=?", (d['no_oficio'],))
+            actual = db.fetchone('SELECT estado FROM denuncias WHERE no_oficio=?',
+                                 (d['no_oficio'],))
+            anterior = actual['estado'] if actual else None
+            db.execute("UPDATE denuncias SET estado='cerrada' WHERE no_oficio=?",
+                       (d['no_oficio'],))
+            registrar_cambio_estado('denuncias', d['no_oficio'],
+                anterior, 'cerrada', 'Automatico — Denuncia cerrada via Ejecucion Diaria')
     return jsonify(ok=True)
 
 @app.route('/denuncias_manual/actualizar', methods=['POST'])
@@ -766,9 +829,26 @@ def actualizar_denuncia_manual():
     if current_user.rol not in ['admin','operaciones']:
         return jsonify(ok=False, error='Sin permiso'), 403
     d = request.json
+    fuente   = d.get('fuente','manual')
+    nuevo    = d['estado']
+    hallazgos= d.get('hallazgos','')
+    resolucion=d.get('resolucion','')
+    nota     = d.get('nota','')
     with get_db() as db:
-        db.execute("UPDATE denuncias_manual SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
-            (d['estado'], d.get('hallazgos',''), d.get('resolucion',''), d['id']))
+        if fuente == 'excel':
+            actual = db.fetchone('SELECT estado FROM denuncias WHERE id=?', (d['id'],))
+            anterior = actual['estado'] if actual else None
+            db.execute("UPDATE denuncias SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
+                (nuevo, hallazgos, resolucion, d['id']))
+            registrar_cambio_estado('denuncias', d['id'], anterior, nuevo,
+                nota or hallazgos[:80] if hallazgos else '')
+        else:
+            actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (d['id'],))
+            anterior = actual['estado'] if actual else None
+            db.execute("UPDATE denuncias_manual SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
+                (nuevo, hallazgos, resolucion, d['id']))
+            registrar_cambio_estado('denuncias_manual', d['id'], anterior, nuevo,
+                nota or hallazgos[:80] if hallazgos else '')
     return jsonify(ok=True)
 
 @app.route('/operativo/vehiculos', methods=['POST'])
@@ -1031,6 +1111,16 @@ def actualizar_estado_denuncia():
             "UPDATE denuncias_manual SET estado=?,hallazgos=?,resolucion=? WHERE id=?",
             (estado, hallazgos, resolucion, did))
     return jsonify(ok=True)
+
+@app.route('/denuncias/historial/<fuente>/<int:did>')
+@login_required
+def historial_denuncia(fuente, did):
+    tabla = 'denuncias' if fuente == 'excel' else 'denuncias_manual'
+    with get_db() as db:
+        logs = [dict(r) for r in db.fetchall(
+            "SELECT * FROM historial_estados WHERE tabla=? AND registro_id=? ORDER BY fecha",
+            (tabla, did))]
+    return jsonify(ok=True, historial=logs)
 
 @app.route('/mapa')
 @login_required
