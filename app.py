@@ -897,6 +897,9 @@ def actualizar_denuncia_manual():
     hallazgos= d.get('hallazgos','')
     resolucion=d.get('resolucion','')
     nota     = d.get('nota','')
+    # Block system-only states from being set manually
+    if nuevo in ('ejecutada','con_decomiso','cerrada'):
+        return jsonify(ok=False, error='Este estado solo lo puede asignar el sistema via Ejecucion Diaria.'), 403
     with get_db() as db:
         if fuente == 'excel':
             actual = db.fetchone('SELECT estado FROM denuncias WHERE id=?', (d['id'],))
@@ -1220,4 +1223,4 @@ def mapa_view():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False) 
