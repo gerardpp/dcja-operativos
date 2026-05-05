@@ -391,13 +391,17 @@ def registrar_cambio_estado(tabla, registro_id, estado_anterior, estado_nuevo, n
     try:
         usuario = current_user.username if current_user.is_authenticated else 'sistema'
         rol     = current_user.rol      if current_user.is_authenticated else 'sistema'
-        with get_db() as db:
-            db.execute('''INSERT INTO historial_estados
-                (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
-                VALUES (?,?,?,?,?,?,?,?)''',
-                (tabla, registro_id, datetime.now().isoformat(),
-                 usuario, rol, estado_anterior, estado_nuevo, nota))
-    except: pass
+        db = get_db()
+        db.execute('''INSERT INTO historial_estados
+            (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
+            VALUES (?,?,?,?,?,?,?,?)''',
+            (tabla, registro_id, datetime.now().isoformat(),
+             usuario, rol, estado_anterior, estado_nuevo, nota))
+        db.commit()
+        db.close()
+    except Exception as e:
+        import logging
+        logging.warning(f"registrar_cambio_estado failed: {e}")
 
 def inferir_zona(prov, mun):
     p = str(prov).upper() if prov and str(prov).lower() not in ['nan','none',''] else ''
@@ -987,7 +991,7 @@ def historial_view():
         ops_semana = [dict(r) for r in db.fetchall(
             "SELECT * FROM operativos WHERE semana=? ORDER BY fecha,id", (semana,))]
         ops_all = [dict(r) for r in db.fetchall(
-            "SELECT * FROM operativos WHERE estado='asignado' ORDER BY fecha DESC,id DESC")]
+            "SELECT * FROM operativos WHERE ejecutado != -1 OR resultado_final != '' ORDER BY fecha DESC,id DESC")]
         semanas_list = [dict(r) for r in db.fetchall(
             "SELECT DISTINCT semana FROM operativos ORDER BY semana DESC")]
     for o in ops_semana: o['brigadas'] = json.loads(o['brigadas_json'] or '[]')
