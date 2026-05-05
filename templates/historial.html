@@ -178,7 +178,7 @@
           <th style="color:#fff;padding:6px 8px;">Provincia</th>
           <th style="color:#fff;padding:6px 8px;text-align:center;">V.</th>
           <th style="color:#fff;padding:6px 8px;">Personal DCJA</th>
-          <th style="color:#fff;padding:6px 8px;text-align:center;">Ejec.</th>
+          <th style="color:#fff;padding:6px 8px;text-align:center;">Resultado</th>
           <th style="color:#fff;padding:6px 8px;text-align:center;background:#92400e;">Sin Incaut.</th>
           <th style="color:#fff;padding:6px 8px;text-align:center;">Decomiso</th>
           <th style="color:#fff;padding:6px 8px;">Observaciones</th>
@@ -206,12 +206,16 @@
             {% endfor %}
           </td>
           <td style="text-align:center;">
-            {% if op.resultado_final == 'ejecutado' or (op.ejecutado==1 and op.resultado_final != 'ejecutado_sin_incautacion') %}
-              <span class="badge b-ok">Si</span>
-            {% elif op.resultado_final == 'no_ejecutado' or op.ejecutado==0 %}
-              <span class="badge b-red">No</span>
+            {% if op.resultado_final == 'ejecutado' %}
+              <span class="badge b-ok">Ejecutado</span>
+            {% elif op.resultado_final == 'con_decomiso' %}
+              <span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso</span>
             {% elif op.resultado_final == 'ejecutado_sin_incautacion' %}
-              <span class="badge" style="background:#fef3c7;color:#92400e;">Parcial</span>
+              <span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
+            {% elif op.resultado_final == 'no_ejecutado' or op.ejecutado==0 %}
+              <span class="badge b-red">No Ejecutado</span>
+            {% elif op.ejecutado==1 %}
+              <span class="badge b-ok">Ejecutado</span>
             {% else %}<span style="color:#94a3b8;font-size:9px;">—</span>{% endif %}
           </td>
           <td style="text-align:center;">
