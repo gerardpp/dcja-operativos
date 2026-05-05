@@ -211,9 +211,21 @@ def init_db():
                 audit_json TEXT
             )''')
         except: pass
-        # Migration: denuncia_manual_id on operativos
+        # Migration: new operativos columns
         try:
             db.execute("ALTER TABLE operativos ADD COLUMN denuncia_manual_id INTEGER")
+        except: pass
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN via_comunicacion TEXT DEFAULT ''")
+        except: pass
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN observacion_orden TEXT DEFAULT ''")
+        except: pass
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN resultado_final TEXT DEFAULT ''")
+        except: pass
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN bloqueado INTEGER DEFAULT 0")
         except: pass
         # Migration: historial_estados table
         try:
@@ -672,14 +684,18 @@ def agregar_operativo():
     with get_db() as db:
         db.execute('''INSERT INTO operativos
             (semana,fecha,tipo,nombre,direccion,municipio,provincia,
-             zona_operativo,brigadas_requeridas,fuente,no_oficio,created_at,denuncia_manual_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+             zona_operativo,brigadas_requeridas,fuente,no_oficio,created_at,
+             denuncia_manual_id,via_comunicacion,observacion_orden)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
             (d['semana'], d.get('fecha',''), d.get('tipo',''), d.get('nombre',''),
              d.get('direccion',''), d.get('municipio',''), d.get('provincia',''),
              d.get('zona',''), br, d.get('fuente','denuncia'),
-             d.get('no_oficio',''), datetime.now().isoformat(), den_id))
+             d.get('no_oficio',''), datetime.now().isoformat(), den_id,
+             d.get('via_comunicacion',''), d.get('observacion','')))
         if den_id:
             db.execute("UPDATE denuncias_manual SET estado='planificada' WHERE id=?", (den_id,))
+            registrar_cambio_estado('denuncias_manual', den_id, 'pendiente', 'planificada',
+                                    'Automatico — Incluida en planificacion semanal')
     return jsonify(ok=True)
 
 @app.route('/planificacion/eliminar_operativo/<int:oid>', methods=['DELETE'])
@@ -837,53 +853,54 @@ def confirmar_asignacion():
                                (fecha, json.dumps(zc), pid))
     return jsonify(ok=True)
 
-# Estado mapping from operativo result to denuncia estado
-ESTADO_MAP = {
-    1:  'ejecutada',      # Ejecutado = Si
-    0:  'no_ejecutada',   # Ejecutado = No
-    2:  'con_decomiso',   # Ejecutado con decomiso
-}
-
 @app.route('/operativo/resultado', methods=['POST'])
 @rol_required('admin')
 def guardar_resultado():
     d = request.json
     ejecutado = d.get('ejecutado', -1)
     decomiso  = d.get('decomiso', 0)
-    # Determine denuncia estado from result
-    if ejecutado == 1 and decomiso == 1:
-        nuevo_estado_den = 'con_decomiso'
-    elif ejecutado == 1:
+    resultado_final = d.get('resultado_final','')  # 'ejecutado','ejecutado_sin_incautacion','no_ejecutado'
+
+    # Determine denuncia estado and whether to block operativo
+    if resultado_final == 'ejecutado':
         nuevo_estado_den = 'ejecutada'
-    elif ejecutado == 0:
-        nuevo_estado_den = 'no_ejecutada'
+        bloquear = 1  # Cannot change after executed with incautacion
+    elif resultado_final == 'con_decomiso':
+        nuevo_estado_den = 'con_decomiso'
+        bloquear = 1
+    elif resultado_final == 'ejecutado_sin_incautacion':
+        nuevo_estado_den = 'pendiente'  # Stays pending for reassignment
+        bloquear = 1  # This specific operativo is locked
+    elif resultado_final == 'no_ejecutado':
+        nuevo_estado_den = 'pendiente'  # Stays pending
+        bloquear = 0
     else:
         nuevo_estado_den = None
+        bloquear = 0
+
     with get_db() as db:
+        # Check if already blocked
+        op = db.fetchone('SELECT * FROM operativos WHERE id=?', (d['id'],))
+        if op and op.get('bloqueado') == 1:
+            return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse.'), 403
+
         db.execute('''UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,
-                      decomiso=?,decomiso_detalle=? WHERE id=?''',
+                      decomiso=?,decomiso_detalle=?,resultado_final=?,bloqueado=? WHERE id=?''',
                    (ejecutado, d.get('resultado',''), d.get('observaciones',''),
-                    decomiso, d.get('decomiso_detalle',''), d['id']))
-        # Auto-update linked denuncia_manual with traceability
-        if nuevo_estado_den:
-            op = db.fetchone('SELECT denuncia_manual_id FROM operativos WHERE id=?', (d['id'],))
-            if op and op.get('denuncia_manual_id'):
-                actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?',
-                                     (op['denuncia_manual_id'],))
-                anterior = actual['estado'] if actual else None
-                db.execute("UPDATE denuncias_manual SET estado=? WHERE id=?",
-                           (nuevo_estado_den, op['denuncia_manual_id']))
-                registrar_cambio_estado('denuncias_manual', op['denuncia_manual_id'],
-                    anterior, nuevo_estado_den,
-                    f"Automatico — Ejecucion Diaria: {d.get('observaciones','')[:80]}")
-        if d.get('cerrar_denuncia') and d.get('no_oficio'):
-            actual = db.fetchone('SELECT estado FROM denuncias WHERE no_oficio=?',
-                                 (d['no_oficio'],))
+                    decomiso, d.get('decomiso_detalle',''),
+                    resultado_final, bloquear, d['id']))
+
+        # Auto-update linked denuncia_manual
+        if nuevo_estado_den and op and op.get('denuncia_manual_id'):
+            actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?',
+                                 (op['denuncia_manual_id'],))
             anterior = actual['estado'] if actual else None
-            db.execute("UPDATE denuncias SET estado='cerrada' WHERE no_oficio=?",
-                       (d['no_oficio'],))
-            registrar_cambio_estado('denuncias', d['no_oficio'],
-                anterior, 'cerrada', 'Automatico — Denuncia cerrada via Ejecucion Diaria')
+            db.execute("UPDATE denuncias_manual SET estado=? WHERE id=?",
+                       (nuevo_estado_den, op['denuncia_manual_id']))
+            nota_auto = f"Automatico — {resultado_final.replace('_',' ').title()}: {d.get('observaciones','')[:80]}"
+            registrar_cambio_estado('denuncias_manual', op['denuncia_manual_id'],
+                anterior, nuevo_estado_den, nota_auto)
+
     return jsonify(ok=True)
 
 @app.route('/denuncias_manual/actualizar', methods=['POST'])
@@ -1204,6 +1221,31 @@ def historial_denuncia(fuente, did):
             (tabla, did))]
     return jsonify(ok=True, historial=logs)
 
+@app.route('/denuncias/visitas/<int:did>')
+@login_required
+def visitas_denuncia(did):
+    """Historial de visitas (operativos) para una denuncia manual."""
+    with get_db() as db:
+        den = db.fetchone('SELECT * FROM denuncias_manual WHERE id=?', (did,))
+        if not den:
+            return jsonify(ok=False, error='No encontrada'), 404
+        ops = [dict(r) for r in db.fetchall(
+            """SELECT o.*, s.seed FROM operativos o
+               LEFT JOIN sorteo_audit s ON s.operativo_id=o.id
+               WHERE o.denuncia_manual_id=?
+               ORDER BY o.fecha DESC""", (did,))]
+        # For each operativo, get assigned personal
+        for op in ops:
+            brigadas = []
+            try:
+                brigadas = json.loads(op.get('brigadas_json') or '[]')
+            except: pass
+            op['brigadas'] = brigadas
+            op['sin_incautacion'] = op.get('resultado_final') == 'ejecutado_sin_incautacion'
+    visitas_sin_incautacion = sum(1 for o in ops if o.get('resultado_final') == 'ejecutado_sin_incautacion')
+    return jsonify(ok=True, denuncia=dict(den), operativos=ops,
+                   visitas_sin_incautacion=visitas_sin_incautacion)
+
 @app.route('/mapa')
 @login_required
 def mapa_view():
@@ -1223,4 +1265,4 @@ def mapa_view():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    app.run(host='0.0.0.0', port=port, debug=False)
