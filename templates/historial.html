@@ -116,6 +116,9 @@
             {% if d.ejecutadas > 0 %}<span class="badge b-ok">{{ d.ejecutadas }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
           </td>
           <td style="text-align:center;padding:7px 10px;">
+            {% if d.sin_incautacion > 0 %}<span class="badge" style="background:#fef3c7;color:#92400e;">{{ d.sin_incautacion }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
+          </td>
+          <td style="text-align:center;padding:7px 10px;">
             {% if d.pendientes > 0 %}<span class="badge b-red">{{ d.pendientes }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
           </td>
           <td style="text-align:center;padding:7px 10px;">
@@ -176,6 +179,7 @@
           <th style="color:#fff;padding:6px 8px;text-align:center;">V.</th>
           <th style="color:#fff;padding:6px 8px;">Personal DCJA</th>
           <th style="color:#fff;padding:6px 8px;text-align:center;">Ejec.</th>
+          <th style="color:#fff;padding:6px 8px;text-align:center;background:#92400e;">Sin Incaut.</th>
           <th style="color:#fff;padding:6px 8px;text-align:center;">Decomiso</th>
           <th style="color:#fff;padding:6px 8px;">Observaciones</th>
         </tr>
@@ -202,15 +206,29 @@
             {% endfor %}
           </td>
           <td style="text-align:center;">
-            {% if op.ejecutado==1 %}<span class="badge b-ok">Si</span>
-            {% elif op.ejecutado==0 %}<span class="badge b-red">No</span>
+            {% if op.resultado_final == 'ejecutado' or (op.ejecutado==1 and op.resultado_final != 'ejecutado_sin_incautacion') %}
+              <span class="badge b-ok">Si</span>
+            {% elif op.resultado_final == 'no_ejecutado' or op.ejecutado==0 %}
+              <span class="badge b-red">No</span>
+            {% elif op.resultado_final == 'ejecutado_sin_incautacion' %}
+              <span class="badge" style="background:#fef3c7;color:#92400e;">Parcial</span>
             {% else %}<span style="color:#94a3b8;font-size:9px;">—</span>{% endif %}
           </td>
           <td style="text-align:center;">
-            {% if op.decomiso %}<span class="badge b-red">Si</span>{% else %}<span style="color:#94a3b8;font-size:9px;">No</span>{% endif %}
+            {% if op.resultado_final == 'ejecutado_sin_incautacion' %}
+              <span class="badge" style="background:#fef3c7;color:#92400e;">Si</span>
+            {% else %}<span style="color:#94a3b8;font-size:9px;">—</span>{% endif %}
+          </td>
+          <td style="text-align:center;">
+            {% if op.decomiso or op.resultado_final == 'con_decomiso' %}
+              <span class="badge b-red">Si</span>
+            {% else %}<span style="color:#94a3b8;font-size:9px;">No</span>{% endif %}
           </td>
           <td style="font-size:9.5px;color:#475569;">
             {{ op.observaciones or '—' }}
+            {% if op.resultado_final == 'ejecutado_sin_incautacion' %}
+              <div style="color:#92400e;font-weight:600;">Ejecutado sin incautacion</div>
+            {% endif %}
             {% if op.decomiso and op.decomiso_detalle %}<div style="color:#991b1b;font-weight:600;">{{ op.decomiso_detalle }}</div>{% endif %}
           </td>
         </tr>
@@ -244,4 +262,4 @@
 const fgen=document.getElementById('fgen');
 if(fgen) fgen.textContent=new Date().toLocaleDateString('es-DO',{year:'numeric',month:'long',day:'numeric'});
 </script>
-{% endblock %} 
+{% endblock %}
