@@ -999,20 +999,25 @@ def historial_view():
     week_dates = [(monday + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(5)]
     daily = []
     for i,(dia,fecha) in enumerate(zip(dias,week_dates)):
-        plan = [o for o in ops_semana if o['fecha']==fecha]
-        ejec = [o for o in plan if o['ejecutado']==1]
-        pend = [o for o in plan if o['ejecutado']!=1]
-        pct  = round(len(ejec)/len(plan)*100) if plan else 0
-        daily.append({'dia':dia,'fecha':fecha,'planificadas':len(plan),'ejecutadas':len(ejec),'pendientes':len(pend),'pct':pct})
-    total_plan = sum(d['planificadas'] for d in daily)
-    total_ejec = sum(d['ejecutadas'] for d in daily)
-    total_pend = sum(d['pendientes'] for d in daily)
-    total_pct  = round(total_ejec/total_plan*100) if total_plan else 0
+        plan    = [o for o in ops_semana if o['fecha']==fecha]
+        ejec    = [o for o in plan if o.get('resultado_final') == 'ejecutado' or (o['ejecutado']==1 and o.get('resultado_final') not in ('ejecutado_sin_incautacion','con_decomiso',''))]
+        sin_inc = [o for o in plan if o.get('resultado_final') == 'ejecutado_sin_incautacion']
+        decomiso= [o for o in plan if o.get('resultado_final') == 'con_decomiso']
+        pend    = [o for o in plan if o['ejecutado'] not in (0,1)]
+        pct     = round((len(ejec)+len(sin_inc)+len(decomiso))/len(plan)*100) if plan else 0
+        daily.append({'dia':dia,'fecha':fecha,'planificadas':len(plan),
+                      'ejecutadas':len(ejec),'sin_incautacion':len(sin_inc),
+                      'con_decomiso':len(decomiso),'pendientes':len(pend),'pct':pct})
+    total_plan    = sum(d['planificadas'] for d in daily)
+    total_ejec    = sum(d['ejecutadas'] for d in daily)
+    total_sin_inc = sum(d['sin_incautacion'] for d in daily)
+    total_pend    = sum(d['pendientes'] for d in daily)
+    total_pct     = round((total_ejec+total_sin_inc)/total_plan*100) if total_plan else 0
     return render_template('historial.html',
         operativos=ops_all, ops_semana=ops_semana, semana=semana,
         semanas_list=[s['semana'] for s in semanas_list],
         daily=daily, total_plan=total_plan, total_ejec=total_ejec,
-        total_pend=total_pend, total_pct=total_pct)
+        total_sin_inc=total_sin_inc, total_pend=total_pend, total_pct=total_pct)
 
 @app.route('/reportes')
 @login_required
