@@ -14,7 +14,7 @@
   <div class="info-bar"><p>Marca <strong>No Disponible</strong> con su motivo. La carga acumulada se actualiza al confirmar asignaciones. Todo queda registrado en el historial.</p></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Zona</th><th>Carga</th><th>Ultima Asignacion</th><th style="text-align:center;">No Disponible</th><th>Motivo</th><th>Detalle</th><th style="text-align:center;">Conflicto</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Zona</th><th>Carga</th><th>Ultima Asignacion</th><th style="text-align:center;">No Disponible</th><th>Motivo</th><th>Detalle</th><th></th></tr></thead>
       <tbody>
         {% for p in personal %}
         <tr id="pr-{{ p.id }}">
@@ -39,11 +39,12 @@
               onchange="updateDisp({{ p.id }})">
           </td>
           <td>
-            <select id="mot-{{ p.id }}" style="font-size:11px;padding:4px 6px;min-width:120px;" onchange="updateDisp({{ p.id }})">
+            <select id="mot-{{ p.id }}" style="font-size:11px;padding:4px 6px;min-width:140px;" onchange="updateDisp({{ p.id }})">
               <option value="" {% if not p.motivo_no_disponible %}selected{% endif %}>—</option>
               <option value="Vacaciones" {% if p.motivo_no_disponible=='Vacaciones' %}selected{% endif %}>Vacaciones</option>
               <option value="Licencia" {% if p.motivo_no_disponible=='Licencia' %}selected{% endif %}>Licencia</option>
               <option value="Discapacidad" {% if p.motivo_no_disponible=='Discapacidad' %}selected{% endif %}>Discapacidad</option>
+              <option value="Conflicto de Interés" {% if p.motivo_no_disponible=='Conflicto de Interés' %}selected{% endif %}>Conflicto de Interés</option>
               <option value="Otro" {% if p.motivo_no_disponible=='Otro' %}selected{% endif %}>Otro</option>
             </select>
           </td>
@@ -51,11 +52,6 @@
             <input type="text" id="det-{{ p.id }}" value="{{ p.motivo_detalle or '' }}"
               placeholder="Especificar..." style="font-size:11px;padding:4px 7px;min-width:140px;"
               onblur="updateDisp({{ p.id }})">
-          </td>
-          <td style="text-align:center;">
-            <input type="checkbox" {% if p.conflicto %}checked{% endif %}
-              style="width:15px;height:15px;accent-color:#dc2626;cursor:pointer;"
-              onchange="updConf({{ p.id }},this.checked)">
           </td>
           <td></td>
         </tr>
@@ -151,4 +147,4 @@ async function marcarTodosDisponibles(){
   setTimeout(()=>location.reload(),1200);
 }
 </script>
-{% endblock %} 
+{% endblock %}
