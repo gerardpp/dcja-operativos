@@ -78,7 +78,7 @@
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-num" style="background:#7c3aed;color:#fff;">E</div><h2>Agregar Operativo por Orden de Direccion</h2></div>
+  <div class="card-head"><div class="card-num" style="background:#7c3aed;color:#fff;">2.1</div><h2>Agregar Operativo por Orden de Direccion</h2></div>
   <div class="card-body">
     <div class="alert alert-blue">Los operativos por Orden de Direccion tienen prioridad sobre las denuncias en la asignacion de vehiculos.</div>
     <div class="form-grid">
@@ -91,7 +91,7 @@
           <option value="Otro">Otro</option>
         </select>
       </div>
-      <div class="fg"><label class="fl">Nombre del Establecimiento</label><input type="text" id="od-nombre" placeholder="Nombre"></div>
+      <div class="fg"><label class="fl">Nombre del Establecimiento</label><input type="text" id="od-nombre" placeholder="Nombre del establecimiento"></div>
       <div class="fg"><label class="fl">Fecha de Ejecucion</label>
         <select id="od-fecha">
           <option value="">— Seleccionar dia —</option>
@@ -111,7 +111,20 @@
           <option>Puerto Plata</option><option>La Altagracia</option><option>Otras Provincias</option>
         </select>
       </div>
-      <div class="fg"><label class="fl">No. Instruccion / Oficio</label><input type="text" id="od-oficio"></div>
+      <div class="fg"><label class="fl">Via de Comunicacion</label>
+        <select id="od-via">
+          <option value="">— Seleccionar —</option>
+          <option value="Memorando">Memorando</option>
+          <option value="Verbal">Verbal</option>
+          <option value="Llamada telefonica">Llamada telefonica</option>
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Correo electronico">Correo electronico</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="fg span2"><label class="fl">Observacion</label>
+        <input type="text" id="od-observacion" placeholder="Instrucciones o contexto de la orden...">
+      </div>
     </div>
     <div style="margin-top:14px;">
       <button class="btn btn-p" onclick="agregarOrden()">Agregar Orden de Direccion</button>
@@ -214,7 +227,10 @@ async function agregarOrden(){
     nombre,fecha,direccion:document.getElementById('od-direccion').value.trim(),
     municipio:document.getElementById('od-municipio').value.trim(),
     provincia:prov,zona:document.getElementById('od-zona').value,
-    fuente:'orden_direccion',no_oficio:document.getElementById('od-oficio').value.trim()
+    fuente:'orden_direccion',
+    via_comunicacion:document.getElementById('od-via').value,
+    observacion:document.getElementById('od-observacion').value.trim(),
+    no_oficio:''
   });
   if(r.ok){toast('Orden de Direccion agregada');setTimeout(()=>location.reload(),800);}
   else toast('Error','#dc2626');
