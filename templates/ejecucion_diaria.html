@@ -81,7 +81,7 @@
       exclusion por zona de residencia, cooldown de 21 dias, disponibilidad y conflictos.
       Si el pool es insuficiente se relaja el cooldown automaticamente.
     </div>
-    <button class="btn btn-p" id="btn-sorteo" onclick="ejecutarSorteo()">Ejecutar Sorteo — {{ fecha }}</button>
+    <button class="btn btn-p" id="btn-sorteo" onclick="ejecutarSorteo()">Ejecutar Designacion — {{ fecha }}</button>
     <div id="sorteo-resultado" style="margin-top:16px;"></div>
   </div>
 </div>
@@ -214,45 +214,60 @@
     </div>
   </div>
 
-  <!-- RESULTADO SECTION (screen only, after operativo) -->
+  <!-- RESULTADO SECTION -->
   <div class="resultado-section no-print" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:16px 18px;margin-top:8px;margin-bottom:16px;">
+    {% if op.bloqueado %}
+    <div class="alert alert-ok" style="margin:0;">
+      <strong>Resultado registrado y bloqueado:</strong>
+      {% if op.resultado_final == 'ejecutado' %}Ejecutado con incautacion ✓
+      {% elif op.resultado_final == 'con_decomiso' %}Ejecutado con decomiso ✓
+      {% elif op.resultado_final == 'ejecutado_sin_incautacion' %}Ejecutado sin incautacion — denuncia queda pendiente
+      {% elif op.resultado_final == 'no_ejecutado' %}No Ejecutado
+      {% else %}{{ op.resultado_final }}{% endif %}
+    </div>
+    {% else %}
     <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Registrar Resultado del Operativo</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      <button class="btn btn-g" id="btn-ej-{{ op.id }}" onclick="setEj({{ op.id }},1)">Ejecutado</button>
-      <button class="btn btn-d" id="btn-noej-{{ op.id }}" onclick="setEj({{ op.id }},0)">No Ejecutado</button>
+      <button class="btn btn-g" id="btn-ej-{{ op.id }}"
+        onclick="setResultado({{ op.id }},'ejecutado')"
+        title="Se realizo el operativo e incautaron">Ejecutado</button>
+      <button class="btn btn-p" id="btn-sinInc-{{ op.id }}"
+        onclick="setResultado({{ op.id }},'ejecutado_sin_incautacion')"
+        title="Fueron al lugar pero no se pudo incautar — denuncia queda pendiente"
+        style="background:#7c3aed;">Ejecutado sin Incautacion</button>
+      <button class="btn btn-d" id="btn-noej-{{ op.id }}"
+        onclick="setResultado({{ op.id }},'no_ejecutado')"
+        title="No se pudo ir al lugar">No Ejecutado</button>
     </div>
     <div class="form-grid" style="margin-bottom:12px;">
       <div class="fg span2">
         <label class="fl">Observaciones</label>
-        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones si no se ejecuto...">{{ op.observaciones or '' }}</textarea>
+        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones...">{{ op.observaciones or '' }}</textarea>
       </div>
-      <div class="fg">
+      <div class="fg" id="dec-wrap-{{ op.id }}" style="display:none;">
         <label class="fl">Incautacion / Decomiso</label>
         <select id="dec-{{ op.id }}" onchange="toggleDec({{ op.id }},this.value)">
-          <option value="0" {% if not op.decomiso %}selected{% endif %}>No hubo decomiso</option>
-          <option value="1" {% if op.decomiso %}selected{% endif %}>Si, hubo incautacion</option>
+          <option value="0">No hubo decomiso</option>
+          <option value="1">Si, hubo decomiso</option>
         </select>
       </div>
-      <div class="fg span2" id="decdet-{{ op.id }}" {% if not op.decomiso %}style="display:none"{% endif %}>
+      <div class="fg span2" id="decdet-{{ op.id }}" style="display:none;">
         <label class="fl">Descripcion de lo incautado</label>
         <textarea id="decval-{{ op.id }}" rows="2" placeholder="Describa detalladamente...">{{ op.decomiso_detalle or '' }}</textarea>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <button class="btn btn-p" onclick="guardarResultado({{ op.id }},'{{ op.no_oficio or '' }}')">Guardar resultado</button>
-      {% if op.ejecutado != -1 %}
-      <span style="font-size:11px;color:var(--green);font-weight:600;">
-        {% if op.ejecutado==1 %}Registrado: Ejecutado ✓{% else %}Registrado: No Ejecutado ✓{% endif %}
-      </span>
-      {% endif %}
+      <button class="btn btn-p" id="btn-guardar-{{ op.id }}" onclick="guardarResultado({{ op.id }})">Guardar resultado</button>
+      <span id="resultado-sel-{{ op.id }}" style="font-size:11px;color:#7c3aed;font-weight:600;"></span>
     </div>
+    {% endif %}
   </div>
 
   {% else %}
   <!-- No brigadas yet -->
   <div class="card no-print" style="margin-bottom:16px;">
     <div class="card-body">
-      <div class="alert alert-warn" style="margin:0;">Este operativo aun no tiene personal asignado. Ejecuta el sorteo arriba.</div>
+      <div class="alert alert-warn" style="margin:0;">Este operativo aun no tiene personal asignado. Ejecuta la Designacion arriba.</div>
     </div>
   </div>
   {% endif %}
@@ -276,14 +291,14 @@ async function ejecutarSorteo(){
   btn.disabled=true; btn.textContent='Ejecutando sorteo...';
   try {
     const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
-    if(!r.ok){toast('Error al ejecutar sorteo','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Sorteo para '+FECHA;return;}
+    if(!r.ok){toast('Error al ejecutar designacion','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Designacion para '+FECHA;return;}
     // Confirm immediately
     const c=await api('/asignacion/confirmar',{resultado:r.resultado});
     if(c.ok){
-      toast('Sorteo ejecutado y personal asignado. Recargando...','#166534');
+      toast('Designacion ejecutada y personal asignado. Recargando...','#166634');
       setTimeout(()=>location.reload(),1500);
     }
-  } catch(e){ toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Ejecutar Sorteo para '+FECHA; }
+  } catch(e){ toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Ejecutar Designacion para '+FECHA; }
 }
 
 // ── VEHICULOS ─────────────────────────────────────────────────
@@ -302,30 +317,56 @@ async function guardarVehiculos(opId, numBrigadas){
 }
 
 // ── RESULTADO ─────────────────────────────────────────────────
-function setEj(id,val){
-  ejState[id]=val;
-  ['btn-ej-'+id,'btn-noej-'+id].forEach(bid=>{
+const resultadoState={};
+function setResultado(id, val){
+  resultadoState[id]=val;
+  // Reset all buttons
+  ['btn-ej-'+id,'btn-sinInc-'+id,'btn-noej-'+id].forEach(bid=>{
     const b=document.getElementById(bid);
-    if(b){b.style.outline='';b.style.outlineOffset='';}
+    if(b){b.style.outline='';b.style.boxShadow='';}
   });
-  const active=document.getElementById(val===1?'btn-ej-'+id:'btn-noej-'+id);
-  if(active){active.style.outline=val===1?'3px solid var(--dcja-gold)':'3px solid #dc2626';active.style.outlineOffset='2px';}
+  // Highlight selected
+  const btnId = val==='ejecutado'?'btn-ej-'+id: val==='ejecutado_sin_incautacion'?'btn-sinInc-'+id:'btn-noej-'+id;
+  const active=document.getElementById(btnId);
+  if(active){active.style.outline='3px solid #c8a022';active.style.boxShadow='0 0 0 4px rgba(200,160,34,.2)';}
+  // Show decomiso only for ejecutado
+  const decWrap=document.getElementById('dec-wrap-'+id);
+  if(decWrap) decWrap.style.display = val==='ejecutado' ? '' : 'none';
+  const decDet=document.getElementById('decdet-'+id);
+  if(decDet) decDet.style.display='none';
+  // Update label
+  const lbl=document.getElementById('resultado-sel-'+id);
+  const labels={'ejecutado':'Ejecutado seleccionado','ejecutado_sin_incautacion':'Ejecutado sin incautacion — denuncia queda pendiente','no_ejecutado':'No Ejecutado seleccionado'};
+  if(lbl) lbl.textContent = labels[val]||'';
 }
 
-function toggleDec(id,v){ document.getElementById('decdet-'+id).style.display=v==='1'?'flex':'none'; }
-
-async function guardarResultado(id,oficio){
-  const ej=ejState[id]??-1;
-  if(ej===-1){alert('Selecciona si el operativo fue Ejecutado o No Ejecutado.');return;}
-  const r=await api('/operativo/resultado',{
-    id, ejecutado:ej,
-    observaciones:document.getElementById('obs-'+id)?.value||'',
-    decomiso:parseInt(document.getElementById('dec-'+id)?.value||0),
-    decomiso_detalle:document.getElementById('decval-'+id)?.value||'',
-    no_oficio:oficio, cerrar_denuncia:ej===1
-  });
-  if(r.ok){toast('Resultado registrado correctamente','#166634');setTimeout(()=>location.reload(),1200);}
-  else toast('Error al guardar','#dc2626');
+function toggleDec(id,val){
+  const det=document.getElementById('decdet-'+id);
+  if(det) det.style.display=val==='1'?'':'none';
 }
+
+
+async function guardarResultado(id){
+  const res = resultadoState[id];
+  if(!res){ alert('Selecciona el resultado del operativo antes de guardar.'); return; }
+  const btn = document.getElementById('btn-guardar-'+id);
+  if(btn){ btn.disabled=true; btn.textContent='Guardando...'; }
+  const decomiso = res==='ejecutado' ? parseInt(document.getElementById('dec-'+id)?.value||0) : 0;
+  const ejecutado = (res==='ejecutado'||res==='ejecutado_sin_incautacion') ? 1 : 0;
+  const r = await api('/operativo/resultado',{
+    id, ejecutado, resultado_final: res,
+    observaciones: document.getElementById('obs-'+id)?.value||'',
+    decomiso, decomiso_detalle: document.getElementById('decval-'+id)?.value||'',
+    resultado: res
+  });
+  if(r.ok){
+    toast('Resultado guardado y bloqueado','#166534');
+    setTimeout(()=>location.reload(),1200);
+  } else {
+    toast(r.error||'Error al guardar','#dc2626');
+    if(btn){ btn.disabled=false; btn.textContent='Guardar resultado'; }
+  }
+}
+
 </script>
-{% endblock %} 
+{% endblock %}
