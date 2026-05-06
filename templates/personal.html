@@ -39,7 +39,7 @@
               onchange="updateDisp({{ p.id }})">
           </td>
           <td>
-            <select id="mot-{{ p.id }}" style="font-size:11px;padding:4px 6px;min-width:140px;" onchange="updateDisp({{ p.id }})">
+            <select id="mot-{{ p.id }}" style="font-size:11px;padding:4px 6px;min-width:140px;" onchange="motivoChanged({{ p.id }},this.value)">
               <option value="" {% if not p.motivo_no_disponible %}selected{% endif %}>—</option>
               <option value="Vacaciones" {% if p.motivo_no_disponible=='Vacaciones' %}selected{% endif %}>Vacaciones</option>
               <option value="Licencia" {% if p.motivo_no_disponible=='Licencia' %}selected{% endif %}>Licencia</option>
@@ -47,6 +47,13 @@
               <option value="Conflicto de Interés" {% if p.motivo_no_disponible=='Conflicto de Interés' %}selected{% endif %}>Conflicto de Interés</option>
               <option value="Otro" {% if p.motivo_no_disponible=='Otro' %}selected{% endif %}>Otro</option>
             </select>
+            <div id="ev-upload-{{ p.id }}" style="display:none;margin-top:4px;">
+              <input type="file" id="ev-file-{{ p.id }}" accept="image/*,.pdf"
+                style="font-size:10.5px;padding:3px;width:100%;border:1.5px solid #fca5a5;border-radius:5px;"
+                placeholder="Comprobante obligatorio">
+              <button class="btn btn-p" style="margin-top:4px;font-size:10px;padding:4px 10px;"
+                onclick="guardarConEvidencia({{ p.id }})">Guardar con comprobante</button>
+            </div>
           </td>
           <td>
             <input type="text" id="det-{{ p.id }}" value="{{ p.motivo_detalle or '' }}"
@@ -206,5 +213,38 @@ async function confirmarNoDisponible(){
     setTimeout(()=>location.reload(),1000);
   } else { toast(d.error||'Error','#dc2626'); }
 }
+function motivoChanged(id, val){
+  const uploadDiv = document.getElementById('ev-upload-'+id);
+  if(val){
+    uploadDiv.style.display='block';
+    // Also check the no-disponible checkbox automatically
+    const nd = document.getElementById('nd-'+id);
+    if(nd) nd.checked = true;
+  } else {
+    uploadDiv.style.display='none';
+    // Clear disponible if no motivo
+    const nd = document.getElementById('nd-'+id);
+    if(nd) nd.checked = false;
+    // Mark as available again
+    api('/personal/update',{id, no_disponible:0, motivo_no_disponible:'', motivo_detalle:''});
+  }
+}
+
+async function guardarConEvidencia(id){
+  const motivo = document.getElementById('mot-'+id).value;
+  const detalle = document.getElementById('det-'+id)?.value||'';
+  const file = document.getElementById('ev-file-'+id)?.files[0];
+  if(!motivo){ toast('Selecciona el motivo','#dc2626'); return; }
+  if(!file){ toast('El comprobante es obligatorio — adjunta el archivo','#dc2626'); return; }
+  const fd = new FormData();
+  fd.append('id',id); fd.append('disponible',0);
+  fd.append('motivo',motivo); fd.append('detalle',detalle);
+  fd.append('evidencia',file);
+  const resp = await fetch('/personal/update_con_evidencia',{method:'POST',body:fd});
+  const d = await resp.json();
+  if(d.ok){ toast('Guardado con comprobante','#166534'); setTimeout(()=>location.reload(),900); }
+  else toast(d.error||'Error','#dc2626');
+}
+
 </script>
 {% endblock %}
