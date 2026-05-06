@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Buscar{% endblock %}
+{% block content %}
+<div style="margin-bottom:24px;">
+  <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);margin-bottom:8px;">Buscar Operativos</h2>
+  <p style="color:var(--muted);font-size:12px;">Busca por nombre, No. Oficio, municipio, provincia o zona.</p>
+</div>
+
+<div class="card">
+  <div class="card-body" style="padding:18px;">
+    <form method="GET" action="/buscar" style="display:flex;gap:10px;align-items:center;">
+      <input type="text" name="q" value="{{ q }}" placeholder="Ej: MH-2026-001, Banca XYZ, Santo Domingo Este..."
+        style="flex:1;font-size:13px;padding:10px 14px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;">
+      <button type="submit" class="btn btn-p" style="padding:10px 22px;">Buscar</button>
+      {% if q %}<a href="/buscar" class="btn btn-o">Limpiar</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+{% if q %}
+<div class="card">
+  <div class="card-head"><div class="card-num">{{ resultados|length }}</div><h2>Resultados para "{{ q }}"</h2></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Semana</th><th>Fecha</th><th>Nombre</th><th>No. Oficio</th>
+        <th>Zona</th><th>Provincia</th><th>Resultado</th><th>Evidencia</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for op in resultados %}
+        <tr>
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.semana }}</td>
+          <td style="font-size:11px;">{{ op.fecha }}</td>
+          <td style="font-weight:600;">{{ op.nombre }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.no_oficio or '—' }}</td>
+          <td><span class="badge b-gray" style="font-size:9.5px;">{{ op.zona_operativo or '—' }}</span></td>
+          <td style="font-size:11px;">{{ op.provincia or '—' }}</td>
+          <td>
+            {% set rf = op.resultado_final or '' %}
+            {% if rf == 'ejecutado' %}<span class="badge b-ok">Ejecutado ✓</span>
+            {% elif rf == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
+            {% elif rf == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
+            {% elif rf == 'no_ejecutado' %}<span class="badge b-red">No Ejecutado</span>
+            {% elif op.ejecutado == 1 %}<span class="badge b-ok">Ejecutado</span>
+            {% elif op.ejecutado == 0 %}<span class="badge b-red">No Ejecutado</span>
+            {% else %}<span class="badge b-gray">Pendiente</span>{% endif %}
+          </td>
+          <td>
+            {% if op.resultado_evidencia %}
+            <a href="/evidencia/{{ op.resultado_evidencia }}" target="_blank" class="btn btn-o btn-sm">Ver</a>
+            {% elif op.evidencia_path %}
+            <a href="/evidencia/{{ op.evidencia_path }}" target="_blank" class="btn btn-o btn-sm">Orden</a>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <a href="/plan_semanal?semana={{ op.semana }}" class="btn btn-o btn-sm" title="Ver plan semanal">Plan</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8;">No se encontraron resultados para "{{ q }}".</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %} 
