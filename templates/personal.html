@@ -100,10 +100,15 @@ function debounce(id, fn, delay=600){
 const pending = {};
 
 function updateDisp(id){
-  const nd = document.getElementById('nd-'+id).checked;
+  const nd  = document.getElementById('nd-'+id).checked;
   const mot = document.getElementById('mot-'+id).value;
   const det = document.getElementById('det-'+id).value;
-  // Show saving indicator
+  // Validate: motivo required when marking unavailable
+  if(nd && !mot){
+    toast('Selecciona el motivo antes de marcar como no disponible','#dc2626');
+    document.getElementById('nd-'+id).checked=false;
+    return;
+  }
   const row = document.getElementById('pr-'+id);
   if(row) row.style.opacity='0.6';
   debounce('disp-'+id, async ()=>{
@@ -112,9 +117,25 @@ function updateDisp(id){
     try {
       const r = await api('/personal/update',{id, no_disponible:nd?1:0, motivo_no_disponible:mot, motivo_detalle:det});
       if(r.ok) toast(nd ? 'No disponible registrado' : 'Marcado como disponible');
+      else toast(r.error||'Error','#dc2626');
     } catch(e){ toast('Error de conexion','#dc2626'); }
     finally { pending[id]=false; if(row) row.style.opacity='1'; }
   }, 600);
+}
+
+async function subirEvidenciaPersonal(id){
+  const file = document.getElementById('ev-'+id).files[0];
+  if(!file) return;
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('disponible', 0);
+  fd.append('motivo', document.getElementById('mot-'+id).value);
+  fd.append('detalle', document.getElementById('det-'+id).value);
+  fd.append('evidencia', file);
+  const r = await fetch('/personal/update_con_evidencia', {method:'POST', body:fd});
+  const d = await r.json();
+  if(d.ok){ toast('Evidencia guardada','#166534'); setTimeout(()=>location.reload(),800); }
+  else toast(d.error||'Error al subir evidencia','#dc2626');
 }
 
 function updConf(id,v){
@@ -147,4 +168,4 @@ async function marcarTodosDisponibles(){
   setTimeout(()=>location.reload(),1200);
 }
 </script>
-{% endblock %} 
+{% endblock %}
