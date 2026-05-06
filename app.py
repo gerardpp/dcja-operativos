@@ -281,10 +281,6 @@ def init_db():
         try:
             db.execute("ALTER TABLE denuncias ADD COLUMN resolucion TEXT DEFAULT ''")
         except: pass
-        # Migration: create uploads dir
-        import os as _os
-        _os.makedirs('uploads/evidencias', exist_ok=True)
-        _os.makedirs('uploads/operativos', exist_ok=True)
         # Seed: create default admin if no users exist
         try:
             u = db.fetchone('SELECT COUNT(*) as c FROM usuarios')
@@ -344,11 +340,19 @@ def init_db():
             for p in PERSONAL:
                 db.execute('INSERT INTO personal_state (persona_id, zona_counts) VALUES (?,?)', (p['id'],'{}'))
 
-try:
-    init_db()
-except Exception as e:
-    import logging
-    logging.error(f"init_db failed: {e}")
+import threading as _threading
+
+def _run_init_db():
+    import logging, time
+    time.sleep(1)  # Let gunicorn bind port first
+    try:
+        init_db()
+        logging.info("init_db completed successfully")
+    except Exception as e:
+        logging.error(f"init_db failed: {e}")
+
+_t = _threading.Thread(target=_run_init_db, daemon=True)
+_t.start()
 
 # ── HELPERS ──────────────────────────────────────────────────
 def get_all_states():
@@ -1324,8 +1328,10 @@ def agregar_orden_con_evidencia():
     if ev_file and ev_file.filename:
         ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
         fname = f"{uuid.uuid4().hex}.{ext}"
-        os.makedirs('uploads/evidencias', exist_ok=True)
-        ev_file.save(f"uploads/evidencias/{fname}")
+        try: os.makedirs('uploads/evidencias', exist_ok=True)
+        except: pass
+        try: ev_file.save(f"uploads/evidencias/{fname}")
+        except: ev_path = ''
         ev_path = f"evidencias/{fname}"
     with get_db() as db:
         db.execute('''INSERT INTO operativos
@@ -1382,8 +1388,10 @@ def guardar_resultado_con_evidencia():
     if ev_file and ev_file.filename:
         ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
         fname = f"op_{op_id}_{uuid.uuid4().hex[:8]}.{ext}"
-        os.makedirs('uploads/operativos', exist_ok=True)
-        ev_file.save(f"uploads/operativos/{fname}")
+        try: os.makedirs('uploads/operativos', exist_ok=True)
+        except: pass
+        try: ev_file.save(f"uploads/operativos/{fname}")
+        except: ev_path = ''
         ev_path = f"operativos/{fname}"
     op = None
     den_id = None
@@ -1427,8 +1435,10 @@ def personal_update_con_evidencia():
     if ev_file and ev_file.filename:
         ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'pdf'
         fname = f"personal_{pid}_{uuid.uuid4().hex[:8]}.{ext}"
-        os.makedirs('uploads/evidencias', exist_ok=True)
-        ev_file.save(f"uploads/evidencias/{fname}")
+        try: os.makedirs('uploads/evidencias', exist_ok=True)
+        except: pass
+        try: ev_file.save(f"uploads/evidencias/{fname}")
+        except: ev_path = ''
         ev_path = f"evidencias/{fname}"
     with get_db() as db:
         try:
