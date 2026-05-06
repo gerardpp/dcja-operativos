@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Historial Denuncias{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Historial de Actividad — Denuncias y Operativos</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ logs|length }} registro(s) — cada resultado registrado en Ejecucion Diaria queda aqui</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Fecha y Hora</th><th>Establecimiento</th><th>Provincia</th>
+        <th>Accion</th><th>Resultado</th><th>Usuario</th><th>Rol</th><th>Nota</th>
+      </tr></thead>
+      <tbody>
+        {% for l in logs %}
+        <tr>
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-size:10.5px;white-space:nowrap;font-family:'DM Mono',monospace;">
+            {{ l.fecha[:16].replace('T',' ') if l.fecha else '—' }}
+          </td>
+          <td style="font-weight:600;">{{ l.den_nombre or l.nota[:40] if l.nota else '—' }}</td>
+          <td style="font-size:11px;">{{ l.provincia or '—' }}</td>
+          <td>
+            <span style="background:#f1f5f9;color:#0d2257;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;">
+              {{ l.tabla|upper }}
+            </span>
+          </td>
+          <td>
+            {% set est = l.estado_nuevo or '' %}
+            {% if est == 'ejecutada' %}<span class="badge b-ok">Ejecutada ✓</span>
+            {% elif est == 'ejecutado_sin_incautacion' or est == 'EJECUTADO SIN INCAUTACION' %}
+              <span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
+            {% elif est == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
+            {% elif est == 'no_ejecutado' %}<span class="badge b-red">No Ejecutado</span>
+            {% elif est == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Planificada</span>
+            {% elif est == 'pendiente' %}<span class="badge b-red">Pendiente</span>
+            {% else %}<span class="badge b-gray">{{ est }}</span>{% endif %}
+          </td>
+          <td style="font-weight:700;">{{ l.usuario or '—' }}</td>
+          <td>
+            {% if l.rol == 'admin' %}<span class="badge b-gold">Admin</span>
+            {% elif l.rol == 'operaciones' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Operaciones</span>
+            {% else %}<span class="badge b-gray">{{ l.rol }}</span>{% endif %}
+          </td>
+          <td style="font-size:11px;color:var(--muted);max-width:200px;">{{ l.nota or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
+          No hay actividad registrada aun. Los resultados de Ejecucion Diaria apareceran aqui.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
