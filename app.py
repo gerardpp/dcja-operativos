@@ -1373,33 +1373,65 @@ def buscar_view():
 @app.route('/operativo/resultado_con_evidencia', methods=['POST'])
 @rol_required('admin')
 def guardar_resultado_con_evidencia():
-    import uuid, os
-    op_id = int(request.form.get('id',0))
-    resultado_final = request.form.get('resultado_final','')
-    observaciones   = request.form.get('observaciones','')
-    decomiso        = int(request.form.get('decomiso',0))
-    decomiso_detalle= request.form.get('decomiso_detalle','')
+    import uuid, os, logging
+    op_id           = int(request.form.get('id', 0))
+    resultado_final = request.form.get('resultado_final', '')
+    observaciones   = request.form.get('observaciones', '')
+    decomiso        = int(request.form.get('decomiso', 0))
+    decomiso_detalle= request.form.get('decomiso_detalle', '')
     ejecutado = 1 if resultado_final in ('ejecutado','ejecutado_sin_incautacion','con_decomiso') else 0
     bloquear  = 1 if resultado_final in ('ejecutado','con_decomiso','ejecutado_sin_incautacion') else 0
-    nuevo_estado_den = 'ejecutada' if resultado_final=='ejecutado' else                        'con_decomiso' if resultado_final=='con_decomiso' else                        'pendiente' if resultado_final=='ejecutado_sin_incautacion' else 'pendiente'
+    nuevo_estado_den = {
+        'ejecutado':              'ejecutada',
+        'con_decomiso':           'con_decomiso',
+        'ejecutado_sin_incautacion': 'pendiente',
+        'no_ejecutado':           'pendiente',
+    }.get(resultado_final, 'pendiente')
+
     # Save evidence file
-    ev_file = request.files.get('resultado_evidencia')
     ev_path = ''
+    ev_file = request.files.get('resultado_evidencia')
     if ev_file and ev_file.filename:
-        ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
+        ext   = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
         fname = f"op_{op_id}_{uuid.uuid4().hex[:8]}.{ext}"
-        try: os.makedirs('uploads/operativos', exist_ok=True)
-        except: pass
-        try: ev_file.save(f"uploads/operativos/{fname}")
-        except: ev_path = ''
-        ev_path = f"operativos/{fname}"
-    op = None
-    den_id = None
-    anterior_estado = None
+        try:
+            os.makedirs('uploads/operativos', exist_ok=True)
+            ev_file.save(f"uploads/operativos/{fname}")
+            ev_path = f"operativos/{fname}"
+        except Exception as e:
+            logging.warning(f"Evidence save failed: {e}")
+
+    den_id         = None
+    anterior_estado= None
+
     with get_db() as db:
+        # Self-healing: ensure columns exist
+        for col, defval in [('resultado_final','TEXT DEFAULT '''),
+                            ('bloqueado','INTEGER DEFAULT 0'),
+                            ('denuncia_manual_id','INTEGER'),
+                            ('evidencia_path','TEXT DEFAULT '''),
+                            ('resultado_evidencia','TEXT DEFAULT ''')]:
+            try: db.execute(f"ALTER TABLE operativos ADD COLUMN {col} {defval}")
+            except: pass
+
+        # Ensure historial_estados exists
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tabla TEXT, registro_id INTEGER, fecha TEXT,
+                usuario TEXT, rol TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT ''
+            )''')
+        except: pass
+
+        # Check blocked
         op = db.fetchone('SELECT * FROM operativos WHERE id=?', (op_id,))
-        if op and op.get('bloqueado') == 1:
+        if not op:
+            return jsonify(ok=False, error='Operativo no encontrado'), 404
+        if op.get('bloqueado') == 1:
             return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse.'), 403
+
+        # Update operativo
         db.execute(
             'UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,decomiso=?,decomiso_detalle=? WHERE id=?',
             (ejecutado, resultado_final, observaciones, decomiso, decomiso_detalle, op_id))
@@ -1407,17 +1439,38 @@ def guardar_resultado_con_evidencia():
             db.execute('UPDATE operativos SET resultado_final=?,bloqueado=?,resultado_evidencia=? WHERE id=?',
                        (resultado_final, bloquear, ev_path, op_id))
         except: pass
-        den_id = op.get('denuncia_manual_id') if op else None
-        if nuevo_estado_den and den_id:
+
+        # Get linked denuncia
+        den_id = op.get('denuncia_manual_id')
+        if den_id:
             try:
                 actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
                 anterior_estado = actual['estado'] if actual else None
                 db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?', (nuevo_estado_den, den_id))
-            except: pass
-    if den_id and resultado_final:
-        nota = f"Ejecucion Diaria — {resultado_final.replace('_',' ').upper()}: {observaciones[:100]}"
-        registrar_cambio_estado('denuncias_manual', den_id, anterior_estado, resultado_final, nota)
+            except Exception as e:
+                logging.warning(f"denuncia_manual update failed: {e}")
+
+    # AFTER commit — log to historial using autocommit connection
+    if den_id:
+        nota = f"Ejecucion Diaria — {resultado_final.replace('_',' ').upper()}"
+        if observaciones:
+            nota += f": {observaciones[:100]}"
+        try:
+            usuario = current_user.username
+            rol     = current_user.rol
+            db2 = get_db_schema()
+            db2.execute('''INSERT INTO historial_estados
+                (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
+                VALUES (?,?,?,?,?,?,?,?)''',
+                ('denuncias_manual', den_id, datetime.now().isoformat(),
+                 usuario, rol, anterior_estado, resultado_final, nota))
+            db2.close()
+            logging.info(f"Historial saved: denuncias_manual #{den_id} -> {resultado_final}")
+        except Exception as e:
+            logging.error(f"Historial save FAILED: {e}")
+
     return jsonify(ok=True, evidencia=ev_path)
+
 
 @app.route('/personal/update_con_evidencia', methods=['POST'])
 @rol_required('admin')
