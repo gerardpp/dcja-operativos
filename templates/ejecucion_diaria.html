@@ -34,7 +34,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;" class="no-print">
   <div>
     <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Ejecucion Diaria</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Sorteo de personal y registro de resultados</p>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Designacion de personal y registro de resultados</p>
   </div>
   <button class="btn btn-p no-print" onclick="window.print()">Imprimir DCJA-042</button>
 </div>
@@ -70,19 +70,19 @@
 </div>
 {% else %}
 
-<!-- SORTEO SECTION -->
+<!-- DESIGNACION SECTION -->
 {% set hay_sin_asignar = operativos|selectattr('estado','ne','asignado')|list|length > 0 %}
 {% if hay_sin_asignar %}
 <div class="card no-print">
-  <div class="card-head"><div class="card-num">2</div><h2>Sorteo de Personal — {{ fecha }}</h2></div>
+  <div class="card-head"><div class="card-num">2</div><h2>Designacion de Personal — {{ fecha }}</h2></div>
   <div class="card-body">
     <div class="alert alert-blue">
-      El sorteo selecciona aleatoriamente el personal para los operativos de hoy aplicando todas las reglas:
+      El designacion selecciona aleatoriamente el personal para los operativos de hoy aplicando todas las reglas:
       exclusion por zona de residencia, cooldown de 21 dias, disponibilidad y conflictos.
       Si el pool es insuficiente se relaja el cooldown automaticamente.
     </div>
-    <button class="btn btn-p" id="btn-sorteo" onclick="ejecutarSorteo()">Ejecutar Designacion — {{ fecha }}</button>
-    <div id="sorteo-resultado" style="margin-top:16px;"></div>
+    <button class="btn btn-p" id="btn-designacion" onclick="ejecutarDesignacion()">Ejecutar Designacion — {{ fecha }}</button>
+    <div id="designacion-resultado" style="margin-top:16px;"></div>
   </div>
 </div>
 {% endif %}
@@ -132,7 +132,7 @@
           <span class="badge b-ok">Personal asignado</span>
           <button class="btn btn-p btn-sm no-print" onclick="window.print()">Imprimir DCJA-042</button>
         {% else %}
-          <span class="badge b-gray">Pendiente sorteo</span>
+          <span class="badge b-gray">Pendiente designacion</span>
         {% endif %}
       </div>
     </div>
@@ -204,7 +204,7 @@
   <div class="transparency-box">
     <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaracion</div>
     <div style="font-size:10.5px;line-height:1.7;margin-bottom:16px;">
-      Confirmo mi compromiso de discrecion, confidencialidad y normas ISO-37001:2017 Sistema de Gestion Antisoborno e ISO-37301:2021 Sistema de Gestion del Compliance.
+      Me comprometo a cumplir con las politicas internas del Ministerio de Hacienda y Economia, actuando con discrecion, confidencialidad e integridad en el ejercicio de mis funciones.
     </div>
     <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">Firma de Aprobacion</div>
     <div style="max-width:340px;margin:0 auto;text-align:center;">
@@ -243,6 +243,11 @@
       <div class="fg span2">
         <label class="fl">Observaciones</label>
         <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones...">{{ op.observaciones or '' }}</textarea>
+      </div>
+      <div class="fg span2">
+        <label class="fl">Evidencia del operativo (fotos, capturas, documentos)</label>
+        <input type="file" id="ev-{{ op.id }}" accept="image/*,video/*,.pdf" multiple style="font-size:12px;padding:4px;">
+        <p style="font-size:10px;color:#94a3b8;margin-top:2px;">Adjunta fotos o videos del operativo. Opcional pero recomendado.</p>
       </div>
       <div class="fg" id="dec-wrap-{{ op.id }}" style="display:none;">
         <label class="fl">Incautacion / Decomiso</label>
@@ -285,10 +290,10 @@ const VEH_DISP = {{ vehiculos_diarios }};
 const ejState={};
 {% for op in operativos %}ejState[{{ op.id }}]={{ op.ejecutado }};{% endfor %}
 
-// ── SORTEO ────────────────────────────────────────────────────
-async function ejecutarSorteo(){
-  const btn=document.getElementById('btn-sorteo');
-  btn.disabled=true; btn.textContent='Ejecutando sorteo...';
+// ── DESIGNACION ────────────────────────────────────────────────────
+async function ejecutarDesignacion(){
+  const btn=document.getElementById('btn-designacion');
+  btn.disabled=true; btn.textContent='Ejecutando designacion...';
   try {
     const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
     if(!r.ok){toast('Error al ejecutar designacion','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Designacion para '+FECHA;return;}
@@ -352,21 +357,30 @@ async function guardarResultado(id){
   const btn = document.getElementById('btn-guardar-'+id);
   if(btn){ btn.disabled=true; btn.textContent='Guardando...'; }
   const decomiso = res==='ejecutado' ? parseInt(document.getElementById('dec-'+id)?.value||0) : 0;
-  const ejecutado = (res==='ejecutado'||res==='ejecutado_sin_incautacion') ? 1 : 0;
-  const r = await api('/operativo/resultado',{
-    id, ejecutado, resultado_final: res,
-    observaciones: document.getElementById('obs-'+id)?.value||'',
-    decomiso, decomiso_detalle: document.getElementById('decval-'+id)?.value||'',
-    resultado: res
-  });
-  if(r.ok){
-    toast('Resultado guardado y bloqueado','#166534');
-    setTimeout(()=>location.reload(),1200);
-  } else {
-    toast(r.error||'Error al guardar','#dc2626');
+  // Use FormData to support file upload
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('resultado_final', res);
+  fd.append('observaciones', document.getElementById('obs-'+id)?.value||'');
+  fd.append('decomiso', decomiso);
+  fd.append('decomiso_detalle', document.getElementById('decval-'+id)?.value||'');
+  const evFiles = document.getElementById('ev-'+id)?.files;
+  if(evFiles && evFiles[0]) fd.append('resultado_evidencia', evFiles[0]);
+  try {
+    const resp = await fetch('/operativo/resultado_con_evidencia', {method:'POST', body:fd});
+    const r = await resp.json();
+    if(r.ok){
+      toast('Resultado guardado y bloqueado','#166534');
+      setTimeout(()=>location.reload(),1200);
+    } else {
+      toast(r.error||'Error al guardar','#dc2626');
+      if(btn){ btn.disabled=false; btn.textContent='Guardar resultado'; }
+    }
+  } catch(e){
+    toast('Error de conexion','#dc2626');
     if(btn){ btn.disabled=false; btn.textContent='Guardar resultado'; }
   }
 }
 
 </script>
-{% endblock %} 
+{% endblock %}
