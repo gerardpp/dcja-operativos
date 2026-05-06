@@ -102,6 +102,7 @@
           <th style="color:#fff;text-align:left;padding:7px 10px;">Fecha</th>
           <th style="color:#fff;text-align:center;padding:7px 10px;">Planificadas</th>
           <th style="color:#fff;text-align:center;padding:7px 10px;">Ejecutadas</th>
+          <th style="color:#fff;text-align:center;padding:7px 10px;background:#92400e;">Sin Incautacion</th>
           <th style="color:#fff;text-align:center;padding:7px 10px;">Pendientes</th>
           <th style="color:#fff;text-align:center;padding:7px 10px;">% Ejecucion</th>
         </tr>
@@ -135,7 +136,8 @@
           <td colspan="2" style="padding:7px 10px;text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--muted);">Total Semanal</td>
           <td style="text-align:center;padding:7px 10px;">{{ total_plan }}</td>
           <td style="text-align:center;padding:7px 10px;color:#166534;">{{ total_ejec }}</td>
-          <td style="text-align:center;padding:7px 10px;color:{% if total_pend>0 %}#92400e{% else %}#166534{% endif %};">{{ total_pend }}</td>
+          <td style="text-align:center;padding:7px 10px;color:#92400e;font-weight:800;">{{ total_sin_inc|default(0) }}</td>
+          <td style="text-align:center;padding:7px 10px;color:{% if total_pend>0 %}#dc2626{% else %}#166534{% endif %};">{{ total_pend }}</td>
           <td style="text-align:center;padding:7px 10px;color:var(--dcja-navy);">{{ total_pct }}%</td>
         </tr>
       </tbody>
