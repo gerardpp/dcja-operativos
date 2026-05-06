@@ -227,6 +227,15 @@ def init_db():
         try:
             db.execute("ALTER TABLE operativos ADD COLUMN bloqueado INTEGER DEFAULT 0")
         except: pass
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN evidencia_path TEXT DEFAULT ''")
+        except: pass
+        try:
+            db.execute("ALTER TABLE operativos ADD COLUMN resultado_evidencia TEXT DEFAULT ''")
+        except: pass
+        try:
+            db.execute("ALTER TABLE personal_state ADD COLUMN motivo_evidencia TEXT DEFAULT ''")
+        except: pass
         # Migration: historial_estados table
         try:
             db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
@@ -272,6 +281,10 @@ def init_db():
         try:
             db.execute("ALTER TABLE denuncias ADD COLUMN resolucion TEXT DEFAULT ''")
         except: pass
+        # Migration: create uploads dir
+        import os as _os
+        _os.makedirs('uploads/evidencias', exist_ok=True)
+        _os.makedirs('uploads/operativos', exist_ok=True)
         # Seed: create default admin if no users exist
         try:
             u = db.fetchone('SELECT COUNT(*) as c FROM usuarios')
@@ -387,21 +400,22 @@ def select_fair(pool, n, zona, all_states=None):
     return (t1+t2+t3)[:n]
 
 def registrar_cambio_estado(tabla, registro_id, estado_anterior, estado_nuevo, nota=''):
-    """Registra cualquier cambio de estado con trazabilidad completa."""
+    """Registra cualquier cambio de estado. Usa autocommit para garantizar que siempre se guarde."""
+    import logging
     try:
         usuario = current_user.username if current_user.is_authenticated else 'sistema'
         rol     = current_user.rol      if current_user.is_authenticated else 'sistema'
-        db = get_db()
+        # Use get_db_schema (autocommit=True) so this always commits independently
+        db = get_db_schema()
         db.execute('''INSERT INTO historial_estados
             (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
             VALUES (?,?,?,?,?,?,?,?)''',
             (tabla, registro_id, datetime.now().isoformat(),
              usuario, rol, estado_anterior, estado_nuevo, nota))
-        db.commit()
         db.close()
+        logging.info(f"historial_estados: {tabla} #{registro_id} {estado_anterior}→{estado_nuevo}")
     except Exception as e:
-        import logging
-        logging.warning(f"registrar_cambio_estado failed: {e}")
+        logging.error(f"registrar_cambio_estado FAILED: {e}")
 
 def inferir_zona(prov, mun):
     p = str(prov).upper() if prov and str(prov).lower() not in ['nan','none',''] else ''
@@ -882,42 +896,46 @@ def guardar_resultado():
         nuevo_estado_den = None
         bloquear = 0
 
+    op = None
+    den_id = None
+    anterior_estado = None
+
     with get_db() as db:
-        # Check if already blocked (handle missing column gracefully)
+        # Check if already blocked
         op = db.fetchone('SELECT * FROM operativos WHERE id=?', (d['id'],))
         if op and op.get('bloqueado') == 1:
             return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse.'), 403
 
-        # Update core fields (always exist)
+        # Update core fields
         db.execute(
             'UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,decomiso=?,decomiso_detalle=? WHERE id=?',
             (ejecutado, d.get('resultado',''), d.get('observaciones',''),
              decomiso, d.get('decomiso_detalle',''), d['id']))
 
-        # Update new fields (may not exist in older DBs — try separately)
+        # Update new fields separately
         try:
             db.execute('UPDATE operativos SET resultado_final=?,bloqueado=? WHERE id=?',
                        (resultado_final, bloquear, d['id']))
-        except Exception as e:
-            import logging
-            logging.warning(f"resultado_final/bloqueado update failed: {e}")
+        except: pass
 
-        # Auto-update linked denuncia_manual estado
+        # Update linked denuncia_manual
         den_id = op.get('denuncia_manual_id') if op else None
         if nuevo_estado_den and den_id:
             try:
                 actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
-                anterior = actual['estado'] if actual else None
+                anterior_estado = actual['estado'] if actual else None
                 db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?',
                            (nuevo_estado_den, den_id))
-                # Log the real action, not just the resulting estado
-                estado_log = resultado_final if resultado_final else nuevo_estado_den
-                nota_auto = f"Ejecucion Diaria — {estado_log.replace('_',' ').upper()}: {d.get('observaciones','')[:80]}"
-                registrar_cambio_estado('denuncias_manual', den_id,
-                    anterior, estado_log, nota_auto)
-            except Exception as e:
-                import logging
-                logging.warning(f"denuncia_manual update failed: {e}")
+            except: pass
+
+    # AFTER commit: register historial (autocommit — always saves)
+    if den_id and resultado_final:
+        estado_log = resultado_final
+        nota_auto = f"Ejecucion Diaria — {estado_log.replace('_',' ').upper()}"
+        if d.get('observaciones'):
+            nota_auto += f": {d.get('observaciones','')[:100]}"
+        registrar_cambio_estado('denuncias_manual', den_id,
+            anterior_estado, estado_log, nota_auto)
 
     return jsonify(ok=True)
 
@@ -1284,6 +1302,152 @@ def visitas_denuncia(did):
     visitas_sin_incautacion = sum(1 for o in ops if o.get('resultado_final') == 'ejecutado_sin_incautacion')
     return jsonify(ok=True, denuncia=dict(den), operativos=ops,
                    visitas_sin_incautacion=visitas_sin_incautacion)
+
+@app.route('/planificacion/agregar_orden_con_evidencia', methods=['POST'])
+@rol_required('admin')
+def agregar_orden_con_evidencia():
+    import os, uuid
+    tipo    = request.form.get('tipo','')
+    nombre  = request.form.get('nombre','').strip()
+    semana  = request.form.get('semana','')
+    fecha   = request.form.get('fecha','')
+    prov    = request.form.get('provincia','').strip()
+    municipio=request.form.get('municipio','').strip()
+    direccion=request.form.get('direccion','').strip()
+    zona    = request.form.get('zona','')
+    via     = request.form.get('via_comunicacion','')
+    obs     = request.form.get('observacion','').strip()
+    br      = 2 if 'DEPORTIVA' in tipo.upper() else 1
+    # Save evidence file
+    ev_file = request.files.get('evidencia')
+    ev_path = ''
+    if ev_file and ev_file.filename:
+        ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
+        fname = f"{uuid.uuid4().hex}.{ext}"
+        os.makedirs('uploads/evidencias', exist_ok=True)
+        ev_file.save(f"uploads/evidencias/{fname}")
+        ev_path = f"evidencias/{fname}"
+    with get_db() as db:
+        db.execute('''INSERT INTO operativos
+            (semana,fecha,tipo,nombre,direccion,municipio,provincia,
+             zona_operativo,brigadas_requeridas,fuente,no_oficio,created_at,
+             via_comunicacion,observacion_orden,evidencia_path)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            (semana,fecha,tipo,nombre,direccion,municipio,prov,
+             zona,br,'orden_direccion','',datetime.now().isoformat(),
+             via,obs,ev_path))
+    return jsonify(ok=True)
+
+@app.route('/evidencia/<path:filename>')
+@login_required
+def ver_evidencia(filename):
+    from flask import send_from_directory
+    return send_from_directory('uploads', filename)
+
+@app.route('/buscar')
+@login_required
+def buscar_view():
+    q = request.args.get('q','').strip()
+    resultados = []
+    if q:
+        with get_db() as db:
+            ops = [dict(r) for r in db.fetchall(
+                """SELECT * FROM operativos
+                   WHERE LOWER(nombre) LIKE LOWER(?) OR LOWER(no_oficio) LIKE LOWER(?)
+                      OR LOWER(municipio) LIKE LOWER(?) OR LOWER(provincia) LIKE LOWER(?)
+                      OR LOWER(zona_operativo) LIKE LOWER(?)
+                   ORDER BY fecha DESC LIMIT 50""",
+                (f'%{q}%',f'%{q}%',f'%{q}%',f'%{q}%',f'%{q}%'))]
+            for op in ops:
+                try: op['brigadas'] = json.loads(op.get('brigadas_json') or '[]')
+                except: op['brigadas'] = []
+            resultados = ops
+    return render_template('buscar.html', q=q, resultados=resultados)
+
+@app.route('/operativo/resultado_con_evidencia', methods=['POST'])
+@rol_required('admin')
+def guardar_resultado_con_evidencia():
+    import uuid, os
+    op_id = int(request.form.get('id',0))
+    resultado_final = request.form.get('resultado_final','')
+    observaciones   = request.form.get('observaciones','')
+    decomiso        = int(request.form.get('decomiso',0))
+    decomiso_detalle= request.form.get('decomiso_detalle','')
+    ejecutado = 1 if resultado_final in ('ejecutado','ejecutado_sin_incautacion','con_decomiso') else 0
+    bloquear  = 1 if resultado_final in ('ejecutado','con_decomiso','ejecutado_sin_incautacion') else 0
+    nuevo_estado_den = 'ejecutada' if resultado_final=='ejecutado' else                        'con_decomiso' if resultado_final=='con_decomiso' else                        'pendiente' if resultado_final=='ejecutado_sin_incautacion' else 'pendiente'
+    # Save evidence file
+    ev_file = request.files.get('resultado_evidencia')
+    ev_path = ''
+    if ev_file and ev_file.filename:
+        ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
+        fname = f"op_{op_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        os.makedirs('uploads/operativos', exist_ok=True)
+        ev_file.save(f"uploads/operativos/{fname}")
+        ev_path = f"operativos/{fname}"
+    op = None
+    den_id = None
+    anterior_estado = None
+    with get_db() as db:
+        op = db.fetchone('SELECT * FROM operativos WHERE id=?', (op_id,))
+        if op and op.get('bloqueado') == 1:
+            return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse.'), 403
+        db.execute(
+            'UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,decomiso=?,decomiso_detalle=? WHERE id=?',
+            (ejecutado, resultado_final, observaciones, decomiso, decomiso_detalle, op_id))
+        try:
+            db.execute('UPDATE operativos SET resultado_final=?,bloqueado=?,resultado_evidencia=? WHERE id=?',
+                       (resultado_final, bloquear, ev_path, op_id))
+        except: pass
+        den_id = op.get('denuncia_manual_id') if op else None
+        if nuevo_estado_den and den_id:
+            try:
+                actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
+                anterior_estado = actual['estado'] if actual else None
+                db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?', (nuevo_estado_den, den_id))
+            except: pass
+    if den_id and resultado_final:
+        nota = f"Ejecucion Diaria — {resultado_final.replace('_',' ').upper()}: {observaciones[:100]}"
+        registrar_cambio_estado('denuncias_manual', den_id, anterior_estado, resultado_final, nota)
+    return jsonify(ok=True, evidencia=ev_path)
+
+@app.route('/personal/update_con_evidencia', methods=['POST'])
+@rol_required('admin')
+def personal_update_con_evidencia():
+    import uuid, os
+    pid = int(request.form.get('id',0))
+    disponible = int(request.form.get('disponible',1))
+    motivo = request.form.get('motivo','').strip()
+    detalle = request.form.get('detalle','').strip()
+    if not disponible and not motivo:
+        return jsonify(ok=False, error='El motivo es obligatorio para marcar como no disponible'), 400
+    # Save evidence
+    ev_file = request.files.get('evidencia')
+    ev_path = ''
+    if ev_file and ev_file.filename:
+        ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'pdf'
+        fname = f"personal_{pid}_{uuid.uuid4().hex[:8]}.{ext}"
+        os.makedirs('uploads/evidencias', exist_ok=True)
+        ev_file.save(f"uploads/evidencias/{fname}")
+        ev_path = f"evidencias/{fname}"
+    with get_db() as db:
+        try:
+            db.execute('''UPDATE personal_state
+                SET disponible=?,motivo_no_disponible=?,motivo_detalle=?,motivo_evidencia=?
+                WHERE personal_id=?''',
+                (disponible, motivo if not disponible else '', detalle, ev_path if ev_path else '', pid))
+        except:
+            db.execute('''UPDATE personal_state
+                SET disponible=?,motivo_no_disponible=?,motivo_detalle=?
+                WHERE personal_id=?''',
+                (disponible, motivo if not disponible else '', detalle, pid))
+        # Log
+        nombre = db.fetchone('SELECT nombre FROM personal_state WHERE personal_id=?',(pid,))
+        nom = nombre['nombre'] if nombre else str(pid)
+    estado_log = 'no_disponible' if not disponible else 'disponible'
+    registrar_cambio_estado('personal_state', pid, None, estado_log,
+        f"{nom} — Motivo: {motivo} — {detalle}")
+    return jsonify(ok=True)
 
 @app.route('/mapa')
 @login_required
