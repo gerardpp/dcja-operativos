@@ -136,6 +136,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
     <a class="nav-link {% if request.endpoint=='buscar_view' %}active{% endif %}" href="/buscar">Buscar</a>
     <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias">Denuncias</a>
+      <a class="nav-link {% if request.endpoint=='historial_denuncias_view' %}active{% endif %}" href="/historial-denuncias">Historial</a>
     <a class="nav-link {% if request.endpoint=='planificacion_view' %}active{% endif %}" href="/planificacion">Planificación</a>
     <a class="nav-link {% if request.endpoint in ['plan_semanal','asignacion_view'] %}active{% endif %}" href="/plan_semanal">Plan Semanal</a>
     <a class="nav-link {% if request.endpoint=='ejecucion_diaria' %}active{% endif %}" href="/ejecucion_diaria">Ejecucion Diaria</a>
