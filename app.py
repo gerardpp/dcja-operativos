@@ -1289,7 +1289,8 @@ def historial_denuncia(fuente, did):
         if fuente == 'manual':
             ops = [dict(r) for r in db.fetchall(
                 """SELECT o.id, o.fecha, o.zona_operativo, o.resultado_final,
-                          o.observaciones, o.ejecutado, o.decomiso, o.brigadas_json
+                          o.observaciones, o.ejecutado, o.decomiso, o.brigadas_json,
+                          o.no_oficio
                    FROM operativos o
                    WHERE o.denuncia_manual_id=?
                    ORDER BY o.fecha ASC""", (did,))]
@@ -1392,7 +1393,7 @@ def buscar_view():
 @app.route('/operativo/resultado_con_evidencia', methods=['POST'])
 @rol_required('admin')
 def guardar_resultado_con_evidencia():
-    import uuid, os, logging
+    import uuid, os, logging, traceback
     try:
         op_id           = int(request.form.get('id', 0))
         resultado_final = request.form.get('resultado_final', '').strip()
@@ -1405,7 +1406,6 @@ def guardar_resultado_con_evidencia():
 
         ejecutado = 1 if resultado_final in ('ejecutado','ejecutado_sin_incautacion','con_decomiso') else 0
         bloquear  = 1
-
         nuevo_estado_den = {
             'ejecutado':                 'ejecutada',
             'con_decomiso':              'con_decomiso',
@@ -1413,7 +1413,24 @@ def guardar_resultado_con_evidencia():
             'no_ejecutado':              'pendiente',
         }.get(resultado_final, 'pendiente')
 
-        # Save evidence file safely
+        # ── STEP 1: Self-healing migrations using AUTOCOMMIT connection ──
+        schema_db = get_db_schema()
+        for stmt in [
+            "ALTER TABLE operativos ADD COLUMN resultado_final TEXT DEFAULT ''",
+            "ALTER TABLE operativos ADD COLUMN bloqueado INTEGER DEFAULT 0",
+            "ALTER TABLE operativos ADD COLUMN denuncia_manual_id INTEGER",
+            "ALTER TABLE operativos ADD COLUMN resultado_evidencia TEXT DEFAULT ''",
+            """CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tabla TEXT, registro_id INTEGER, fecha TEXT,
+                usuario TEXT, rol TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')""",
+        ]:
+            try: schema_db.execute(stmt)
+            except: pass
+        schema_db.close()
+
+        # ── STEP 2: Save evidence file ──
         ev_path = ''
         try:
             ev_file = request.files.get('resultado_evidencia')
@@ -1426,50 +1443,27 @@ def guardar_resultado_con_evidencia():
         except Exception as e:
             logging.warning(f"Evidence save failed (non-fatal): {e}")
 
+        # ── STEP 3: Main transactional update ──
         den_id         = None
         anterior_estado= None
 
         with get_db() as db:
-            # Ensure new columns exist (self-healing)
-            for col_def in [
-                "ALTER TABLE operativos ADD COLUMN resultado_final TEXT DEFAULT ''",
-                "ALTER TABLE operativos ADD COLUMN bloqueado INTEGER DEFAULT 0",
-                "ALTER TABLE operativos ADD COLUMN denuncia_manual_id INTEGER",
-                "ALTER TABLE operativos ADD COLUMN resultado_evidencia TEXT DEFAULT ''",
-            ]:
-                try: db.execute(col_def)
-                except: pass
-
-            # Ensure historial_estados exists
-            try:
-                db.execute("""CREATE TABLE IF NOT EXISTS historial_estados (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tabla TEXT, registro_id INTEGER, fecha TEXT,
-                    usuario TEXT, rol TEXT,
-                    estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT ''
-                )""")
-            except: pass
-
             op = db.fetchone('SELECT * FROM operativos WHERE id=?', (op_id,))
             if not op:
                 return jsonify(ok=False, error='Operativo no encontrado'), 404
             if op.get('bloqueado') == 1:
                 return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse'), 403
 
-            # Update core fields
             db.execute(
                 'UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,decomiso=?,decomiso_detalle=? WHERE id=?',
                 (ejecutado, resultado_final, observaciones, decomiso, decomiso_detalle, op_id))
-
-            # Update new fields
             try:
                 db.execute(
                     'UPDATE operativos SET resultado_final=?,bloqueado=?,resultado_evidencia=? WHERE id=?',
                     (resultado_final, bloquear, ev_path, op_id))
             except Exception as e:
-                logging.warning(f"New fields update: {e}")
+                logging.warning(f"New fields update failed: {e}")
 
-            # Get linked denuncia
             den_id = op.get('denuncia_manual_id')
             if den_id:
                 try:
@@ -1480,7 +1474,7 @@ def guardar_resultado_con_evidencia():
                 except Exception as e:
                     logging.warning(f"denuncia_manual update: {e}")
 
-        # AFTER commit — save to historial using autocommit
+        # ── STEP 4: Save historial using autocommit (after main commit) ──
         if den_id:
             try:
                 nota = f"Ejecucion Diaria — {resultado_final.replace('_',' ').upper()}"
@@ -1494,16 +1488,15 @@ def guardar_resultado_con_evidencia():
                      current_user.username, current_user.rol,
                      anterior_estado, resultado_final, nota))
                 db2.close()
-                logging.info(f"Historial OK: denuncias_manual #{den_id} -> {resultado_final}")
+                logging.info(f"Historial OK: #{den_id} -> {resultado_final}")
             except Exception as e:
                 logging.error(f"Historial FAILED: {e}")
 
         return jsonify(ok=True)
 
     except Exception as e:
-        import logging, traceback
-        logging.error(f"guardar_resultado_con_evidencia error: {traceback.format_exc()}")
-        return jsonify(ok=False, error=f'Error interno: {str(e)}'), 500
+        logging.error(f"guardar_resultado_con_evidencia: {traceback.format_exc()}")
+        return jsonify(ok=False, error=str(e)), 500
 
 
 @app.route('/personal/update_con_evidencia', methods=['POST'])
