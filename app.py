@@ -453,6 +453,25 @@ def row_to_dict(row):
 
 # ── ROUTES ────────────────────────────────────────────────────
 # ── AUTH ROUTES ──────────────────────────────────────────────
+@app.route('/reset-admin-dcja-2026')
+def reset_admin():
+    import bcrypt
+    pw = bcrypt.hashpw('Admin2026!'.encode(), bcrypt.gensalt()).decode()
+    with get_db() as db:
+        db.execute("UPDATE usuarios SET password_hash=? WHERE username='admin'", (pw,))
+    return '<h2>Listo. Usuario: admin / Contrasena: Admin2026!</h2><p>ELIMINA ESTA RUTA DESPUES DE ENTRAR.</p>'
+
+@app.route('/reset-admin-dcja-2026')
+def reset_admin_password():
+    """Ruta temporal para resetear password del admin. Eliminar despues de usar."""
+    try:
+        pw_hash = bcrypt.hashpw('Admin2026!'.encode(), bcrypt.gensalt()).decode()
+        with get_db() as db:
+            db.execute("UPDATE usuarios SET password_hash=? WHERE username='admin'", (pw_hash,))
+        return '<h2>Listo. Contrasena reseteada a: Admin2026!</h2><p><a href="/login">Ir al login</a></p>'
+    except Exception as e:
+        return f'<h2>Error: {e}</h2>'
+
 @app.route('/login', methods=['GET','POST'])
 def login_view():
     if current_user.is_authenticated:
