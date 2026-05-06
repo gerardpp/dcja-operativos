@@ -883,27 +883,39 @@ def guardar_resultado():
         bloquear = 0
 
     with get_db() as db:
-        # Check if already blocked
+        # Check if already blocked (handle missing column gracefully)
         op = db.fetchone('SELECT * FROM operativos WHERE id=?', (d['id'],))
         if op and op.get('bloqueado') == 1:
             return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse.'), 403
 
-        db.execute('''UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,
-                      decomiso=?,decomiso_detalle=?,resultado_final=?,bloqueado=? WHERE id=?''',
-                   (ejecutado, d.get('resultado',''), d.get('observaciones',''),
-                    decomiso, d.get('decomiso_detalle',''),
-                    resultado_final, bloquear, d['id']))
+        # Update core fields (always exist)
+        db.execute(
+            'UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,decomiso=?,decomiso_detalle=? WHERE id=?',
+            (ejecutado, d.get('resultado',''), d.get('observaciones',''),
+             decomiso, d.get('decomiso_detalle',''), d['id']))
 
-        # Auto-update linked denuncia_manual
-        if nuevo_estado_den and op and op.get('denuncia_manual_id'):
-            actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?',
-                                 (op['denuncia_manual_id'],))
-            anterior = actual['estado'] if actual else None
-            db.execute("UPDATE denuncias_manual SET estado=? WHERE id=?",
-                       (nuevo_estado_den, op['denuncia_manual_id']))
-            nota_auto = f"Automatico — {resultado_final.replace('_',' ').title()}: {d.get('observaciones','')[:80]}"
-            registrar_cambio_estado('denuncias_manual', op['denuncia_manual_id'],
-                anterior, nuevo_estado_den, nota_auto)
+        # Update new fields (may not exist in older DBs — try separately)
+        try:
+            db.execute('UPDATE operativos SET resultado_final=?,bloqueado=? WHERE id=?',
+                       (resultado_final, bloquear, d['id']))
+        except Exception as e:
+            import logging
+            logging.warning(f"resultado_final/bloqueado update failed: {e}")
+
+        # Auto-update linked denuncia_manual estado
+        den_id = op.get('denuncia_manual_id') if op else None
+        if nuevo_estado_den and den_id:
+            try:
+                actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
+                anterior = actual['estado'] if actual else None
+                db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?',
+                           (nuevo_estado_den, den_id))
+                nota_auto = f"Ejecucion Diaria — {resultado_final.replace('_',' ').title()}: {d.get('observaciones','')[:80]}"
+                registrar_cambio_estado('denuncias_manual', den_id,
+                    anterior, nuevo_estado_den, nota_auto)
+            except Exception as e:
+                import logging
+                logging.warning(f"denuncia_manual update failed: {e}")
 
     return jsonify(ok=True)
 
