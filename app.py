@@ -910,9 +910,11 @@ def guardar_resultado():
                 anterior = actual['estado'] if actual else None
                 db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?',
                            (nuevo_estado_den, den_id))
-                nota_auto = f"Ejecucion Diaria — {resultado_final.replace('_',' ').title()}: {d.get('observaciones','')[:80]}"
+                # Log the real action, not just the resulting estado
+                estado_log = resultado_final if resultado_final else nuevo_estado_den
+                nota_auto = f"Ejecucion Diaria — {estado_log.replace('_',' ').upper()}: {d.get('observaciones','')[:80]}"
                 registrar_cambio_estado('denuncias_manual', den_id,
-                    anterior, nuevo_estado_den, nota_auto)
+                    anterior, estado_log, nota_auto)
             except Exception as e:
                 import logging
                 logging.warning(f"denuncia_manual update failed: {e}")
@@ -1237,10 +1239,26 @@ def actualizar_estado_denuncia():
 def historial_denuncia(fuente, did):
     tabla = 'denuncias' if fuente == 'excel' else 'denuncias_manual'
     with get_db() as db:
+        # Estado change log
         logs = [dict(r) for r in db.fetchall(
             "SELECT * FROM historial_estados WHERE tabla=? AND registro_id=? ORDER BY fecha",
             (tabla, did))]
-    return jsonify(ok=True, historial=logs)
+        # Linked operativos (only for manual denuncias)
+        operativos = []
+        if fuente == 'manual':
+            ops = [dict(r) for r in db.fetchall(
+                """SELECT o.id, o.fecha, o.zona_operativo, o.resultado_final,
+                          o.observaciones, o.ejecutado, o.decomiso, o.brigadas_json
+                   FROM operativos o
+                   WHERE o.denuncia_manual_id=?
+                   ORDER BY o.fecha ASC""", (did,))]
+            for op in ops:
+                try:
+                    op['brigadas'] = json.loads(op.get('brigadas_json') or '[]')
+                except:
+                    op['brigadas'] = []
+            operativos = ops
+    return jsonify(ok=True, historial=logs, operativos=operativos)
 
 @app.route('/denuncias/visitas/<int:did>')
 @login_required
