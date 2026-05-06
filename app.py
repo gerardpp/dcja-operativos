@@ -1280,26 +1280,47 @@ def actualizar_estado_denuncia():
 def historial_denuncia(fuente, did):
     tabla = 'denuncias' if fuente == 'excel' else 'denuncias_manual'
     with get_db() as db:
-        # Estado change log
+        # Ensure table exists
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, tabla TEXT,
+                registro_id INTEGER, fecha TEXT, usuario TEXT, rol TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')
+            ''')
+        except: pass
+
+        den = db.fetchone(f'SELECT * FROM {tabla} WHERE id=?', (did,))
+        nombre = den['nombre'] if den else ''
+
         logs = [dict(r) for r in db.fetchall(
             "SELECT * FROM historial_estados WHERE tabla=? AND registro_id=? ORDER BY fecha",
             (tabla, did))]
-        # Linked operativos (only for manual denuncias)
+
         operativos = []
         if fuente == 'manual':
-            ops = [dict(r) for r in db.fetchall(
-                """SELECT o.id, o.fecha, o.zona_operativo, o.resultado_final,
-                          o.observaciones, o.ejecutado, o.decomiso, o.brigadas_json,
-                          o.no_oficio
-                   FROM operativos o
-                   WHERE o.denuncia_manual_id=?
-                   ORDER BY o.fecha ASC""", (did,))]
-            for op in ops:
+            ops_all = []
+            try:
+                ops_all += [dict(r) for r in db.fetchall(
+                    '''SELECT o.id,o.fecha,o.zona_operativo,o.resultado_final,
+                              o.observaciones,o.ejecutado,o.decomiso,o.brigadas_json,o.no_oficio
+                       FROM operativos o WHERE o.denuncia_manual_id=?
+                       ORDER BY o.fecha ASC''', (did,))]
+            except: pass
+            if nombre:
                 try:
-                    op['brigadas'] = json.loads(op.get('brigadas_json') or '[]')
-                except:
-                    op['brigadas'] = []
-            operativos = ops
+                    existing_ids = {o['id'] for o in ops_all}
+                    by_nombre = [dict(r) for r in db.fetchall(
+                        '''SELECT o.id,o.fecha,o.zona_operativo,o.resultado_final,
+                                  o.observaciones,o.ejecutado,o.decomiso,o.brigadas_json,o.no_oficio
+                           FROM operativos o WHERE LOWER(o.nombre) LIKE LOWER(?)
+                           ORDER BY o.fecha ASC''', (nombre,))]
+                    ops_all += [o for o in by_nombre if o['id'] not in existing_ids]
+                except: pass
+            for op in ops_all:
+                try: op['brigadas'] = json.loads(op.get('brigadas_json') or '[]')
+                except: op['brigadas'] = []
+            operativos = ops_all
+
     return jsonify(ok=True, historial=logs, operativos=operativos)
 
 @app.route('/denuncias/visitas/<int:did>')
@@ -1407,95 +1428,107 @@ def guardar_resultado_con_evidencia():
         ejecutado = 1 if resultado_final in ('ejecutado','ejecutado_sin_incautacion','con_decomiso') else 0
         bloquear  = 1
         nuevo_estado_den = {
-            'ejecutado':                 'ejecutada',
-            'con_decomiso':              'con_decomiso',
-            'ejecutado_sin_incautacion': 'pendiente',
-            'no_ejecutado':              'pendiente',
+            'ejecutado': 'ejecutada', 'con_decomiso': 'con_decomiso',
+            'ejecutado_sin_incautacion': 'pendiente', 'no_ejecutado': 'pendiente',
         }.get(resultado_final, 'pendiente')
 
-        # ── STEP 1: Self-healing migrations using AUTOCOMMIT connection ──
-        schema_db = get_db_schema()
+        # STEP 1: Self-healing ALTERs with autocommit
+        sdb = get_db_schema()
         for stmt in [
             "ALTER TABLE operativos ADD COLUMN resultado_final TEXT DEFAULT ''",
             "ALTER TABLE operativos ADD COLUMN bloqueado INTEGER DEFAULT 0",
             "ALTER TABLE operativos ADD COLUMN denuncia_manual_id INTEGER",
             "ALTER TABLE operativos ADD COLUMN resultado_evidencia TEXT DEFAULT ''",
             """CREATE TABLE IF NOT EXISTS historial_estados (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tabla TEXT, registro_id INTEGER, fecha TEXT,
-                usuario TEXT, rol TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT, tabla TEXT,
+                registro_id INTEGER, fecha TEXT, usuario TEXT, rol TEXT,
                 estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')""",
         ]:
-            try: schema_db.execute(stmt)
+            try: sdb.execute(stmt)
             except: pass
-        schema_db.close()
+        sdb.close()
 
-        # ── STEP 2: Save evidence file ──
+        # STEP 2: Evidence file
         ev_path = ''
         try:
             ev_file = request.files.get('resultado_evidencia')
             if ev_file and ev_file.filename:
-                ext   = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
+                ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
                 fname = f"op_{op_id}_{uuid.uuid4().hex[:8]}.{ext}"
                 os.makedirs('uploads/operativos', exist_ok=True)
                 ev_file.save(f"uploads/operativos/{fname}")
                 ev_path = f"operativos/{fname}"
         except Exception as e:
-            logging.warning(f"Evidence save failed (non-fatal): {e}")
+            logging.warning(f"Evidence save: {e}")
 
-        # ── STEP 3: Main transactional update ──
-        den_id         = None
-        anterior_estado= None
+        # STEP 3: Main update
+        den_id = None
+        anterior_estado = None
+        op_nombre = ''
 
         with get_db() as db:
             op = db.fetchone('SELECT * FROM operativos WHERE id=?', (op_id,))
-            if not op:
-                return jsonify(ok=False, error='Operativo no encontrado'), 404
+            if not op: return jsonify(ok=False, error='Operativo no encontrado'), 404
             if op.get('bloqueado') == 1:
                 return jsonify(ok=False, error='Este operativo ya fue registrado y no puede modificarse'), 403
 
+            op_nombre = op.get('nombre', '')
             db.execute(
                 'UPDATE operativos SET ejecutado=?,resultado=?,observaciones=?,decomiso=?,decomiso_detalle=? WHERE id=?',
                 (ejecutado, resultado_final, observaciones, decomiso, decomiso_detalle, op_id))
             try:
-                db.execute(
-                    'UPDATE operativos SET resultado_final=?,bloqueado=?,resultado_evidencia=? WHERE id=?',
-                    (resultado_final, bloquear, ev_path, op_id))
-            except Exception as e:
-                logging.warning(f"New fields update failed: {e}")
+                db.execute('UPDATE operativos SET resultado_final=?,bloqueado=?,resultado_evidencia=? WHERE id=?',
+                           (resultado_final, bloquear, ev_path, op_id))
+            except: pass
 
+            # Try to find linked denuncia by denuncia_manual_id first
             den_id = op.get('denuncia_manual_id')
+
+            # If no direct link, try to find by nombre
+            if not den_id and op_nombre:
+                den = db.fetchone(
+                    "SELECT id, estado FROM denuncias_manual WHERE nombre=? ORDER BY created_at DESC LIMIT 1",
+                    (op_nombre,))
+                if den:
+                    den_id = den['id']
+
             if den_id:
                 try:
                     actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
                     anterior_estado = actual['estado'] if actual else None
-                    db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?',
-                               (nuevo_estado_den, den_id))
+                    db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?', (nuevo_estado_den, den_id))
                 except Exception as e:
-                    logging.warning(f"denuncia_manual update: {e}")
+                    logging.warning(f"denuncia update: {e}")
 
-        # ── STEP 4: Save historial using autocommit (after main commit) ──
-        if den_id:
-            try:
-                nota = f"Ejecucion Diaria — {resultado_final.replace('_',' ').upper()}"
-                if observaciones:
-                    nota += f": {observaciones[:100]}"
-                db2 = get_db_schema()
-                db2.execute("""INSERT INTO historial_estados
+        # STEP 4: Log to historial using autocommit — always, even without denuncia link
+        try:
+            nota = f"Ejecucion Diaria — {resultado_final.replace('_',' ').upper()}"
+            if observaciones: nota += f": {observaciones[:100]}"
+            sdb2 = get_db_schema()
+            if den_id:
+                # Log linked to denuncia
+                sdb2.execute("""INSERT INTO historial_estados
                     (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
                     VALUES (?,?,?,?,?,?,?,?)""",
                     ('denuncias_manual', den_id, datetime.now().isoformat(),
                      current_user.username, current_user.rol,
                      anterior_estado, resultado_final, nota))
-                db2.close()
-                logging.info(f"Historial OK: #{den_id} -> {resultado_final}")
-            except Exception as e:
-                logging.error(f"Historial FAILED: {e}")
+            # Always log to operativos historial for audit trail
+            sdb2.execute("""INSERT INTO historial_estados
+                (tabla,registro_id,fecha,usuario,rol,estado_anterior,estado_nuevo,nota)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                ('operativos', op_id, datetime.now().isoformat(),
+                 current_user.username, current_user.rol,
+                 None, resultado_final, f"{op_nombre} — {nota}"))
+            sdb2.close()
+            logging.info(f"Historial OK: op#{op_id} den#{den_id} -> {resultado_final}")
+        except Exception as e:
+            logging.error(f"Historial FAILED: {e}")
 
         return jsonify(ok=True)
 
     except Exception as e:
-        logging.error(f"guardar_resultado_con_evidencia: {traceback.format_exc()}")
+        logging.error(traceback.format_exc())
         return jsonify(ok=False, error=str(e)), 500
 
 
@@ -1538,6 +1571,21 @@ def personal_update_con_evidencia():
     registrar_cambio_estado('personal_state', pid, None, estado_log,
         f"{nom} — Motivo: {motivo} — {detalle}")
     return jsonify(ok=True)
+
+@app.route('/historial-denuncias')
+@rol_required('admin','operaciones')
+def historial_denuncias_view():
+    with get_db() as db:
+        try:
+            logs = [dict(r) for r in db.fetchall(
+                """SELECT h.*, d.nombre as den_nombre, d.provincia, d.tipo
+                   FROM historial_estados h
+                   LEFT JOIN denuncias_manual d ON h.tabla='denuncias_manual' AND h.registro_id=d.id
+                   WHERE h.tabla IN ('denuncias_manual','operativos')
+                   ORDER BY h.fecha DESC LIMIT 200""")]
+        except:
+            logs = []
+    return render_template('historial_denuncias.html', logs=logs)
 
 @app.route('/mapa')
 @login_required
