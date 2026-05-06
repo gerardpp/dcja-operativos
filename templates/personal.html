@@ -85,6 +85,27 @@
   </div>
 </div>
 {% endif %}
+
+<!-- MODAL EVIDENCIA PERSONAL -->
+<div id="modal-evidencia-personal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:15px;font-weight:800;color:var(--dcja-navy);margin-bottom:8px;">Subir Comprobante Obligatorio</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Adjunta el comprobante para justificar la no disponibilidad (permiso firmado, certificado medico, correo de autorización, etc.)</p>
+    <input type="hidden" id="ev-modal-id">
+    <input type="hidden" id="ev-modal-mot">
+    <input type="hidden" id="ev-modal-det">
+    <div class="fg" style="margin-bottom:16px;">
+      <label class="fl">Comprobante * <span style="color:#dc2626;">(obligatorio)</span></label>
+      <input type="file" id="ev-modal-file" accept="image/*,.pdf" style="font-size:12px;padding:6px;width:100%;border:1.5px solid var(--border);border-radius:6px;">
+      <p style="font-size:10.5px;color:#94a3b8;margin-top:4px;">Formatos aceptados: imagen o PDF</p>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-evidencia-personal').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="confirmarNoDisponible()">Confirmar y Guardar</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -166,6 +187,24 @@ async function marcarTodosDisponibles(){
   }
   toast('Todo el personal marcado como disponible');
   setTimeout(()=>location.reload(),1200);
+}
+async function confirmarNoDisponible(){
+  const id  = document.getElementById('ev-modal-id').value;
+  const mot = document.getElementById('ev-modal-mot').value;
+  const det = document.getElementById('ev-modal-det').value;
+  const file= document.getElementById('ev-modal-file').files[0];
+  if(!file){ toast('El comprobante es obligatorio','#dc2626'); return; }
+  const fd = new FormData();
+  fd.append('id',id); fd.append('disponible',0);
+  fd.append('motivo',mot); fd.append('detalle',det);
+  fd.append('evidencia',file);
+  const resp = await fetch('/personal/update_con_evidencia',{method:'POST',body:fd});
+  const d = await resp.json();
+  if(d.ok){
+    toast('Inspector marcado como no disponible con comprobante','#166534');
+    document.getElementById('modal-evidencia-personal').style.display='none';
+    setTimeout(()=>location.reload(),1000);
+  } else { toast(d.error||'Error','#dc2626'); }
 }
 </script>
 {% endblock %}
