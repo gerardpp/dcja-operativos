@@ -115,7 +115,6 @@
         <select id="od-via">
           <option value="">— Seleccionar —</option>
           <option value="Memorando">Memorando</option>
-          <option value="Verbal">Verbal</option>
           <option value="Llamada telefonica">Llamada telefonica</option>
           <option value="WhatsApp">WhatsApp</option>
           <option value="Correo electronico">Correo electronico</option>
@@ -124,6 +123,11 @@
       </div>
       <div class="fg span2"><label class="fl">Observacion</label>
         <input type="text" id="od-observacion" placeholder="Instrucciones o contexto de la orden...">
+      </div>
+      <div class="fg span2">
+        <label class="fl">Evidencia * <span style="color:#dc2626;">(obligatorio)</span></label>
+        <input type="file" id="od-evidencia" accept="image/*,.pdf" style="font-size:12px;padding:6px;">
+        <p style="font-size:10.5px;color:#94a3b8;margin-top:3px;">Screenshot de WhatsApp, correo, memorando escaneado, etc.</p>
       </div>
     </div>
     <div style="margin-top:14px;">
@@ -222,16 +226,25 @@ async function agregarOrden(){
   const fecha=document.getElementById('od-fecha').value;
   if(!nombre||!prov){alert('Completa al menos el nombre y la provincia.');return;}
   if(!fecha){alert('Selecciona la fecha de ejecucion.');return;}
-  const r=await api('/planificacion/agregar_operativo',{
-    semana:SEMANA,tipo:document.getElementById('od-tipo').value,
-    nombre,fecha,direccion:document.getElementById('od-direccion').value.trim(),
-    municipio:document.getElementById('od-municipio').value.trim(),
-    provincia:prov,zona:document.getElementById('od-zona').value,
-    fuente:'orden_direccion',
-    via_comunicacion:document.getElementById('od-via').value,
-    observacion:document.getElementById('od-observacion').value.trim(),
-    no_oficio:''
-  });
+  const evidencia = document.getElementById('od-evidencia').files[0];
+  if(!evidencia){alert('Debes subir la evidencia de la orden (screenshot, correo, memorando, etc.) para poder agregar el operativo.');return;}
+  // Upload via FormData to support file attachment
+  const fd = new FormData();
+  fd.append('semana', SEMANA);
+  fd.append('tipo', document.getElementById('od-tipo').value);
+  fd.append('nombre', nombre);
+  fd.append('fecha', fecha);
+  fd.append('direccion', document.getElementById('od-direccion').value.trim());
+  fd.append('municipio', document.getElementById('od-municipio').value.trim());
+  fd.append('provincia', prov);
+  fd.append('zona', document.getElementById('od-zona').value);
+  fd.append('fuente', 'orden_direccion');
+  fd.append('via_comunicacion', document.getElementById('od-via').value);
+  fd.append('observacion', document.getElementById('od-observacion').value.trim());
+  fd.append('no_oficio', '');
+  fd.append('evidencia', evidencia);
+  const resp = await fetch('/planificacion/agregar_orden_con_evidencia', {method:'POST', body:fd});
+  const r = await resp.json();
   if(r.ok){toast('Orden de Direccion agregada');setTimeout(()=>location.reload(),800);}
   else toast('Error','#dc2626');
 }
@@ -249,4 +262,4 @@ calcInfo();
 document.getElementById('vehiculos-input').addEventListener('input',calcInfo);
 document.getElementById('militares-input').addEventListener('input',calcInfo);
 </script>
-{% endblock %} 
+{% endblock %}
