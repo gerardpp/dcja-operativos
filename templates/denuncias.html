@@ -258,16 +258,24 @@ async function verHistorial(id,fuente,nombre){
         </div>
       </div>`;
     } else {
-      // Operativo event
+      // Operativo event — with date, MH number and link to DCJA-042
       const op=ev.data;
       const rf=op.resultado_final||'';
       const [bg,col]=(C[rf]||'#f1f5f9|#475569').split('|');
       const lbl=LBL[rf]||rf||'Pendiente';
       const brig=(op.brigadas||[]).map(b=>[b.coordinador,b.inspector,b.auxiliar].filter(Boolean).join(', ')).join(' | ');
-      h+=`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #eef0f6;background:#fafbff;padding:10px;border-radius:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
-          <span style="font-size:10px;color:#94a3b8;font-family:'DM Mono',monospace;">Operativo — ${op.fecha||'—'}</span>
-          ${rf?`<span style="background:${bg};color:${col};padding:1px 8px;border-radius:8px;font-size:10.5px;font-weight:700;">${lbl}</span>`:''}
+      const noOficio=op.no_oficio?`<span style="font-family:'DM Mono',monospace;font-weight:700;color:#1e40af;">${op.no_oficio}</span>`:'';
+      const pdfUrl=`/ejecucion_diaria?fecha=${op.fecha||''}`;
+      h+=`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #eef0f6;background:#fafbff;padding:10px;border-radius:6px;border-left:3px solid ${col};">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;color:#1a2440;">📅 ${op.fecha||'—'}</span>
+            ${noOficio}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${rf?`<span style="background:${bg};color:${col};padding:1px 8px;border-radius:8px;font-size:10.5px;font-weight:700;">${lbl}</span>`:''}
+            <a href="${pdfUrl}" target="_blank" style="background:#0d2257;color:#c8a022;padding:2px 9px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">Ver DCJA-042</a>
+          </div>
         </div>
         ${op.zona_operativo?`<div style="font-size:11px;color:#475569;margin-bottom:2px;"><strong>Zona:</strong> ${op.zona_operativo}</div>`:''}
         ${brig?`<div style="font-size:11px;color:#475569;margin-bottom:2px;"><strong>Personal:</strong> ${brig}</div>`:''}
@@ -309,4 +317,4 @@ async function verVisitas(id,nombre){
   document.getElementById('vis-body').innerHTML=h;
 }
 </script>
-{% endblock %} 
+{% endblock %}
