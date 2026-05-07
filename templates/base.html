@@ -101,25 +101,24 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 @media print{.nav-top,.nav-links-bar,.footer,button,.no-print{display:none!important;}body{background:#fff;font-size:11px;}}
 
 /* ── NAV DROPDOWNS ────────────────────────────── */
-.nav-dropdown { position:relative; display:inline-block; }
+.nav-dropdown { position:static; display:inline-block; }
 .nav-drop-btn {
   background:none; border:none; cursor:pointer;
-  font-family:inherit; font-size:inherit;
+  font-family:inherit; font-size:inherit; padding:0;
 }
 .nav-drop-menu {
-  display:none; position:absolute; top:100%; left:0;
-  background:#fff; border:1.5px solid var(--dcja-gold,#c8a022);
-  border-radius:8px; min-width:180px; z-index:999;
-  box-shadow:0 8px 24px rgba(0,0,0,.12); padding:4px 0;
+  display:none; position:fixed; top:52px;
+  background:#fff; border:1.5px solid #c8a022;
+  border-radius:8px; min-width:190px; z-index:9999;
+  box-shadow:0 8px 32px rgba(0,0,0,.18); padding:6px 0;
 }
+.nav-drop-menu.open { display:block; }
 .nav-drop-menu a {
-  display:block; padding:8px 16px; font-size:12px; font-weight:600;
-  color:var(--dcja-navy,#0d2257); text-decoration:none;
-  white-space:nowrap;
+  display:block; padding:9px 18px; font-size:12.5px; font-weight:600;
+  color:#0d2257; text-decoration:none; white-space:nowrap;
 }
-.nav-drop-menu a:hover { background:#f5f7fc; color:var(--dcja-gold,#c8a022); }
-.nav-dropdown:hover .nav-drop-menu { display:block; }
-.nav-drop-btn.active { color:var(--dcja-gold,#c8a022); font-weight:700; }
+.nav-drop-menu a:hover { background:#f5f7fc; color:#c8a022; }
+.nav-drop-btn.active { color:#c8a022; font-weight:700; }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
@@ -217,5 +216,26 @@ function toast(msg,color){const t=document.getElementById('toast');t.textContent
 async function api(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return r.json();}
 </script>
 {% block scripts %}{% endblock %}
+<script>
+// Dropdown navigation
+document.querySelectorAll('.nav-drop-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const menu = this.nextElementSibling;
+    // Position menu below button
+    const rect = this.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    // Close all other menus
+    document.querySelectorAll('.nav-drop-menu.open').forEach(m => {
+      if(m !== menu) m.classList.remove('open');
+    });
+    menu.classList.toggle('open');
+  });
+});
+// Close on click outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.nav-drop-menu.open').forEach(m => m.classList.remove('open'));
+});
+</script>
 </body>
 </html>
