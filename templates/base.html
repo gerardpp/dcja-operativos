@@ -120,30 +120,31 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 }
 .nav-drop-menu {
   display: none;
-  position: absolute; top: calc(100% + 6px); left: 0;
+  position: absolute; top: 100%; left: 0;
+  padding-top: 8px; /* invisible bridge so mouse can travel down */
+  background: transparent;
+  min-width: 220px;
+  z-index: 9999;
+}
+.nav-drop-menu-inner {
   background: #fff;
   border: 1.5px solid #c8a022;
   border-radius: 10px;
-  min-width: 200px;
-  z-index: 9999;
   box-shadow: 0 12px 40px rgba(0,0,0,0.18);
   padding: 6px 0;
   animation: fadeIn 0.12s ease;
 }
 @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
 .nav-dropdown:hover .nav-drop-menu { display: block; }
-.nav-drop-menu a {
+.nav-drop-menu-inner a {
   display: block; padding: 10px 20px;
-  font-size: 12.5px; font-weight: 600;
+  font-size: 13px; font-weight: 600;
   color: #0d2257; text-decoration: none; white-space: nowrap;
-  transition: background 0.1s;
+  transition: background 0.1s, padding-left 0.1s;
 }
-.nav-drop-menu a:hover {
+.nav-drop-menu-inner a:hover {
   background: #f5f7fc; color: #c8a022;
-  padding-left: 24px;
-}
-.nav-drop-menu hr {
-  border: none; border-top: 1px solid #eef0f6; margin: 4px 0;
+  padding-left: 26px;
 }
 </style>
 {% block extra_head %}{% endblock %}
@@ -189,12 +190,14 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
         Operativos ▾
       </button>
       <div class="nav-drop-menu">
-        <a href="/planificacion">Planificacion</a>
-        <a href="/plan_semanal">Plan Semanal</a>
-        <a href="/ejecucion_diaria">Ejecucion Diaria</a>
-        <a href="/historial">Bitacora</a>
-        <a href="/reportes">Reportes</a>
-        <a href="/auditoria">Auditoria</a>
+        <div class="nav-drop-menu-inner">
+          <a href="/planificacion">Planificacion</a>
+          <a href="/plan_semanal">Plan Semanal</a>
+          <a href="/ejecucion_diaria">Ejecucion Diaria</a>
+          <a href="/historial">Bitacora</a>
+          <a href="/reportes">Reportes</a>
+          <a href="/auditoria">Auditoria</a>
+        </div>
       </div>
     </div>
 
@@ -204,9 +207,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
         Denuncias ▾
       </button>
       <div class="nav-drop-menu">
-        <a href="/denuncias">Denuncias Pendientes</a>
-        <a href="/historial-denuncias">Historial</a>
-        <a href="/mapa">Mapa</a>
+        <div class="nav-drop-menu-inner">
+          <a href="/denuncias">Denuncias Pendientes</a>
+          <a href="/historial-denuncias">Historial</a>
+          <a href="/mapa">Mapa</a>
+        </div>
       </div>
     </div>
 
@@ -216,13 +221,15 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
         Administracion ▾
       </button>
       <div class="nav-drop-menu">
-        <a href="/personal">Personal</a>
-        {% if current_user.is_authenticated and current_user.rol in ['admin','operaciones'] %}
-        <a href="/trazabilidad">Trazabilidad</a>
-        {% endif %}
-        {% if current_user.is_authenticated and current_user.rol=='admin' %}
-        <a href="/usuarios">Usuarios</a>
-        {% endif %}
+        <div class="nav-drop-menu-inner">
+          <a href="/personal">Personal</a>
+          {% if current_user.is_authenticated and current_user.rol in ['admin','operaciones'] %}
+          <a href="/trazabilidad">Trazabilidad</a>
+          {% endif %}
+          {% if current_user.is_authenticated and current_user.rol=='admin' %}
+          <a href="/usuarios">Usuarios</a>
+          {% endif %}
+        </div>
       </div>
     </div>
 
