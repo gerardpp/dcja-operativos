@@ -182,7 +182,20 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     {% else %}
 
     <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
-    <a class="nav-link {% if request.endpoint=='buscar_view' %}active{% endif %}" href="/buscar">Buscar</a>
+
+    <!-- DENUNCIAS DROPDOWN -->
+    <div class="nav-dropdown">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['denuncias_view','historial_denuncias_view','mapa_view'] %}active{% endif %}">
+        Denuncias ▾
+      </button>
+      <div class="nav-drop-menu">
+        <div class="nav-drop-menu-inner">
+          <a href="/denuncias">Denuncias Pendientes</a>
+          <a href="/historial-denuncias">Historial</a>
+          <a href="/mapa">Mapa</a>
+        </div>
+      </div>
+    </div>
 
     <!-- OPERATIVOS DROPDOWN -->
     <div class="nav-dropdown">
@@ -197,20 +210,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
           <a href="/historial">Bitacora</a>
           <a href="/reportes">Reportes</a>
           <a href="/auditoria">Auditoria</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- DENUNCIAS DROPDOWN -->
-    <div class="nav-dropdown">
-      <button class="nav-link nav-drop-btn {% if request.endpoint in ['denuncias_view','historial_denuncias_view','mapa_view'] %}active{% endif %}">
-        Denuncias ▾
-      </button>
-      <div class="nav-drop-menu">
-        <div class="nav-drop-menu-inner">
-          <a href="/denuncias">Denuncias Pendientes</a>
-          <a href="/historial-denuncias">Historial</a>
-          <a href="/mapa">Mapa</a>
         </div>
       </div>
     </div>
@@ -232,6 +231,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
         </div>
       </div>
     </div>
+
+    <a class="nav-link {% if request.endpoint=='buscar_view' %}active{% endif %}" href="/buscar">Buscar</a>
 
     {% endif %}
   </div>
