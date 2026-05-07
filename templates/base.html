@@ -99,6 +99,27 @@ tr:hover td{background:#f8f9ff;}
 #toast{position:fixed;bottom:22px;right:22px;background:var(--dcja-navy);color:#fff;padding:10px 18px;border-radius:7px;font-size:12px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;z-index:9999;border-left:4px solid var(--dcja-gold);}
 hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 @media print{.nav-top,.nav-links-bar,.footer,button,.no-print{display:none!important;}body{background:#fff;font-size:11px;}}
+
+/* ── NAV DROPDOWNS ────────────────────────────── */
+.nav-dropdown { position:relative; display:inline-block; }
+.nav-drop-btn {
+  background:none; border:none; cursor:pointer;
+  font-family:inherit; font-size:inherit;
+}
+.nav-drop-menu {
+  display:none; position:absolute; top:100%; left:0;
+  background:#fff; border:1.5px solid var(--dcja-gold,#c8a022);
+  border-radius:8px; min-width:180px; z-index:999;
+  box-shadow:0 8px 24px rgba(0,0,0,.12); padding:4px 0;
+}
+.nav-drop-menu a {
+  display:block; padding:8px 16px; font-size:12px; font-weight:600;
+  color:var(--dcja-navy,#0d2257); text-decoration:none;
+  white-space:nowrap;
+}
+.nav-drop-menu a:hover { background:#f5f7fc; color:var(--dcja-gold,#c8a022); }
+.nav-dropdown:hover .nav-drop-menu { display:block; }
+.nav-drop-btn.active { color:var(--dcja-gold,#c8a022); font-weight:700; }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
@@ -133,21 +154,53 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     {% if current_user.is_authenticated and current_user.rol == 'denuncias' %}
       <a class="nav-link {% if request.endpoint=='mis_denuncias_view' %}active{% endif %}" href="/mis_denuncias">Mis Denuncias</a>
     {% else %}
+
     <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
     <a class="nav-link {% if request.endpoint=='buscar_view' %}active{% endif %}" href="/buscar">Buscar</a>
-    <a class="nav-link {% if request.endpoint=='denuncias_view' %}active{% endif %}" href="/denuncias">Denuncias</a>
-      <a class="nav-link {% if request.endpoint=='historial_denuncias_view' %}active{% endif %}" href="/historial-denuncias">Historial</a>
-    <a class="nav-link {% if request.endpoint=='planificacion_view' %}active{% endif %}" href="/planificacion">Planificación</a>
-    <a class="nav-link {% if request.endpoint in ['plan_semanal','asignacion_view'] %}active{% endif %}" href="/plan_semanal">Plan Semanal</a>
-    <a class="nav-link {% if request.endpoint=='ejecucion_diaria' %}active{% endif %}" href="/ejecucion_diaria">Ejecucion Diaria</a>
-    <a class="nav-link {% if request.endpoint=='historial_view' %}active{% endif %}" href="/historial">Bitacora</a>
-    <a class="nav-link {% if request.endpoint=='reportes_view' %}active{% endif %}" href="/reportes">Reportes</a>
-    <a class="nav-link {% if request.endpoint=='auditoria_view' %}active{% endif %}" href="/auditoria">Auditoria</a>
-    <a class="nav-link {% if request.endpoint=='mapa_view' %}active{% endif %}" href="/mapa">Mapa</a>
-    <a class="nav-link {% if request.endpoint=='personal_view' %}active{% endif %}" href="/personal">Personal</a>
-    {% if current_user.is_authenticated and current_user.rol=='admin' %}
-    <a class="nav-link {% if request.endpoint=='usuarios_view' %}active{% endif %}" href="/usuarios">Usuarios</a>
-    {% endif %}
+
+    <!-- OPERATIVOS DROPDOWN -->
+    <div class="nav-dropdown">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['planificacion_view','plan_semanal','asignacion_view','ejecucion_diaria','historial_view','reportes_view','auditoria_view'] %}active{% endif %}">
+        Operativos ▾
+      </button>
+      <div class="nav-drop-menu">
+        <a href="/planificacion">Planificacion</a>
+        <a href="/plan_semanal">Plan Semanal</a>
+        <a href="/ejecucion_diaria">Ejecucion Diaria</a>
+        <a href="/historial">Bitacora</a>
+        <a href="/reportes">Reportes</a>
+        <a href="/auditoria">Auditoria</a>
+      </div>
+    </div>
+
+    <!-- DENUNCIAS DROPDOWN -->
+    <div class="nav-dropdown">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['denuncias_view','historial_denuncias_view','mapa_view'] %}active{% endif %}">
+        Denuncias ▾
+      </button>
+      <div class="nav-drop-menu">
+        <a href="/denuncias">Denuncias Pendientes</a>
+        <a href="/historial-denuncias">Historial</a>
+        <a href="/mapa">Mapa</a>
+      </div>
+    </div>
+
+    <!-- ADMINISTRACION DROPDOWN -->
+    <div class="nav-dropdown">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['personal_view','trazabilidad_view','usuarios_view'] %}active{% endif %}">
+        Administracion ▾
+      </button>
+      <div class="nav-drop-menu">
+        <a href="/personal">Personal</a>
+        {% if current_user.is_authenticated and current_user.rol in ['admin','operaciones'] %}
+        <a href="/trazabilidad">Trazabilidad</a>
+        {% endif %}
+        {% if current_user.is_authenticated and current_user.rol=='admin' %}
+        <a href="/usuarios">Usuarios</a>
+        {% endif %}
+      </div>
+    </div>
+
     {% endif %}
   </div>
 </div>
