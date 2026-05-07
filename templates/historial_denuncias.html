@@ -4,54 +4,96 @@
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
   <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Historial — Denuncias y Operativos</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Denuncias cerradas y registro de actividad de Ejecucion Diaria</p>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Historial de Denuncias y Operativos</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Filtra por nombre, provincia, resultado o fecha para ver el historico de cada establecimiento</p>
   </div>
 </div>
 
-<!-- DENUNCIAS EJECUTADAS/CERRADAS -->
-{% if den_ejecutadas %}
-<div class="card">
-  <div class="card-head"><div class="card-num">✓</div><h2>Denuncias Ejecutadas / Cerradas — {{ den_ejecutadas|length }}</h2></div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>#</th><th>No. Oficio</th><th>Fecha</th><th>Nombre</th>
-        <th>Provincia</th><th>Tipo</th><th>Estado Final</th><th>Ingresado por</th>
-      </tr></thead>
-      <tbody>
-        {% for d in den_ejecutadas %}
-        <tr>
-          <td style="color:#94a3b8;">{{ loop.index }}</td>
-          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ d.no_oficio or '—' }}</td>
-          <td style="font-size:11px;">{{ d.fecha_entrada or '—' }}</td>
-          <td style="font-weight:600;">{{ d.nombre }}</td>
-          <td style="font-size:11px;">{{ d.provincia }}</td>
-          <td>{% if 'DEPORTIVA' in d.tipo|upper %}<span class="badge b-dep">Dep.</span>{% else %}<span class="badge b-lot">Lot.</span>{% endif %}</td>
-          <td>
-            {% if d.estado == 'ejecutada' %}<span class="badge b-ok">Ejecutada ✓</span>
-            {% elif d.estado == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
-            {% elif d.estado == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
-            {% elif d.estado == 'cerrada' %}<span class="badge b-ok">Cerrada ✓</span>
-            {% else %}<span class="badge b-gray">{{ d.estado }}</span>{% endif %}
-          </td>
-          <td style="font-size:11px;color:var(--muted);">{{ d.ingresado_por or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<!-- FILTROS -->
+<div class="card no-print">
+  <div class="card-body" style="padding:16px 18px;">
+    <form method="GET" action="/historial-denuncias">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;">
+        <div class="fg">
+          <label class="fl">Nombre / Establecimiento</label>
+          <input type="text" name="nombre" value="{{ f_nombre }}" placeholder="Ej: La Ney, Banca XYZ...">
+        </div>
+        <div class="fg">
+          <label class="fl">Provincia</label>
+          <input type="text" name="provincia" value="{{ f_provincia }}" placeholder="Ej: Dajabon, Santiago...">
+        </div>
+        <div class="fg">
+          <label class="fl">Resultado</label>
+          <select name="resultado">
+            <option value="">Todos</option>
+            <option value="ejecutada" {% if f_resultado=='ejecutada' %}selected{% endif %}>Ejecutada</option>
+            <option value="ejecutado_sin_incautacion" {% if f_resultado=='ejecutado_sin_incautacion' %}selected{% endif %}>Sin Incautacion</option>
+            <option value="con_decomiso" {% if f_resultado=='con_decomiso' %}selected{% endif %}>Con Decomiso</option>
+            <option value="no_ejecutado" {% if f_resultado=='no_ejecutado' %}selected{% endif %}>No Ejecutado</option>
+            <option value="planificada" {% if f_resultado=='planificada' %}selected{% endif %}>Planificada</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Desde</label>
+          <input type="date" name="desde" value="{{ f_desde }}">
+        </div>
+        <div class="fg">
+          <label class="fl">Hasta</label>
+          <input type="date" name="hasta" value="{{ f_hasta }}">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn btn-p" style="flex:1;">Filtrar</button>
+          <a href="/historial-denuncias" class="btn btn-o">Limpiar</a>
+        </div>
+      </div>
+    </form>
   </div>
 </div>
-{% endif %}
 
-<!-- LOG DE ACTIVIDAD -->
+<!-- STATS CARDS -->
+<div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #166534;">
+    <div class="card-body" style="padding:14px 18px;">
+      <div style="font-size:26px;font-weight:800;color:#166534;">{{ ejec }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Ejecutadas</div>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #92400e;">
+    <div class="card-body" style="padding:14px 18px;">
+      <div style="font-size:26px;font-weight:800;color:#92400e;">{{ sin_inc }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Sin Incautacion</div>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #9d174d;">
+    <div class="card-body" style="padding:14px 18px;">
+      <div style="font-size:26px;font-weight:800;color:#9d174d;">{{ decomiso }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Con Decomiso</div>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #0d2257;">
+    <div class="card-body" style="padding:14px 18px;">
+      <div style="font-size:26px;font-weight:800;color:#0d2257;">{{ logs|length }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Total Registros</div>
+    </div>
+  </div>
+</div>
+
+<!-- LOG TABLE -->
 <div class="card">
-  <div class="card-head"><div class="card-num">H</div><h2>Log de Actividad — {{ logs|length }} registros</h2></div>
+  <div class="card-head">
+    <div class="card-num">{{ logs|length }}</div>
+    <h2>Registros de Actividad
+      {% if f_nombre or f_provincia or f_resultado or f_desde or f_hasta %}
+      — <span style="color:var(--dcja-gold);font-size:13px;">Filtrado</span>
+      {% endif %}
+    </h2>
+  </div>
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>#</th><th>Fecha</th><th>Establecimiento</th><th>Provincia</th>
-        <th>Resultado</th><th>Usuario</th><th>Nota</th>
+        <th>#</th><th>Fecha</th><th>Establecimiento</th>
+        <th>Provincia</th><th>Municipio</th><th>Tipo</th>
+        <th>Resultado</th><th>Registrado por</th><th>Nota</th>
       </tr></thead>
       <tbody>
         {% for l in logs %}
@@ -60,8 +102,15 @@
           <td style="font-size:10.5px;white-space:nowrap;font-family:'DM Mono',monospace;">
             {{ l.fecha[:16].replace('T',' ') if l.fecha else '—' }}
           </td>
-          <td style="font-weight:600;">{{ l.den_nombre or (l.nota[:50] if l.nota else '—') }}</td>
-          <td style="font-size:11px;">{{ l.provincia or '—' }}</td>
+          <td style="font-weight:600;">{{ l.den_nombre or '—' }}</td>
+          <td style="font-size:11px;font-weight:600;">{{ l.provincia or '—' }}</td>
+          <td style="font-size:11px;">{{ l.municipio or '—' }}</td>
+          <td style="font-size:10.5px;">
+            {% if l.tipo %}
+              {% if 'DEPORTIVA' in l.tipo|upper %}<span class="badge b-dep">Dep.</span>
+              {% else %}<span class="badge b-lot">Lot.</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
           <td>
             {% set est = l.estado_nuevo or '' %}
             {% if est == 'ejecutada' %}<span class="badge b-ok">Ejecutada ✓</span>
@@ -72,14 +121,19 @@
             {% elif est == 'pendiente' %}<span class="badge b-gray">Pendiente</span>
             {% else %}<span class="badge b-gray">{{ est }}</span>{% endif %}
           </td>
-          <td style="font-weight:700;font-size:11px;">{{ l.usuario or '—' }}
-            {% if l.rol %}<span style="background:#f1f5f9;color:#475569;padding:1px 5px;border-radius:4px;font-size:9px;margin-left:4px;">{{ l.rol }}</span>{% endif %}
+          <td style="font-size:11px;">
+            <strong>{{ l.usuario or '—' }}</strong>
+            {% if l.rol %}<span style="background:#f1f5f9;color:#475569;padding:1px 5px;border-radius:4px;font-size:9px;margin-left:3px;">{{ l.rol }}</span>{% endif %}
           </td>
-          <td style="font-size:11px;color:var(--muted);max-width:200px;">{{ l.nota or '—' }}</td>
+          <td style="font-size:11px;color:var(--muted);max-width:180px;">{{ l.nota or '—' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">
-          No hay actividad registrada aun. Los resultados de Ejecucion Diaria apareceran aqui automaticamente.
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
+          {% if f_nombre or f_provincia or f_resultado %}
+          No hay resultados para estos filtros.
+          {% else %}
+          No hay actividad registrada aun. Los resultados de Ejecucion Diaria apareceran aqui.
+          {% endif %}
         </td></tr>
         {% endfor %}
       </tbody>
