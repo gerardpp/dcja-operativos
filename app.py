@@ -565,7 +565,13 @@ def index(): return render_template('index.html')
 def api_stats():
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
-        pend = db.fetchone("SELECT COUNT(*) as c FROM denuncias WHERE estado='pendiente'")['c']
+        pend_excel = db.fetchone(
+            """SELECT COUNT(*) as c FROM denuncias
+               WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
+        pend_manual = db.fetchone(
+            """SELECT COUNT(*) as c FROM denuncias_manual
+               WHERE estado NOT IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
+        pend = pend_excel + pend_manual
         ops  = db.fetchone("SELECT COUNT(*) as c FROM operativos WHERE semana=?", (semana,))['c']
         brig = db.fetchone("SELECT COALESCE(SUM(brigadas_requeridas),0) as c FROM operativos WHERE semana=?", (semana,))['c']
         hist = db.fetchone("SELECT COUNT(*) as c FROM operativos WHERE estado='asignado'")['c']
@@ -1581,30 +1587,54 @@ def personal_update_con_evidencia():
 @app.route('/historial-denuncias')
 @rol_required('admin','operaciones')
 def historial_denuncias_view():
+    f_nombre   = request.args.get('nombre','').strip()
+    f_provincia= request.args.get('provincia','').strip()
+    f_resultado= request.args.get('resultado','').strip()
+    f_desde    = request.args.get('desde','').strip()
+    f_hasta    = request.args.get('hasta','').strip()
+
     with get_db() as db:
-        # Executed/closed denuncias
         try:
-            den_ejecutadas = [dict(r) for r in db.fetchall(
-                """SELECT * FROM denuncias_manual
-                   WHERE estado IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')
-                   ORDER BY created_at DESC""")]
+            q = "SELECT * FROM denuncias_manual WHERE estado IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')"
+            pr = []
+            if f_nombre:    q += " AND LOWER(nombre) LIKE LOWER(?)";    pr.append(f'%{f_nombre}%')
+            if f_provincia: q += " AND LOWER(provincia) LIKE LOWER(?)"; pr.append(f'%{f_provincia}%')
+            q += " ORDER BY created_at DESC"
+            den_ejecutadas = [dict(r) for r in db.fetchall(q, tuple(pr))]
         except: den_ejecutadas = []
-        # Activity log
+
         try:
-            db.execute("""CREATE TABLE IF NOT EXISTS historial_estados (
+            db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, tabla TEXT,
                 registro_id INTEGER, fecha TEXT, usuario TEXT, rol TEXT,
-                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')""")
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')''')
         except: pass
+
         try:
-            logs = [dict(r) for r in db.fetchall(
-                """SELECT h.*, d.nombre as den_nombre, d.provincia
-                   FROM historial_estados h
-                   LEFT JOIN denuncias_manual d ON h.tabla='denuncias_manual' AND h.registro_id=d.id
-                   WHERE h.tabla IN ('denuncias_manual','operativos')
-                   ORDER BY h.fecha DESC LIMIT 300""")]
+            q2 = '''SELECT h.*, d.nombre as den_nombre, d.provincia, d.municipio, d.tipo
+                    FROM historial_estados h
+                    LEFT JOIN denuncias_manual d ON h.tabla='denuncias_manual' AND h.registro_id=d.id
+                    WHERE h.tabla IN ('denuncias_manual','operativos')'''
+            pr2 = []
+            if f_nombre:    q2 += " AND LOWER(COALESCE(d.nombre,'')) LIKE LOWER(?)"; pr2.append(f'%{f_nombre}%')
+            if f_provincia: q2 += " AND LOWER(COALESCE(d.provincia,'')) LIKE LOWER(?)"; pr2.append(f'%{f_provincia}%')
+            if f_resultado: q2 += " AND h.estado_nuevo=?"; pr2.append(f_resultado)
+            if f_desde:     q2 += " AND substr(h.fecha,1,10) >= ?"; pr2.append(f_desde)
+            if f_hasta:     q2 += " AND substr(h.fecha,1,10) <= ?"; pr2.append(f_hasta)
+            q2 += " ORDER BY h.fecha DESC LIMIT 500"
+            logs = [dict(r) for r in db.fetchall(q2, tuple(pr2))]
         except: logs = []
-    return render_template('historial_denuncias.html', logs=logs, den_ejecutadas=den_ejecutadas)
+
+        ejec    = sum(1 for l in logs if l.get('estado_nuevo') == 'ejecutada')
+        sin_inc = sum(1 for l in logs if l.get('estado_nuevo') == 'ejecutado_sin_incautacion')
+        decomiso= sum(1 for l in logs if l.get('estado_nuevo') == 'con_decomiso')
+
+    return render_template('historial_denuncias.html',
+        logs=logs, den_ejecutadas=den_ejecutadas,
+        f_nombre=f_nombre, f_provincia=f_provincia,
+        f_resultado=f_resultado, f_desde=f_desde, f_hasta=f_hasta,
+        ejec=ejec, sin_inc=sin_inc, decomiso=decomiso)
+
 
 @app.route('/mapa')
 @login_required
