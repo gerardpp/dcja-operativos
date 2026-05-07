@@ -617,10 +617,16 @@ def reset_carga():
 @login_required
 def denuncias_view():
     with get_db() as db:
+        # Excel denuncias — only pending/active
         excel_rows = [dict(r) for r in db.fetchall(
-            "SELECT * FROM denuncias ORDER BY provincia,municipio")]
+            """SELECT * FROM denuncias
+               WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','con_decomiso','cerrada')
+               ORDER BY provincia,municipio""")]
+        # Main tab = pending/active only — exclude executed/closed
         manual_rows = [dict(r) for r in db.fetchall(
-            "SELECT * FROM denuncias_manual ORDER BY created_at DESC")]
+            """SELECT * FROM denuncias_manual
+               WHERE estado NOT IN ('ejecutada','con_decomiso','cerrada')
+               ORDER BY created_at DESC""")]
         logs = [dict(r) for r in db.fetchall(
             "SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10")]
     for r in excel_rows:
@@ -1576,16 +1582,29 @@ def personal_update_con_evidencia():
 @rol_required('admin','operaciones')
 def historial_denuncias_view():
     with get_db() as db:
+        # Executed/closed denuncias
+        try:
+            den_ejecutadas = [dict(r) for r in db.fetchall(
+                """SELECT * FROM denuncias_manual
+                   WHERE estado IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')
+                   ORDER BY created_at DESC""")]
+        except: den_ejecutadas = []
+        # Activity log
+        try:
+            db.execute("""CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, tabla TEXT,
+                registro_id INTEGER, fecha TEXT, usuario TEXT, rol TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')""")
+        except: pass
         try:
             logs = [dict(r) for r in db.fetchall(
-                """SELECT h.*, d.nombre as den_nombre, d.provincia, d.tipo
+                """SELECT h.*, d.nombre as den_nombre, d.provincia
                    FROM historial_estados h
                    LEFT JOIN denuncias_manual d ON h.tabla='denuncias_manual' AND h.registro_id=d.id
                    WHERE h.tabla IN ('denuncias_manual','operativos')
-                   ORDER BY h.fecha DESC LIMIT 200""")]
-        except:
-            logs = []
-    return render_template('historial_denuncias.html', logs=logs)
+                   ORDER BY h.fecha DESC LIMIT 300""")]
+        except: logs = []
+    return render_template('historial_denuncias.html', logs=logs, den_ejecutadas=den_ejecutadas)
 
 @app.route('/mapa')
 @login_required
