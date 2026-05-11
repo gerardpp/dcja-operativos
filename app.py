@@ -568,9 +568,11 @@ def api_stats():
         pend_excel = db.fetchone(
             """SELECT COUNT(*) as c FROM denuncias
                WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
-        pend_manual = db.fetchone(
-            """SELECT COUNT(*) as c FROM denuncias_manual
-               WHERE estado NOT IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
+        try:
+            pend_manual = db.fetchone(
+                """SELECT COUNT(*) as c FROM denuncias_manual
+                   WHERE estado NOT IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
+        except: pend_manual = 0
         pend = pend_excel + pend_manual
         ops  = db.fetchone("SELECT COUNT(*) as c FROM operativos WHERE semana=?", (semana,))['c']
         brig = db.fetchone("SELECT COALESCE(SUM(brigadas_requeridas),0) as c FROM operativos WHERE semana=?", (semana,))['c']
@@ -1611,13 +1613,20 @@ def historial_denuncias_view():
         except: pass
 
         try:
-            q2 = '''SELECT h.*, d.nombre as den_nombre, d.provincia, d.municipio, d.tipo
+            q2 = '''SELECT h.*,
+                    COALESCE(d.nombre, op.nombre, h.nota) as den_nombre,
+                    COALESCE(d.provincia, op.provincia) as provincia,
+                    COALESCE(d.municipio, op.municipio) as municipio,
+                    COALESCE(d.tipo, op.tipo) as tipo,
+                    op.id as operativo_id, op.fecha as op_fecha,
+                    op.brigadas_json, op.no_oficio as op_oficio
                     FROM historial_estados h
                     LEFT JOIN denuncias_manual d ON h.tabla='denuncias_manual' AND h.registro_id=d.id
+                    LEFT JOIN operativos op ON h.tabla='operativos' AND h.registro_id=op.id
                     WHERE h.tabla IN ('denuncias_manual','operativos')'''
             pr2 = []
-            if f_nombre:    q2 += " AND LOWER(COALESCE(d.nombre,'')) LIKE LOWER(?)"; pr2.append(f'%{f_nombre}%')
-            if f_provincia: q2 += " AND LOWER(COALESCE(d.provincia,'')) LIKE LOWER(?)"; pr2.append(f'%{f_provincia}%')
+            if f_nombre:    q2 += " AND LOWER(COALESCE(d.nombre,op.nombre,'')) LIKE LOWER(?)"; pr2.append(f'%{f_nombre}%')
+            if f_provincia: q2 += " AND LOWER(COALESCE(d.provincia,op.provincia,'')) LIKE LOWER(?)"; pr2.append(f'%{f_provincia}%')
             if f_resultado: q2 += " AND h.estado_nuevo=?"; pr2.append(f_resultado)
             if f_desde:     q2 += " AND substr(h.fecha,1,10) >= ?"; pr2.append(f_desde)
             if f_hasta:     q2 += " AND substr(h.fecha,1,10) <= ?"; pr2.append(f_hasta)
@@ -1635,6 +1644,33 @@ def historial_denuncias_view():
         f_resultado=f_resultado, f_desde=f_desde, f_hasta=f_hasta,
         ejec=ejec, sin_inc=sin_inc, decomiso=decomiso)
 
+
+@app.route('/trazabilidad')
+@rol_required('admin','operaciones')
+def trazabilidad_view():
+    filtro_user   = request.args.get('usuario','').strip()
+    filtro_accion = request.args.get('accion','').strip()
+    filtro_fecha  = request.args.get('fecha','').strip()
+    with get_db() as db:
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS historial_estados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, tabla TEXT,
+                registro_id INTEGER, fecha TEXT, usuario TEXT, rol TEXT,
+                estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')''')
+        except: pass
+        sql = "SELECT * FROM historial_estados WHERE 1=1"
+        params = []
+        if filtro_user:   sql += " AND LOWER(usuario) LIKE LOWER(?)";  params.append(f'%{filtro_user}%')
+        if filtro_accion: sql += " AND LOWER(estado_nuevo) LIKE LOWER(?)"; params.append(f'%{filtro_accion}%')
+        if filtro_fecha:  sql += " AND substr(fecha,1,10)=?"; params.append(filtro_fecha)
+        sql += " ORDER BY fecha DESC LIMIT 500"
+        try: logs = [dict(r) for r in db.fetchall(sql, tuple(params))]
+        except: logs = []
+        try: users = [dict(r) for r in db.fetchall("SELECT DISTINCT usuario FROM historial_estados WHERE usuario IS NOT NULL ORDER BY usuario")]
+        except: users = []
+    return render_template('trazabilidad.html', logs=logs, users=users,
+                           filtro_user=filtro_user, filtro_accion=filtro_accion,
+                           filtro_fecha=filtro_fecha)
 
 @app.route('/mapa')
 @login_required
