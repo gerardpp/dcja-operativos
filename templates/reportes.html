@@ -30,8 +30,9 @@
 
 <div class="stats">
   <div class="stat-card"><div class="val">{{ ops|length }}</div><div class="lbl">Operativos en periodo</div></div>
-  <div class="stat-card"><div class="val">{{ ejecutados|length }}</div><div class="lbl">Ejecutados</div></div>
-  <div class="stat-card"><div class="val">{{ no_ejecutados|length }}</div><div class="lbl">No ejecutados</div></div>
+  <div class="stat-card" style="border-top:3px solid #166534;"><div class="val" style="color:#166534;">{{ ejecutados|length }}</div><div class="lbl">Ejecutados</div></div>
+  <div class="stat-card" style="border-top:3px solid #92400e;"><div class="val" style="color:#92400e;">{{ sin_incautacion|default([])|length }}</div><div class="lbl">Sin Incautacion</div></div>
+  <div class="stat-card" style="border-top:3px solid #dc2626;"><div class="val" style="color:#dc2626;">{{ no_ejecutados|length }}</div><div class="lbl">No Ejecutados</div></div>
   <div class="stat-card"><div class="val">{{ con_decomiso|length }}</div><div class="lbl">Con decomiso</div></div>
   <div class="stat-card"><div class="val">{{ total_pendientes }}</div><div class="lbl">Denuncias pendientes</div></div>
 </div>
@@ -115,7 +116,7 @@
 <div class="card">
   <div class="card-head"><div class="card-num">I</div><h2>Operativos del Periodo</h2></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>#</th><th>Fecha</th><th>Semana</th><th>Tipo</th><th>Nombre</th><th>Provincia</th><th>Brigadas</th><th>Ejecutado</th><th>Decomiso</th><th>Observaciones</th></tr></thead>
+    <thead><tr><th>#</th><th>Fecha</th><th>Semana</th><th>Tipo</th><th>Nombre</th><th>Provincia</th><th>Brigadas</th><th>Resultado</th><th>Decomiso</th><th>Observaciones</th></tr></thead>
     <tbody>
       {% for op in ops %}
       <tr>
@@ -126,8 +127,11 @@
         <td style="font-weight:600;">{{ op.nombre }}</td>
         <td style="font-size:11px;">{{ op.provincia }}</td>
         <td style="text-align:center;">{{ op.brigadas|length }}</td>
-        <td>{% if op.ejecutado==1 %}<span class="badge b-ok">Si</span>
-            {% elif op.ejecutado==0 %}<span class="badge b-red">No</span>
+        <td>{% if op.resultado_final=='ejecutado' %}<span class="badge b-ok">Ejecutado ✓</span>
+            {% elif op.resultado_final=='ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
+            {% elif op.resultado_final=='con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
+            {% elif op.resultado_final=='no_ejecutado' or op.ejecutado==0 %}<span class="badge b-red">No Ejecutado</span>
+            {% elif op.ejecutado==1 %}<span class="badge b-ok">Ejecutado ✓</span>
             {% else %}<span class="badge b-gray">Sin registrar</span>{% endif %}</td>
         <td>{% if op.decomiso %}<span class="badge b-red">Si — {{ op.decomiso_detalle or '' }}</span>{% else %}<span class="badge b-gray">No</span>{% endif %}</td>
         <td style="font-size:11px;color:var(--muted);">{{ op.observaciones or '—' }}</td>
@@ -211,4 +215,4 @@
     </tbody>
   </table></div>
 </div>
-{% endblock %} 
+{% endblock %}
