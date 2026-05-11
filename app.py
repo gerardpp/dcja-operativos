@@ -1133,11 +1133,16 @@ def reportes_view():
     pend_zona_sorted = sorted(pend_zona.items(), key=lambda x:-x[1])
     max_pend = max(pend_zona.values()) if pend_zona else 1
 
+    ejecutados    = [o for o in ops if o.get('resultado_final')=='ejecutado' or (o.get('ejecutado')==1 and o.get('resultado_final') not in ('ejecutado_sin_incautacion','con_decomiso'))]
+    sin_incaut    = [o for o in ops if o.get('resultado_final')=='ejecutado_sin_incautacion']
+    con_decomiso  = [o for o in ops if o.get('resultado_final')=='con_decomiso' or o.get('decomiso')==1]
+    no_ejecutados = [o for o in ops if o.get('resultado_final')=='no_ejecutado' or o.get('ejecutado')==0]
     return render_template('reportes.html',
         ops=ops,
-        ejecutados   =[o for o in ops if o.get('ejecutado')==1],
-        no_ejecutados=[o for o in ops if o.get('ejecutado')==0],
-        con_decomiso =[o for o in ops if o.get('decomiso')==1],
+        ejecutados=ejecutados,
+        sin_incautacion=sin_incaut,
+        no_ejecutados=no_ejecutados,
+        con_decomiso=con_decomiso,
         denuncias=denuncias_all,
         rendimiento=rendimiento,
         por_prov=por_prov_sorted, max_prov=max_prov,
@@ -1495,22 +1500,25 @@ def guardar_resultado_con_evidencia():
                            (resultado_final, bloquear, ev_path, op_id))
             except: pass
 
-            # Try to find linked denuncia by denuncia_manual_id first
+            # Find linked denuncia: try direct ID first, then by nombre
             den_id = op.get('denuncia_manual_id')
-
-            # If no direct link, try to find by nombre
             if not den_id and op_nombre:
-                den = db.fetchone(
-                    "SELECT id, estado FROM denuncias_manual WHERE nombre=? ORDER BY created_at DESC LIMIT 1",
-                    (op_nombre,))
-                if den:
-                    den_id = den['id']
+                try:
+                    den = db.fetchone(
+                        "SELECT id, estado FROM denuncias_manual WHERE LOWER(nombre)=LOWER(?) ORDER BY created_at DESC LIMIT 1",
+                        (op_nombre,))
+                    if den: den_id = den['id']
+                except: pass
 
             if den_id:
                 try:
                     actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
                     anterior_estado = actual['estado'] if actual else None
                     db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?', (nuevo_estado_den, den_id))
+                    # Also update operativo with denuncia_manual_id for future reference
+                    if not op.get('denuncia_manual_id'):
+                        try: db.execute('UPDATE operativos SET denuncia_manual_id=? WHERE id=?', (den_id, op_id))
+                        except: pass
                 except Exception as e:
                     logging.warning(f"denuncia update: {e}")
 
