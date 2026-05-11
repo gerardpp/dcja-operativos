@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Trazabilidad{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Trazabilidad — Log de Actividad</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ logs|length }} registro(s) — cada accion de cada usuario queda registrada</p>
+  </div>
+</div>
+
+<div class="card no-print">
+  <div class="card-body" style="padding:14px 18px;">
+    <form method="GET" action="/trazabilidad" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="fg" style="min-width:160px;">
+        <label class="fl">Usuario</label>
+        <input type="text" name="usuario" value="{{ filtro_user }}" placeholder="Buscar usuario...">
+      </div>
+      <div class="fg" style="min-width:180px;">
+        <label class="fl">Estado / Accion</label>
+        <input type="text" name="accion" value="{{ filtro_accion }}" placeholder="Ej: ejecutada, planificada...">
+      </div>
+      <div class="fg" style="min-width:160px;">
+        <label class="fl">Fecha</label>
+        <input type="date" name="fecha" value="{{ filtro_fecha }}">
+      </div>
+      <button type="submit" class="btn btn-p">Filtrar</button>
+      <a href="/trazabilidad" class="btn btn-o">Limpiar</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Fecha y Hora</th><th>Usuario</th><th>Rol</th>
+        <th>Tabla</th><th>Estado Anterior</th><th>Estado Nuevo</th><th>Nota</th>
+      </tr></thead>
+      <tbody>
+        {% for l in logs %}
+        <tr>
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-size:10.5px;white-space:nowrap;font-family:'DM Mono',monospace;">
+            {{ l.fecha[:16].replace('T',' ') if l.fecha else '—' }}
+          </td>
+          <td style="font-weight:700;">{{ l.usuario or '—' }}</td>
+          <td>
+            {% if l.rol == 'admin' %}<span class="badge b-gold">Admin</span>
+            {% elif l.rol == 'operaciones' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Operaciones</span>
+            {% elif l.rol == 'denuncias' %}<span class="badge b-ok">Denuncias</span>
+            {% else %}<span class="badge b-gray">{{ l.rol or '—' }}</span>{% endif %}
+          </td>
+          <td><span style="background:#f1f5f9;color:#0d2257;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;">{{ l.tabla or '—' }}</span></td>
+          <td style="font-size:11px;">
+            {% if l.estado_anterior %}<span class="badge b-gray">{{ l.estado_anterior }}</span>{% else %}—{% endif %}
+          </td>
+          <td>
+            {% set est = l.estado_nuevo or '' %}
+            {% if est == 'ejecutada' %}<span class="badge b-ok">ejecutada ✓</span>
+            {% elif est == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">sin incautacion</span>
+            {% elif est == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">con decomiso</span>
+            {% elif est == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">planificada</span>
+            {% elif est == 'pendiente' %}<span class="badge b-red">pendiente</span>
+            {% else %}<span class="badge b-gray">{{ est }}</span>{% endif %}
+          </td>
+          <td style="font-size:11px;color:var(--muted);max-width:220px;">{{ l.nota or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8;">No hay actividad registrada para estos filtros.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
