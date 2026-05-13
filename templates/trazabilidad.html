@@ -57,7 +57,7 @@
           <td>
             {% set est = l.estado_nuevo or '' %}
             {% if est == 'ejecutada' %}<span class="badge b-ok">ejecutada ✓</span>
-            {% elif est == 'ejecutado_sin_incautación' %}<span class="badge" style="background:#fef3c7;color:#92400e;">sin incautación</span>
+            {% elif est == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">sin incautación</span>
             {% elif est == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">con decomiso</span>
             {% elif est == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">planificada</span>
             {% elif est == 'pendiente' %}<span class="badge b-red">pendiente</span>
