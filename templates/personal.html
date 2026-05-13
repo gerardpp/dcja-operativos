@@ -11,10 +11,10 @@
 </div>
 
 <div class="card">
-  <div class="info-bar"><p>Marca <strong>No Disponible</strong> con su motivo. La carga acumulada se actualiza al confirmar asignaciones. Todo queda registrado en el historial.</p></div>
+  <div class="info-bar"><p>Marca <strong>No Disponible</strong> con su motivo. La carga acumulada se actualiza al confirmar asignaciónes. Todo queda registrado en el historial.</p></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Zona</th><th>Carga</th><th>Ultima Asignacion</th><th style="text-align:center;">No Disponible</th><th>Motivo</th><th>Detalle</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Zona</th><th>Carga</th><th>Ultima Asignación</th><th style="text-align:center;">No Disponible</th><th>Motivo</th><th>Detalle</th><th></th></tr></thead>
       <tbody>
         {% for p in personal %}
         <tr id="pr-{{ p.id }}">
@@ -32,7 +32,7 @@
               <strong>{{ p.carga_total }}</strong>
             </div>
           </td>
-          <td style="font-size:11px;color:var(--muted);">{{ p.ultima_asignacion or '—' }}</td>
+          <td style="font-size:11px;color:var(--muted);">{{ p.ultima_asignación or '—' }}</td>
           <td style="text-align:center;">
             <input type="checkbox" id="nd-{{ p.id }}" {% if p.no_disponible %}checked{% endif %}
               style="width:15px;height:15px;accent-color:var(--dcja-blue);cursor:pointer;"
@@ -133,7 +133,7 @@ function updateDisp(id){
   const det = document.getElementById('det-'+id).value;
   // Validate: motivo required when marking unavailable
   if(nd && !mot){
-    toast('Selecciona el motivo antes de marcar como no disponible','#dc2626');
+    toast('Seleccióna el motivo antes de marcar como no disponible','#dc2626');
     document.getElementById('nd-'+id).checked=false;
     return;
   }
@@ -234,7 +234,7 @@ async function guardarConEvidencia(id){
   const motivo = document.getElementById('mot-'+id).value;
   const detalle = document.getElementById('det-'+id)?.value||'';
   const file = document.getElementById('ev-file-'+id)?.files[0];
-  if(!motivo){ toast('Selecciona el motivo','#dc2626'); return; }
+  if(!motivo){ toast('Seleccióna el motivo','#dc2626'); return; }
   if(!file){ toast('El comprobante es obligatorio — adjunta el archivo','#dc2626'); return; }
   const fd = new FormData();
   fd.append('id',id); fd.append('disponible',0);
