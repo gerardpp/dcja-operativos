@@ -1047,7 +1047,8 @@ def ejecucion_diaria():
     today  = datetime.now().strftime('%Y-%m-%d')
     # Accept fecha param for historical view (read-only)
     fecha  = request.args.get('fecha', today)
-    solo_lectura = fecha != today  # Past dates = read-only
+    # Read-only if: past date OR all operativos already blocked
+    solo_lectura = fecha < today
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
         ops     = [dict(r) for r in db.fetchall(
@@ -1055,6 +1056,9 @@ def ejecucion_diaria():
         all_ops = [dict(r) for r in db.fetchall(
             "SELECT DISTINCT fecha FROM operativos WHERE semana=? ORDER BY fecha", (semana,))]
         sr = db.fetchone("SELECT * FROM semanas WHERE semana=?", (semana,))
+    # Also read-only if all operativos for this date are already blocked
+    if ops and all(o.get('bloqueado') == 1 for o in ops):
+        solo_lectura = True
     for o in ops:
         o['brigadas']       = json.loads(o['brigadas_json'] or '[]')
         o['vehiculos_data'] = json.loads(o['vehiculos_json'] or '[]')
