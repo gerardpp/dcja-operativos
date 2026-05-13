@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}DCJA — Planificacion{% endblock %}
+{% block title %}DCJA — Planificación{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Planificacion Semanal</h2>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Planificación Semanal</h2>
   <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong></p></div>
   <a href="/ejecucion_diaria" class="btn btn-p">Ejecutar Operativos de Hoy</a>
 </div>
@@ -28,7 +28,7 @@
 
 <div class="card">
   <div class="card-head"><div class="card-num">2</div><h2>Denuncias Pendientes — Agrupadas por Zona</h2></div>
-  <div class="info-bar"><p>Selecciona los grupos que entran esta semana. Asigna una fecha especifica de ejecucion a cada grupo (lunes a viernes).</p></div>
+  <div class="info-bar"><p>Seleccióna los grupos que entran esta semana. Asigna una fecha especifica de ejecucion a cada grupo (lunes a viernes).</p></div>
   <div class="card-body">
     {% if grupos %}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
@@ -57,7 +57,7 @@
         </div>
         <div style="padding:8px 14px;background:#fafbfd;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;">
           <select id="dia-{{ loop.index }}" style="font-size:11px;padding:5px 7px;flex:1;">
-            <option value="">— Seleccionar dia —</option>
+            <option value="">— Selecciónar dia —</option>
             {% for wd in week_days %}
             <option value="{{ wd }}">{{ wd }}</option>
             {% endfor %}
@@ -78,9 +78,9 @@
 </div>
 
 <div class="card">
-  <div class="card-head"><div class="card-num" style="background:#7c3aed;color:#fff;">2.1</div><h2>Agregar Operativo por Orden de Direccion</h2></div>
+  <div class="card-head"><div class="card-num" style="background:#7c3aed;color:#fff;">2.1</div><h2>Agregar Operativo por Orden de Dirección</h2></div>
   <div class="card-body">
-    <div class="alert alert-blue">Los operativos por Orden de Direccion tienen prioridad sobre las denuncias en la asignacion de vehiculos.</div>
+    <div class="alert alert-blue">Los operativos por Orden de Dirección tienen prioridad sobre las denuncias en la asignación de vehiculos.</div>
     <div class="form-grid">
       <div class="fg"><label class="fl">Tipo de Establecimiento</label>
         <select id="od-tipo">
@@ -94,7 +94,7 @@
       <div class="fg"><label class="fl">Nombre del Establecimiento</label><input type="text" id="od-nombre" placeholder="Nombre del establecimiento"></div>
       <div class="fg"><label class="fl">Fecha de Ejecucion</label>
         <select id="od-fecha">
-          <option value="">— Seleccionar dia —</option>
+          <option value="">— Selecciónar dia —</option>
           {% for wd in week_days %}
           <option value="{{ wd }}">{{ wd }}</option>
           {% endfor %}
@@ -105,15 +105,15 @@
       <div class="fg"><label class="fl">Provincia</label><input type="text" id="od-provincia"></div>
       <div class="fg"><label class="fl">Zona Operativo</label>
         <select id="od-zona">
-          <option value="">— Seleccionar —</option>
+          <option value="">— Selecciónar —</option>
           <option>Distrito Nacional</option><option>SD Este</option><option>SD Norte</option><option>SD Oeste</option>
           <option>San Cristóbal</option><option>Santiago</option><option>La Romana</option>
           <option>Puerto Plata</option><option>La Altagracia</option><option>Otras Provincias</option>
         </select>
       </div>
-      <div class="fg"><label class="fl">Via de Comunicacion</label>
+      <div class="fg"><label class="fl">Vía de Comunicación</label>
         <select id="od-via">
-          <option value="">— Seleccionar —</option>
+          <option value="">— Selecciónar —</option>
           <option value="Memorando">Memorando</option>
           <option value="Llamada telefonica">Llamada telefonica</option>
           <option value="WhatsApp">WhatsApp</option>
@@ -121,8 +121,8 @@
           <option value="Otro">Otro</option>
         </select>
       </div>
-      <div class="fg span2"><label class="fl">Observacion</label>
-        <input type="text" id="od-observacion" placeholder="Instrucciones o contexto de la orden...">
+      <div class="fg span2"><label class="fl">Observación</label>
+        <input type="text" id="od-observación" placeholder="Instrucciones o contexto de la orden...">
       </div>
       <div class="fg span2">
         <label class="fl">Evidencia * <span style="color:#dc2626;">(obligatorio)</span></label>
@@ -131,7 +131,7 @@
       </div>
     </div>
     <div style="margin-top:14px;">
-      <button class="btn btn-p" onclick="agregarOrden()">Agregar Orden de Direccion</button>
+      <button class="btn btn-p" onclick="agregarOrden()">Agregar Orden de Dirección</button>
     </div>
   </div>
 </div>
@@ -197,7 +197,7 @@ function agregarGrupoByBtn(btn, idx){
   const fechaEl = document.getElementById('dia-'+idx);
   if(!fechaEl){ return; }
   const fecha = fechaEl.value;
-  if(!fecha){ alert('Selecciona la fecha de ejecucion para este grupo.'); return; }
+  if(!fecha){ alert('Seleccióna la fecha de ejecucion para este grupo.'); return; }
   btn.disabled=true; btn.textContent='...';
   const tieneD = items.some(i=>i.tipo.toUpperCase().includes('DEPORTIVA'));
   const tipo = tieneD ? 'BANCA DE APUESTAS DEPORTIVAS' : 'BANCAS DE LOTERIA';
@@ -225,7 +225,7 @@ async function agregarOrden(){
   const prov=document.getElementById('od-provincia').value.trim();
   const fecha=document.getElementById('od-fecha').value;
   if(!nombre||!prov){alert('Completa al menos el nombre y la provincia.');return;}
-  if(!fecha){alert('Selecciona la fecha de ejecucion.');return;}
+  if(!fecha){alert('Seleccióna la fecha de ejecucion.');return;}
   const evidencia = document.getElementById('od-evidencia').files[0];
   if(!evidencia){alert('Debes subir la evidencia de la orden (screenshot, correo, memorando, etc.) para poder agregar el operativo.');return;}
   // Upload via FormData to support file attachment
@@ -240,12 +240,12 @@ async function agregarOrden(){
   fd.append('zona', document.getElementById('od-zona').value);
   fd.append('fuente', 'orden_direccion');
   fd.append('via_comunicacion', document.getElementById('od-via').value);
-  fd.append('observacion', document.getElementById('od-observacion').value.trim());
+  fd.append('observación', document.getElementById('od-observación').value.trim());
   fd.append('no_oficio', '');
   fd.append('evidencia', evidencia);
   const resp = await fetch('/planificacion/agregar_orden_con_evidencia', {method:'POST', body:fd});
   const r = await resp.json();
-  if(r.ok){toast('Orden de Direccion agregada');setTimeout(()=>location.reload(),800);}
+  if(r.ok){toast('Orden de Dirección agregada');setTimeout(()=>location.reload(),800);}
   else toast('Error','#dc2626');
 }
 
