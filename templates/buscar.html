@@ -32,7 +32,11 @@
           <td style="color:#94a3b8;">{{ loop.index }}</td>
           <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.semana }}</td>
           <td style="font-size:11px;">{{ op.fecha }}</td>
-          <td style="font-weight:600;">{{ op.nombre }}</td>
+          <td style="font-weight:600;">
+            <a href="/ejecucion_diaria?fecha={{ op.fecha }}" style="color:var(--dcja-navy);text-decoration:none;" title="Ver operativo">
+              {{ op.nombre }}
+            </a>
+          </td>
           <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ op.no_oficio or '—' }}</td>
           <td><span class="badge b-gray" style="font-size:9.5px;">{{ op.zona_operativo or '—' }}</span></td>
           <td style="font-size:11px;">{{ op.provincia or '—' }}</td>
@@ -48,13 +52,13 @@
           </td>
           <td>
             {% if op.resultado_evidencia %}
-            <a href="/evidencia/{{ op.resultado_evidencia }}" target="_blank" class="btn btn-o btn-sm">Ver</a>
+            <a href="/evidencia/{{ op.resultado_evidencia }}" target="_blank" class="btn btn-o btn-sm">Ver evidencia</a>
             {% elif op.evidencia_path %}
-            <a href="/evidencia/{{ op.evidencia_path }}" target="_blank" class="btn btn-o btn-sm">Orden</a>
+            <a href="/evidencia/{{ op.evidencia_path }}" target="_blank" class="btn btn-o btn-sm">Ver orden</a>
             {% else %}—{% endif %}
           </td>
           <td>
-            <a href="/plan_semanal?semana={{ op.semana }}" class="btn btn-o btn-sm" title="Ver plan semanal">Plan</a>
+            <a href="/ejecucion_diaria?fecha={{ op.fecha }}" class="btn btn-p btn-sm" title="Ver operativo DCJA-042">Ver operativo</a>
           </td>
         </tr>
         {% else %}
