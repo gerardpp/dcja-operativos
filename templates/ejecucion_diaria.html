@@ -308,10 +308,10 @@ async function ejecutarDesignación(){
   const btn=document.getElementById('btn-designación');
   btn.disabled=true; btn.textContent='Ejecutando designación...';
   try {
-    const r=await api('/asignación/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
+    const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
     if(!r.ok){toast('Error al ejecutar designación','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Designación para '+FECHA;return;}
     // Confirm immediately
-    const c=await api('/asignación/confirmar',{resultado:r.resultado});
+    const c=await api('/asignacion/confirmar',{resultado:r.resultado});
     if(c.ok){
       toast('Designación ejecutada y personal asignado. Recargando...','#166634');
       setTimeout(()=>location.reload(),1500);
