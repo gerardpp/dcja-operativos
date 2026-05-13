@@ -571,7 +571,7 @@ def api_stats():
         try:
             pend_manual = db.fetchone(
                 """SELECT COUNT(*) as c FROM denuncias_manual
-                   WHERE estado NOT IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
+                   WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
         except: pend_manual = 0
         pend = pend_excel + pend_manual
         ops  = db.fetchone("SELECT COUNT(*) as c FROM operativos WHERE semana=?", (semana,))['c']
@@ -630,10 +630,11 @@ def denuncias_view():
             """SELECT * FROM denuncias
                WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','con_decomiso','cerrada')
                ORDER BY provincia,municipio""")]
-        # Main tab = pending/active only — exclude executed/closed
+        # Main tab = pending/active only — exclude all executed/closed states
+        ESTADOS_FINALES = "('ejecutada','ejecutado','con_decomiso','cerrada','ejecutado_sin_incautacion')"
         manual_rows = [dict(r) for r in db.fetchall(
-            """SELECT * FROM denuncias_manual
-               WHERE estado NOT IN ('ejecutada','con_decomiso','cerrada')
+            f"""SELECT * FROM denuncias_manual
+               WHERE estado NOT IN {ESTADOS_FINALES}
                ORDER BY created_at DESC""")]
         logs = [dict(r) for r in db.fetchall(
             "SELECT * FROM uploads_log ORDER BY id DESC LIMIT 10")]
@@ -646,7 +647,7 @@ def denuncias_view():
         r['dias'] = dias_pendiente(r.get('fecha_entrada',''))
         r['fuente'] = 'manual'
     rows = manual_rows + excel_rows
-    pendientes = sum(1 for r in rows if r.get('estado') == 'pendiente')
+    pendientes = sum(1 for r in rows if r.get('estado','pendiente') not in ('ejecutada','ejecutado','con_decomiso','cerrada','ejecutado_sin_incautacion'))
     return render_template('denuncias.html', denuncias=rows, logs=logs, pendientes=pendientes)
 
 @app.route('/denuncias/upload', methods=['POST'])
