@@ -6,11 +6,11 @@
   <p style="color:var(--muted);font-size:12px;margin-top:4px;">Sistema de Planificación y Asignación de Operativos</p>
 </div>
 <div class="stats">
-  <div class="stat-card"><div class="val" id="s-pend">—</div><div class="lbl">Denuncias Pendientes</div></div>
+  <div class="stat-card"><div class="val" id="s-pend" style="color:#dc2626;">—</div><div class="lbl">Denuncias Pendientes</div></div>
+  <div class="stat-card"><div class="val" id="s-ejec" style="color:#166534;">—</div><div class="lbl">Denuncias Ejecutadas</div></div>
   <div class="stat-card"><div class="val" id="s-ops">—</div><div class="lbl">Operativos Esta Semana</div></div>
   <div class="stat-card"><div class="val" id="s-brig">—</div><div class="lbl">Brigadas Requeridas</div></div>
   <div class="stat-card"><div class="val" id="s-veh">—</div><div class="lbl">Vehículos Disponibles</div></div>
-  <div class="stat-card"><div class="val" id="s-hist">—</div><div class="lbl">Operativos Ejecutados (Total)</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
   <div class="card">
@@ -49,10 +49,10 @@
 <script>
 fetch('/api/stats').then(r=>r.json()).then(d=>{
   document.getElementById('s-pend').textContent=d.pendientes;
+  document.getElementById('s-ejec').textContent=d.ejecutadas||0;
   document.getElementById('s-ops').textContent=d.operativos;
   document.getElementById('s-brig').textContent=d.brigadas;
   document.getElementById('s-veh').textContent=d.vehiculos;
-  document.getElementById('s-hist').textContent=d.histórico;
 }).catch(()=>{});
 </script>
 {% endblock %}
