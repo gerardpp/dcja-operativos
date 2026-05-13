@@ -19,9 +19,9 @@
       <div style="display:flex;flex-direction:column;gap:8px;">
         {% for dia, titulo, desc, url in [
           ('V','Viernes — Cargar Denuncias','Subir el Excel actualizado de denuncias pendientes','/denuncias'),
-          ('L','Lunes — Planificacion Semanal','Seleccionar operativos de la semana segun vehiculos y militares disponibles. Genera documento DCJA-035.','/planificacion'),
-          ('D','Dia del Operativo — Ejecucion Diaria','Sorteo de personal para los operativos del dia. Genera documento DCJA-042 para firma.','/ejecucion_diaria'),
-          ('—','Bitacora — Historial','Registro historico de todos los operativos ejecutados. Documento DCJA-039.','/historial')
+          ('L','Lunes — Planificación Semanal','Selecciónar operativos de la semana segun vehiculos y militares disponibles. Genera documento DCJA-035.','/planificacion'),
+          ('D','Dia del Operativo — Ejecución Diaria','Sorteo de personal para los operativos del dia. Genera documento DCJA-042 para firma.','/ejecucion_diaria'),
+          ('—','Bitácora — Historial','Registro histórico de todos los operativos ejecutados. Documento DCJA-039.','/historial')
         ] %}
         <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
           <div style="width:30px;height:30px;border-radius:50%;background:var(--navy);color:var(--gold);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ dia }}</div>
@@ -52,7 +52,7 @@ fetch('/api/stats').then(r=>r.json()).then(d=>{
   document.getElementById('s-ops').textContent=d.operativos;
   document.getElementById('s-brig').textContent=d.brigadas;
   document.getElementById('s-veh').textContent=d.vehiculos;
-  document.getElementById('s-hist').textContent=d.historico;
+  document.getElementById('s-hist').textContent=d.histórico;
 }).catch(()=>{});
 </script>
-{% endblock %} 
+{% endblock %}
