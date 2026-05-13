@@ -192,6 +192,7 @@
 
   <!-- DATOS VEHICULOS (screen only) -->
   <div class="no-print" style="background:#f8f9fc;border:1px solid var(--border);padding:14px 16px;margin-bottom:4px;">
+    {% if solo_lectura or op.bloqueado %}<div class="alert" style="background:#fef9c3;border-color:#fde68a;padding:8px 12px;margin-bottom:8px;font-size:11.5px;color:#78350f;">🔒 Este operativo está bloqueado — solo lectura</div>{% endif %}
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Completar datos de vehiculos antes de imprimir</div>
     {% for b in op.brigadas %}
     {% set vd = op.vehiculos_data[loop.index0] if op.vehiculos_data and loop.index0 < op.vehiculos_data|length else {} %}
@@ -210,7 +211,11 @@
       </div>
     </div>
     {% endfor %}
+    {% if not solo_lectura and not op.bloqueado %}
     <button class="btn btn-g btn-sm" onclick="guardarVehiculos({{ op.id }},{{ op.brigadas|length }})">Guardar datos de vehiculos</button>
+    {% else %}
+    <span style="font-size:10.5px;color:var(--muted);font-style:italic;">🔒 Datos bloqueados</span>
+    {% endif %}
   </div>
 
   <!-- TRANSPARENCY -->
