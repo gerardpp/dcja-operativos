@@ -384,6 +384,8 @@ async function guardarResultado(id){
     const r = await resp.json();
     if(r.ok){
       toast('Resultado guardado y bloqueado','#166534');
+      // Force-sync denuncia status
+      fetch('/operativo/sync_denuncia/'+id).catch(()=>{});
       setTimeout(()=>location.reload(),1200);
     } else {
       toast(r.error||'Error al guardar','#dc2626');
