@@ -192,26 +192,28 @@
 
   <!-- DATOS VEHICULOS (screen only) -->
   <div class="no-print" style="background:#f8f9fc;border:1px solid var(--border);padding:14px 16px;margin-bottom:4px;">
-    {% if solo_lectura or op.bloqueado %}<div class="alert" style="background:#fef9c3;border-color:#fde68a;padding:8px 12px;margin-bottom:8px;font-size:11.5px;color:#78350f;">🔒 Este operativo está bloqueado — solo lectura</div>{% endif %}
-    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Completar datos de vehiculos antes de imprimir</div>
-    {% for b in op.brigadas %}
-    {% set vd = op.vehiculos_data[loop.index0] if op.vehiculos_data and loop.index0 < op.vehiculos_data|length else {} %}
-    <div style="margin-bottom:12px;{% if not loop.last %}padding-bottom:12px;border-bottom:1px solid var(--border);{% endif %}">
-      <div style="font-size:11px;font-weight:700;color:var(--dcja-navy);margin-bottom:8px;">Vehiculo {{ loop.index }}</div>
-      <div class="form-grid" id="vhform-{{ op.id }}-{{ b.num }}">
-        <div class="fg"><label class="fl">Hora Salida</label><input type="time" class="vhf" data-key="hora_salida" value="{{ vd.hora_salida if vd else '' }}"></div>
-        <div class="fg"><label class="fl">No. Placa</label><input type="text" class="vhf" data-key="placa" value="{{ vd.placa if vd else '' }}" placeholder="A123456"></div>
-        <div class="fg"><label class="fl">No. Flota</label><input type="text" class="vhf" data-key="flota" value="{{ vd.flota if vd else '' }}" placeholder="F-042"></div>
-        <div class="fg"><label class="fl">Designación</label><input type="text" class="vhf" data-key="designación" value="{{ vd.designacion if vd else '' }}"></div>
-        <div class="fg"><label class="fl">Provincia Destino</label><input type="text" class="vhf" data-key="provincia_destino" value="{{ vd.provincia_destino if vd else op.provincia }}"></div>
-        <div class="fg"><label class="fl">Hora Llegada</label><input type="time" class="vhf" data-key="hora_llegada" value="{{ vd.hora_llegada if vd else '' }}"></div>
-        <div class="fg"><label class="fl">Militar</label><input type="text" class="vhf" data-key="militar" value="{{ vd.militar if vd else '' }}" placeholder="Nombre completo"></div>
-        <div class="fg"><label class="fl">Chofer</label><input type="text" class="vhf" data-key="chofer" value="{{ vd.chofer if vd else '' }}" placeholder="Nombre completo"></div>
-        <div class="fg span2"><label class="fl">Observaciónes del vehiculo</label><input type="text" class="vhf" data-key="observaciones" value="{{ vd.observaciones if vd else '' }}"></div>
+    {% if solo_lectura or op.bloqueado %}
+    <!-- BLOCKED: show saved data as plain text -->
+    <div style="margin-top:8px;">
+      {% for b in op.brigadas %}
+      {% set vd = op.vehiculos_data[loop.index0] if op.vehiculos_data and loop.index0 < op.vehiculos_data|length else {} %}
+      <div style="margin-bottom:10px;padding:12px 14px;background:#f8f9ff;border-radius:7px;border:1px solid var(--border);">
+        <div style="font-size:11px;font-weight:700;color:var(--dcja-navy);margin-bottom:8px;">Vehículo {{ loop.index }}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+          {% for lbl, key in [('Hora Salida','hora_salida'),('No. Placa','placa'),('No. Flota','flota'),('Designacion','designacion'),('Provincia Destino','provincia_destino'),('Hora Llegada','hora_llegada'),('Militar','militar'),('Chofer','chofer')] %}
+          <div>
+            <div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ lbl }}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">{{ vd[key] if vd and vd[key] else '—' }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% if vd and vd.observaciones %}
+        <div style="margin-top:6px;font-size:11.5px;color:var(--muted);"><strong>Obs:</strong> {{ vd.observaciones }}</div>
+        {% endif %}
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-    {% if not solo_lectura and not op.bloqueado %}
+    {% else %}    {% if not solo_lectura and not op.bloqueado %}
     <button class="btn btn-g btn-sm" onclick="guardarVehiculos({{ op.id }},{{ op.brigadas|length }})">Guardar datos de vehiculos</button>
     {% else %}
     <span style="font-size:10.5px;color:var(--muted);font-style:italic;">🔒 Datos bloqueados</span>
