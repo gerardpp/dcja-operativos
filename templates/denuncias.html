@@ -80,8 +80,8 @@
               <span class="badge b-red">❌ No Ejecutada</span>
             {% elif est=='con_decomiso' %}
               <span class="badge" style="background:#fce7f3;color:#9d174d;">🔴 Con Decomiso</span>
-            {% elif est=='ejecutado_sin_incautacion' %}
-              <span class="badge" style="background:#fef3c7;color:#92400e;">⚠️ Sin Incautacion</span>
+            {% elif est=='ejecutado_sin_incautación' %}
+              <span class="badge" style="background:#fef3c7;color:#92400e;">⚠️ Sin Incautación</span>
             {% elif est=='cerrada' %}
               <span class="badge b-ok">🔒 Cerrada</span>
             {% else %}<span class="badge b-gray">{{ est }}</span>{% endif %}
@@ -116,13 +116,13 @@
           <option value="en_ejecucion">En Ejecucion</option>
           <option value="no_ejecutada">No Ejecutada</option>
         </select>
-        <p style="font-size:10.5px;color:#94a3b8;margin-top:4px;">Los estados <strong>Ejecutada</strong>, <strong>Con Decomiso</strong> y <strong>Cerrada</strong> solo los asigna el sistema via Ejecucion Diaria.</p>
+        <p style="font-size:10.5px;color:#94a3b8;margin-top:4px;">Los estados <strong>Ejecutada</strong>, <strong>Con Decomiso</strong> y <strong>Cerrada</strong> solo los asigna el sistema via Ejecución Diaria.</p>
       </div>
       <div class="fg"><label class="fl">Hallazgos</label>
         <textarea id="est-hallazgos" rows="3" placeholder="Describe los hallazgos..."></textarea>
       </div>
-      <div class="fg"><label class="fl">Resolucion</label>
-        <textarea id="est-resolucion" rows="2" placeholder="Accion tomada o resolucion..."></textarea>
+      <div class="fg"><label class="fl">Resolución</label>
+        <textarea id="est-resolución" rows="2" placeholder="Accion tomada o resolución..."></textarea>
       </div>
       <div class="fg"><label class="fl">Nota interna</label>
         <input type="text" id="est-nota" placeholder="Razon del cambio (queda en historial)...">
@@ -160,7 +160,7 @@
 async function subirExcel(){
   const input=document.getElementById('file-input');
   const status=document.getElementById('upload-status');
-  if(!input.files[0]){alert('Selecciona un archivo Excel.');return;}
+  if(!input.files[0]){alert('Seleccióna un archivo Excel.');return;}
   const fd=new FormData();fd.append('file',input.files[0]);
   status.textContent='Procesando...';status.style.color='#1e40af';
   const r=await fetch('/denuncias/upload',{method:'POST',body:fd});
@@ -175,7 +175,7 @@ function abrirEstado(id,fuente,estado,nombre){
   document.getElementById('modal-nombre').textContent=nombre;
   document.getElementById('est-estado').value=estado;
   document.getElementById('est-hallazgos').value='';
-  document.getElementById('est-resolucion').value='';
+  document.getElementById('est-resolución').value='';
   document.getElementById('est-nota').value='';
   document.getElementById('modal-estado').style.display='flex';
 }
@@ -187,7 +187,7 @@ async function guardarEstado(){
     id:parseInt(id),fuente,
     estado:document.getElementById('est-estado').value,
     hallazgos:document.getElementById('est-hallazgos').value,
-    resolucion:document.getElementById('est-resolucion').value,
+    resolución:document.getElementById('est-resolución').value,
     nota:document.getElementById('est-nota').value,
   });
   if(r.ok){toast('Estado actualizado','#166534');document.getElementById('modal-estado').style.display='none';setTimeout(()=>location.reload(),1000);}
@@ -207,7 +207,7 @@ async function verHistorial(id,fuente,nombre){
     'planificada':'#dbeafe|#1e40af',
     'en_ejecucion':'#fef3c7|#92400e',
     'ejecutada':'#dcfce7|#166534',
-    'ejecutado_sin_incautacion':'#fef3c7|#92400e',
+    'ejecutado_sin_incautación':'#fef3c7|#92400e',
     'no_ejecutada':'#fee2e2|#991b1b',
     'con_decomiso':'#fce7f3|#9d174d',
     'cerrada':'#dcfce7|#166534'
@@ -217,7 +217,7 @@ async function verHistorial(id,fuente,nombre){
     'planificada':'Planificada',
     'en_ejecucion':'En Ejecucion',
     'ejecutada':'Ejecutada ✓',
-    'ejecutado_sin_incautacion':'Ejecutado sin Incautacion',
+    'ejecutado_sin_incautación':'Ejecutado sin Incautación',
     'no_ejecutada':'No Ejecutada',
     'con_decomiso':'Con Decomiso ✓',
     'cerrada':'Cerrada ✓'
@@ -285,7 +285,7 @@ async function verHistorial(id,fuente,nombre){
         </div>
         ${op.zona_operativo?`<div style="font-size:11px;color:#475569;margin-bottom:2px;"><strong>Zona:</strong> ${op.zona_operativo}</div>`:''}
         ${brig?`<div style="font-size:11px;color:#475569;margin-bottom:2px;"><strong>Personal:</strong> ${brig}</div>`:''}
-        ${op.observaciones?`<div style="font-size:11px;color:#64748b;font-style:italic;">${op.observaciones}</div>`:''}
+        ${op.observaciónes?`<div style="font-size:11px;color:#64748b;font-style:italic;">${op.observaciónes}</div>`:''}
       </div>`;
     }
   });
@@ -301,10 +301,10 @@ async function verVisitas(id,nombre){
   const r=await fetch('/denuncias/visitas/'+id);
   const d=await r.json();
   if(!d.ok){document.getElementById('vis-body').innerHTML='<p style="color:#94a3b8;">Error.</p>';return;}
-  document.getElementById('vis-sub').textContent=d.operativos.length+' visita(s) — '+d.visitas_sin_incautacion+' sin incautacion';
+  document.getElementById('vis-sub').textContent=d.operativos.length+' visita(s) — '+d.visitas_sin_incautación+' sin incautación';
   if(!d.operativos.length){document.getElementById('vis-body').innerHTML='<p style="color:#94a3b8;font-size:12px;">Sin visitas registradas aun.</p>';return;}
-  const C={'ejecutado':'#dcfce7|#166534','con_decomiso':'#fce7f3|#9d174d','ejecutado_sin_incautacion':'#fef3c7|#92400e','no_ejecutado':'#fee2e2|#991b1b'};
-  const L={'ejecutado':'Ejecutado ✓','con_decomiso':'Con Decomiso ✓','ejecutado_sin_incautacion':'Sin Incautacion','no_ejecutado':'No Ejecutado'};
+  const C={'ejecutado':'#dcfce7|#166534','con_decomiso':'#fce7f3|#9d174d','ejecutado_sin_incautación':'#fef3c7|#92400e','no_ejecutado':'#fee2e2|#991b1b'};
+  const L={'ejecutado':'Ejecutado ✓','con_decomiso':'Con Decomiso ✓','ejecutado_sin_incautación':'Sin Incautación','no_ejecutado':'No Ejecutado'};
   let h='<div style="padding-left:12px;border-left:2px solid #e2e8f0;">';
   d.operativos.forEach(op=>{
     const rf=op.resultado_final||'';
@@ -316,7 +316,7 @@ async function verVisitas(id,nombre){
         <span style="background:${bg};color:${col};padding:1px 8px;border-radius:8px;font-size:10px;font-weight:700;">${L[rf]||rf||'Pendiente'}</span>
       </div>
       ${brig?`<div style="font-size:11px;color:#475569;"><strong>Personal:</strong> ${brig}</div>`:''}
-      ${op.observaciones?`<div style="font-size:11px;color:#64748b;font-style:italic;">${op.observaciones}</div>`:''}
+      ${op.observaciónes?`<div style="font-size:11px;color:#64748b;font-style:italic;">${op.observaciónes}</div>`:''}
     </div>`;
   });
   h+='</div>';
