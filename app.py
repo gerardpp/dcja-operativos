@@ -1691,6 +1691,30 @@ def trazabilidad_view():
                            filtro_user=filtro_user, filtro_accion=filtro_accion,
                            filtro_fecha=filtro_fecha)
 
+@app.route('/operativo/sync_denuncia/<int:op_id>')
+@login_required
+def sync_denuncia(op_id):
+    """Force-sync denuncia status from operativo resultado_final."""
+    try:
+        with get_db() as db:
+            op = db.fetchone('SELECT * FROM operativos WHERE id=?', (op_id,))
+            if not op: return jsonify(ok=False)
+            rf = op.get('resultado_final','')
+            nombre = op.get('nombre','')
+            nuevo = {'ejecutado':'ejecutada','con_decomiso':'con_decomiso',
+                     'ejecutado_sin_incautacion':'pendiente','no_ejecutado':'pendiente'}.get(rf)
+            if nuevo and nombre:
+                # Update ALL denuncias matching this nombre
+                db.execute(
+                    "UPDATE denuncias_manual SET estado=? WHERE LOWER(nombre)=LOWER(?)",
+                    (nuevo, nombre))
+                db.execute(
+                    "UPDATE denuncias SET estado=? WHERE LOWER(nombre)=LOWER(?)",
+                    (nuevo, nombre))
+        return jsonify(ok=True)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e))
+
 @app.route('/mapa')
 @login_required
 def mapa_view():
@@ -1710,4 +1734,4 @@ def mapa_view():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    app.run(host='0.0.0.0', port=port, debug=False)
