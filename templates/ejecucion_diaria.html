@@ -175,7 +175,7 @@
         </table>
       </div>
       <div class="vh-info">
-        {% for lbl,key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designación','designación'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
+        {% for lbl,key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designacion','designacion'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
         <div class="info-row">
           <span class="info-lbl">{{ lbl }}</span>
           <span class="info-val">{{ vd[key] if vd and key in vd else '' }}</span>
@@ -185,7 +185,7 @@
     </div>
     <div class="obs-row">
       <span style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;">Observaciónes:</span>
-      <span style="font-size:11px;margin-left:8px;">{{ vd.observaciónes if vd and vd.observaciónes else '' }}</span>
+      <span style="font-size:11px;margin-left:8px;">{{ vd.observaciones if vd and vd.observaciones else '' }}</span>
     </div>
   </div>
   {% endfor %}
@@ -201,12 +201,12 @@
         <div class="fg"><label class="fl">Hora Salida</label><input type="time" class="vhf" data-key="hora_salida" value="{{ vd.hora_salida if vd else '' }}"></div>
         <div class="fg"><label class="fl">No. Placa</label><input type="text" class="vhf" data-key="placa" value="{{ vd.placa if vd else '' }}" placeholder="A123456"></div>
         <div class="fg"><label class="fl">No. Flota</label><input type="text" class="vhf" data-key="flota" value="{{ vd.flota if vd else '' }}" placeholder="F-042"></div>
-        <div class="fg"><label class="fl">Designación</label><input type="text" class="vhf" data-key="designación" value="{{ vd.designación if vd else '' }}"></div>
+        <div class="fg"><label class="fl">Designación</label><input type="text" class="vhf" data-key="designación" value="{{ vd.designacion if vd else '' }}"></div>
         <div class="fg"><label class="fl">Provincia Destino</label><input type="text" class="vhf" data-key="provincia_destino" value="{{ vd.provincia_destino if vd else op.provincia }}"></div>
         <div class="fg"><label class="fl">Hora Llegada</label><input type="time" class="vhf" data-key="hora_llegada" value="{{ vd.hora_llegada if vd else '' }}"></div>
         <div class="fg"><label class="fl">Militar</label><input type="text" class="vhf" data-key="militar" value="{{ vd.militar if vd else '' }}" placeholder="Nombre completo"></div>
         <div class="fg"><label class="fl">Chofer</label><input type="text" class="vhf" data-key="chofer" value="{{ vd.chofer if vd else '' }}" placeholder="Nombre completo"></div>
-        <div class="fg span2"><label class="fl">Observaciónes del vehiculo</label><input type="text" class="vhf" data-key="observaciónes" value="{{ vd.observaciónes if vd else '' }}"></div>
+        <div class="fg span2"><label class="fl">Observaciónes del vehiculo</label><input type="text" class="vhf" data-key="observaciones" value="{{ vd.observaciones if vd else '' }}"></div>
       </div>
     </div>
     {% endfor %}
@@ -234,7 +234,7 @@
       <strong>Resultado registrado y bloqueado:</strong>
       {% if op.resultado_final == 'ejecutado' %}Ejecutado con incautación ✓
       {% elif op.resultado_final == 'con_decomiso' %}Ejecutado con decomiso ✓
-      {% elif op.resultado_final == 'ejecutado_sin_incautación' %}Ejecutado sin incautación — denuncia queda pendiente
+      {% elif op.resultado_final == 'ejecutado_sin_incautacion' %}Ejecutado sin incautación — denuncia queda pendiente
       {% elif op.resultado_final == 'no_ejecutado' %}No Ejecutado
       {% else %}{{ op.resultado_final }}{% endif %}
     </div>
@@ -245,7 +245,7 @@
         onclick="setResultado({{ op.id }},'ejecutado')"
         title="Se realizo el operativo e incautaron">Ejecutado</button>
       <button class="btn btn-p" id="btn-sinInc-{{ op.id }}"
-        onclick="setResultado({{ op.id }},'ejecutado_sin_incautación')"
+        onclick="setResultado({{ op.id }},'ejecutado_sin_incautacion')"
         title="Fueron al lugar pero no se pudo incautar — denuncia queda pendiente"
         style="background:#7c3aed;">Ejecutado sin Incautación</button>
       <button class="btn btn-d" id="btn-noej-{{ op.id }}"
@@ -255,7 +255,7 @@
     <div class="form-grid" style="margin-bottom:12px;">
       <div class="fg span2">
         <label class="fl">Observaciónes</label>
-        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones...">{{ op.observaciónes or '' }}</textarea>
+        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones...">{{ op.observaciones or '' }}</textarea>
       </div>
       <div class="fg span2">
         <label class="fl">Evidencia del operativo (fotos, capturas, documentos)</label>
@@ -344,7 +344,7 @@ function setResultado(id, val){
     if(b){b.style.outline='';b.style.boxShadow='';}
   });
   // Highlight selected
-  const btnId = val==='ejecutado'?'btn-ej-'+id: val==='ejecutado_sin_incautación'?'btn-sinInc-'+id:'btn-noej-'+id;
+  const btnId = val==='ejecutado'?'btn-ej-'+id: val==='ejecutado_sin_incautacion'?'btn-sinInc-'+id:'btn-noej-'+id;
   const active=document.getElementById(btnId);
   if(active){active.style.outline='3px solid #c8a022';active.style.boxShadow='0 0 0 4px rgba(200,160,34,.2)';}
   // Show decomiso only for ejecutado
@@ -354,7 +354,7 @@ function setResultado(id, val){
   if(decDet) decDet.style.display='none';
   // Update label
   const lbl=document.getElementById('resultado-sel-'+id);
-  const labels={'ejecutado':'Ejecutado selecciónado','ejecutado_sin_incautación':'Ejecutado sin incautación — denuncia queda pendiente','no_ejecutado':'No Ejecutado selecciónado'};
+  const labels={'ejecutado':'Ejecutado selecciónado','ejecutado_sin_incautacion':'Ejecutado sin incautación — denuncia queda pendiente','no_ejecutado':'No Ejecutado selecciónado'};
   if(lbl) lbl.textContent = labels[val]||'';
 }
 
@@ -374,7 +374,7 @@ async function guardarResultado(id){
   const fd = new FormData();
   fd.append('id', id);
   fd.append('resultado_final', res);
-  fd.append('observaciónes', document.getElementById('obs-'+id)?.value||'');
+  fd.append('observaciones', document.getElementById('obs-'+id)?.value||'');
   fd.append('decomiso', decomiso);
   fd.append('decomiso_detalle', document.getElementById('decval-'+id)?.value||'');
   const evFiles = document.getElementById('ev-'+id)?.files;
