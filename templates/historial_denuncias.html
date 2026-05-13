@@ -5,7 +5,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
   <div>
     <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Historial de Denuncias y Operativos</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Filtra por nombre, provincia, resultado o fecha para ver el historico de cada establecimiento</p>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Filtra por nombre, provincia, resultado o fecha para ver el histórico de cada establecimiento</p>
   </div>
 </div>
 
@@ -27,7 +27,7 @@
           <select name="resultado">
             <option value="">Todos</option>
             <option value="ejecutada" {% if f_resultado=='ejecutada' %}selected{% endif %}>Ejecutada</option>
-            <option value="ejecutado_sin_incautacion" {% if f_resultado=='ejecutado_sin_incautacion' %}selected{% endif %}>Sin Incautacion</option>
+            <option value="ejecutado_sin_incautación" {% if f_resultado=='ejecutado_sin_incautación' %}selected{% endif %}>Sin Incautación</option>
             <option value="con_decomiso" {% if f_resultado=='con_decomiso' %}selected{% endif %}>Con Decomiso</option>
             <option value="no_ejecutado" {% if f_resultado=='no_ejecutado' %}selected{% endif %}>No Ejecutado</option>
             <option value="planificada" {% if f_resultado=='planificada' %}selected{% endif %}>Planificada</option>
@@ -61,7 +61,7 @@
   <div class="card" style="flex:1;min-width:120px;border-top:3px solid #92400e;">
     <div class="card-body" style="padding:14px 18px;">
       <div style="font-size:26px;font-weight:800;color:#92400e;">{{ sin_inc }}</div>
-      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Sin Incautacion</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Sin Incautación</div>
     </div>
   </div>
   <div class="card" style="flex:1;min-width:120px;border-top:3px solid #9d174d;">
@@ -131,7 +131,7 @@
           <td>
             {% set est = l.estado_nuevo or '' %}
             {% if est == 'ejecutada' %}<span class="badge b-ok">Ejecutada ✓</span>
-            {% elif est == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
+            {% elif est == 'ejecutado_sin_incautación' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautación</span>
             {% elif est == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
             {% elif est == 'no_ejecutado' %}<span class="badge b-red">No Ejecutado</span>
             {% elif est == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Planificada</span>
@@ -149,7 +149,7 @@
           {% if f_nombre or f_provincia or f_resultado %}
           No hay resultados para estos filtros.
           {% else %}
-          No hay actividad registrada aun. Los resultados de Ejecucion Diaria apareceran aqui.
+          No hay actividad registrada aun. Los resultados de Ejecución Diaria apareceran aqui.
           {% endif %}
         </td></tr>
         {% endfor %}
