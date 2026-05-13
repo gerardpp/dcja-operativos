@@ -1512,17 +1512,26 @@ def guardar_resultado_con_evidencia():
                     if den: den_id = den['id']
                 except: pass
 
+            # UPDATE BY ID
             if den_id:
                 try:
                     actual = db.fetchone('SELECT estado FROM denuncias_manual WHERE id=?', (den_id,))
                     anterior_estado = actual['estado'] if actual else None
                     db.execute('UPDATE denuncias_manual SET estado=? WHERE id=?', (nuevo_estado_den, den_id))
-                    # Also update operativo with denuncia_manual_id for future reference
                     if not op.get('denuncia_manual_id'):
                         try: db.execute('UPDATE operativos SET denuncia_manual_id=? WHERE id=?', (den_id, op_id))
                         except: pass
                 except Exception as e:
-                    logging.warning(f"denuncia update: {e}")
+                    logging.warning(f"denuncia update by id: {e}")
+
+            # ALSO UPDATE BY NOMBRE as fallback — catches any remaining unlinked denuncias
+            if op_nombre and nuevo_estado_den != 'pendiente':
+                try:
+                    db.execute(
+                        "UPDATE denuncias_manual SET estado=? WHERE LOWER(nombre)=LOWER(?) AND estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')",
+                        (nuevo_estado_den, op_nombre))
+                except Exception as e:
+                    logging.warning(f"denuncia update by nombre: {e}")
 
         # STEP 4: Log to historial using autocommit — always, even without denuncia link
         try:
