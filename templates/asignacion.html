@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}DCJA — Asignacion{% endblock %}
+{% block title %}DCJA — Asignación{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Asignacion de Personal</h2>
+  <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Asignación de Personal</h2>
   <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Semana <strong>{{ semana }}</strong> — Sorteo aleatorio con rotacion justa</p></div>
   <a href="/plan_semanal" class="btn btn-o">Ver Plan Semanal</a>
 </div>
@@ -29,7 +29,7 @@
 {% endif %}
 
 {% if not operativos %}
-<div class="alert alert-warn">No hay operativos planificados. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a> para agregarlos primero.</div>
+<div class="alert alert-warn">No hay operativos planificados. Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificación</a> para agregarlos primero.</div>
 {% else %}
 
 <div class="card">
@@ -59,7 +59,7 @@
     <div class="alert alert-blue">
       El sistema excluye al personal que reside en la zona del operativo, que este en cooldown de 21 dias, no disponible o con conflicto declarado.
       Del pool elegible prioriza por menor frecuencia en esa zona especifica, luego por menor carga total.
-      Dentro del mismo nivel la seleccion es 100% aleatoria con aleatoriedad criptografica.
+      Dentro del mismo nivel la selección es 100% aleatoria con aleatoriedad criptografica.
       Si el pool es insuficiente el cooldown se relaja automaticamente.
     </div>
     <div style="margin-bottom:20px;">
@@ -79,7 +79,7 @@ async function generar(){
   const btn=document.getElementById('btn-gen');
   btn.disabled=true; btn.textContent='Procesando...';
   try {
-    const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH,fecha_base:new Date().toISOString().slice(0,10)});
+    const r=await api('/asignación/ejecutar',{semana:SEMANA,vehiculos:VEH,fecha_base:new Date().toISOString().slice(0,10)});
     if(!r.ok){toast('Error al generar','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Sorteo';return;}
     renderResultado(r.resultado,r.seed);
     btn.textContent='Regenerar'; btn.disabled=false;
@@ -139,12 +139,12 @@ function rp(p,rol,bg,col){
 }
 
 async function confirmar(res){
-  if(!confirm('Confirmar estas asignaciones? Se generara el Plan Semanal con el personal asignado.'))return;
-  const r=await api('/asignacion/confirmar',{resultado:res});
+  if(!confirm('Confirmar estas asignaciónes? Se generara el Plan Semanal con el personal asignado.'))return;
+  const r=await api('/asignación/confirmar',{resultado:res});
   if(r.ok){
-    toast('Asignaciones confirmadas. Redirigiendo al Plan Semanal...','#16a34a');
+    toast('Asignaciónes confirmadas. Redirigiendo al Plan Semanal...','#16a34a');
     setTimeout(()=>window.location='/plan_semanal',1500);
   } else toast('Error al confirmar','#dc2626');
 }
 </script>
-{% endblock %} 
+{% endblock %}
