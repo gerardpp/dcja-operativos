@@ -199,17 +199,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
     <!-- OPERATIVOS DROPDOWN -->
     <div class="nav-dropdown">
-      <button class="nav-link nav-drop-btn {% if request.endpoint in ['planificacion_view','plan_semanal','asignacion_view','ejecucion_diaria','historial_view','reportes_view','auditoria_view'] %}active{% endif %}">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['planificacion_view','plan_semanal','asignación_view','ejecucion_diaria','historial_view','reportes_view','auditoria_view'] %}active{% endif %}">
         Operativos ▾
       </button>
       <div class="nav-drop-menu">
         <div class="nav-drop-menu-inner">
-          <a href="/planificacion">Planificacion</a>
+          <a href="/planificacion">Planificación</a>
           <a href="/plan_semanal">Plan Semanal</a>
-          <a href="/ejecucion_diaria">Ejecucion Diaria</a>
-          <a href="/historial">Bitacora</a>
+          <a href="/ejecucion_diaria">Ejecución Diaria</a>
+          <a href="/historial">Bitácora</a>
           <a href="/reportes">Reportes</a>
-          <a href="/auditoria">Auditoria</a>
+          <a href="/auditoria">Auditoría</a>
         </div>
       </div>
     </div>
@@ -217,7 +217,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
     <!-- ADMINISTRACION DROPDOWN -->
     <div class="nav-dropdown">
       <button class="nav-link nav-drop-btn {% if request.endpoint in ['personal_view','trazabilidad_view','usuarios_view'] %}active{% endif %}">
-        Administracion ▾
+        Administración ▾
       </button>
       <div class="nav-drop-menu">
         <div class="nav-drop-menu-inner">
