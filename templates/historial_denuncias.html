@@ -27,7 +27,7 @@
           <select name="resultado">
             <option value="">Todos</option>
             <option value="ejecutada" {% if f_resultado=='ejecutada' %}selected{% endif %}>Ejecutada</option>
-            <option value="ejecutado_sin_incautación" {% if f_resultado=='ejecutado_sin_incautación' %}selected{% endif %}>Sin Incautación</option>
+            <option value="ejecutado_sin_incautacion" {% if f_resultado=='ejecutado_sin_incautacion' %}selected{% endif %}>Sin Incautación</option>
             <option value="con_decomiso" {% if f_resultado=='con_decomiso' %}selected{% endif %}>Con Decomiso</option>
             <option value="no_ejecutado" {% if f_resultado=='no_ejecutado' %}selected{% endif %}>No Ejecutado</option>
             <option value="planificada" {% if f_resultado=='planificada' %}selected{% endif %}>Planificada</option>
@@ -131,7 +131,7 @@
           <td>
             {% set est = l.estado_nuevo or '' %}
             {% if est == 'ejecutada' %}<span class="badge b-ok">Ejecutada ✓</span>
-            {% elif est == 'ejecutado_sin_incautación' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautación</span>
+            {% elif est == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautación</span>
             {% elif est == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
             {% elif est == 'no_ejecutado' %}<span class="badge b-red">No Ejecutado</span>
             {% elif est == 'planificada' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Planificada</span>
