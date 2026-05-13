@@ -57,7 +57,7 @@
             {% else %}<span class="badge b-gray">{{ d.estado }}</span>{% endif %}
           </td>
           <td>
-            <button class="btn btn-p btn-sm" onclick="abrirActualizar({{ d.id }},'{{ d.estado }}','{{ d.nombre|replace("'","") }}','{{ d.hallazgos|replace("'","") }}','{{ d.resolución|replace("'","") }}')">
+            <button class="btn btn-p btn-sm" onclick="abrirActualizar({{ d.id }},'{{ d.estado }}','{{ d.nombre|replace("'","") }}','{{ d.hallazgos|replace("'","") }}','{{ d.resolucion|replace("'","") }}')">
               Actualizar estado
             </button>
           </td>
