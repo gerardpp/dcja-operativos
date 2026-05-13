@@ -118,7 +118,7 @@
             {% if d.ejecutadas > 0 %}<span class="badge b-ok">{{ d.ejecutadas }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
           </td>
           <td style="text-align:center;padding:7px 10px;">
-            {% if d.sin_incautación > 0 %}<span class="badge" style="background:#fef3c7;color:#92400e;">{{ d.sin_incautación }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
+            {% if d.sin_incautacion > 0 %}<span class="badge" style="background:#fef3c7;color:#92400e;">{{ d.sin_incautacion }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
           </td>
           <td style="text-align:center;padding:7px 10px;">
             {% if d.pendientes > 0 %}<span class="badge b-red">{{ d.pendientes }}</span>{% else %}<span style="color:#94a3b8;">0</span>{% endif %}
@@ -213,7 +213,7 @@
               <span class="badge b-ok">Ejecutado</span>
             {% elif op.resultado_final == 'con_decomiso' %}
               <span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso</span>
-            {% elif op.resultado_final == 'ejecutado_sin_incautación' %}
+            {% elif op.resultado_final == 'ejecutado_sin_incautacion' %}
               <span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautación</span>
             {% elif op.resultado_final == 'no_ejecutado' or op.ejecutado==0 %}
               <span class="badge b-red">No Ejecutado</span>
@@ -222,7 +222,7 @@
             {% else %}<span style="color:#94a3b8;font-size:9px;">—</span>{% endif %}
           </td>
           <td style="text-align:center;">
-            {% if op.resultado_final == 'ejecutado_sin_incautación' %}
+            {% if op.resultado_final == 'ejecutado_sin_incautacion' %}
               <span class="badge" style="background:#fef3c7;color:#92400e;">Si</span>
             {% else %}<span style="color:#94a3b8;font-size:9px;">—</span>{% endif %}
           </td>
@@ -232,8 +232,8 @@
             {% else %}<span style="color:#94a3b8;font-size:9px;">No</span>{% endif %}
           </td>
           <td style="font-size:9.5px;color:#475569;">
-            {{ op.observaciónes or '—' }}
-            {% if op.resultado_final == 'ejecutado_sin_incautación' %}
+            {{ op.observaciones or '—' }}
+            {% if op.resultado_final == 'ejecutado_sin_incautacion' %}
               <div style="color:#92400e;font-weight:600;">Ejecutado sin incautación</div>
             {% endif %}
             {% if op.decomiso and op.decomiso_detalle %}<div style="color:#991b1b;font-weight:600;">{{ op.decomiso_detalle }}</div>{% endif %}
