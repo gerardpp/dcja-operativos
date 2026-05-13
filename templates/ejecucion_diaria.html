@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Ejecucion Diaria{% endblock %}
+{% block title %}Ejecución Diaria{% endblock %}
 {% block extra_head %}
 <style>
 .vh-block{border:1.5px solid #0d2257;border-radius:0;overflow:hidden;break-inside:avoid;}
@@ -42,15 +42,15 @@
 <!-- SCREEN HEADER -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;" class="no-print">
   <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Ejecucion Diaria</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Designacion de personal y registro de resultados</p>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Ejecución Diaria</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Designación de personal y registro de resultados</p>
   </div>
   <button class="btn btn-p no-print" onclick="window.print()">Imprimir DCJA-042</button>
 </div>
 
 <!-- FECHA SELECTOR -->
 <div class="card no-print">
-  <div class="card-head"><div class="card-num">1</div><h2>Seleccionar Fecha del Operativo</h2></div>
+  <div class="card-head"><div class="card-num">1</div><h2>Selecciónar Fecha del Operativo</h2></div>
   <div class="card-body">
     <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
       <div class="fg" style="max-width:200px;">
@@ -75,7 +75,7 @@
 {% if not operativos %}
 <div class="alert alert-warn">
   No hay operativos planificados para el <strong>{{ fecha }}</strong>.
-  Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificacion</a> para programarlos.
+  Ve a <a href="/planificacion" style="color:var(--dcja-blue);font-weight:700;">Planificación</a> para programarlos.
 </div>
 {% else %}
 
@@ -83,19 +83,19 @@
 {% set hay_sin_asignar = operativos|selectattr('estado','ne','asignado')|list|length > 0 %}
 {% if hay_sin_asignar %}
 <div class="card no-print">
-  <div class="card-head"><div class="card-num">2</div><h2>Designacion de Personal — {{ fecha }}</h2></div>
+  <div class="card-head"><div class="card-num">2</div><h2>Designación de Personal — {{ fecha }}</h2></div>
   <div class="card-body">
     <div class="alert alert-blue">
-      El designacion selecciona aleatoriamente el personal para los operativos de hoy aplicando todas las reglas:
+      El designación seleccióna aleatoriamente el personal para los operativos de hoy aplicando todas las reglas:
       exclusion por zona de residencia, cooldown de 21 dias, disponibilidad y conflictos.
       Si el pool es insuficiente se relaja el cooldown automaticamente.
     </div>
     {% if not solo_lectura %}
-    <button class="btn btn-p" id="btn-designacion" onclick="ejecutarDesignacion()">Ejecutar Designacion — {{ fecha }}</button>
+    <button class="btn btn-p" id="btn-designación" onclick="ejecutarDesignación()">Ejecutar Designación — {{ fecha }}</button>
     {% else %}
-    <span style="font-size:12px;color:var(--muted);font-style:italic;padding:6px 0;">🔒 Designacion bloqueada — fecha historica</span>
+    <span style="font-size:12px;color:var(--muted);font-style:italic;padding:6px 0;">🔒 Designación bloqueada — fecha historica</span>
     {% endif %}
-    <div id="designacion-resultado" style="margin-top:16px;"></div>
+    <div id="designación-resultado" style="margin-top:16px;"></div>
   </div>
 </div>
 {% endif %}
@@ -145,7 +145,7 @@
           <span class="badge b-ok">Personal asignado</span>
           <button class="btn btn-p btn-sm no-print" onclick="window.print()">Imprimir DCJA-042</button>
         {% else %}
-          <span class="badge b-gray">Pendiente designacion</span>
+          <span class="badge b-gray">Pendiente designación</span>
         {% endif %}
       </div>
     </div>
@@ -175,7 +175,7 @@
         </table>
       </div>
       <div class="vh-info">
-        {% for lbl,key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designacion','designacion'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
+        {% for lbl,key in [('Hora de Salida','hora_salida'),('No. de Placa','placa'),('No. de Flota','flota'),('Designación','designación'),('Provincia Destino','provincia_destino'),('Hora de Llegada','hora_llegada')] %}
         <div class="info-row">
           <span class="info-lbl">{{ lbl }}</span>
           <span class="info-val">{{ vd[key] if vd and key in vd else '' }}</span>
@@ -184,8 +184,8 @@
       </div>
     </div>
     <div class="obs-row">
-      <span style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;">Observaciones:</span>
-      <span style="font-size:11px;margin-left:8px;">{{ vd.observaciones if vd and vd.observaciones else '' }}</span>
+      <span style="font-size:9.5px;font-weight:700;color:#5a6480;text-transform:uppercase;">Observaciónes:</span>
+      <span style="font-size:11px;margin-left:8px;">{{ vd.observaciónes if vd and vd.observaciónes else '' }}</span>
     </div>
   </div>
   {% endfor %}
@@ -201,12 +201,12 @@
         <div class="fg"><label class="fl">Hora Salida</label><input type="time" class="vhf" data-key="hora_salida" value="{{ vd.hora_salida if vd else '' }}"></div>
         <div class="fg"><label class="fl">No. Placa</label><input type="text" class="vhf" data-key="placa" value="{{ vd.placa if vd else '' }}" placeholder="A123456"></div>
         <div class="fg"><label class="fl">No. Flota</label><input type="text" class="vhf" data-key="flota" value="{{ vd.flota if vd else '' }}" placeholder="F-042"></div>
-        <div class="fg"><label class="fl">Designacion</label><input type="text" class="vhf" data-key="designacion" value="{{ vd.designacion if vd else '' }}"></div>
+        <div class="fg"><label class="fl">Designación</label><input type="text" class="vhf" data-key="designación" value="{{ vd.designación if vd else '' }}"></div>
         <div class="fg"><label class="fl">Provincia Destino</label><input type="text" class="vhf" data-key="provincia_destino" value="{{ vd.provincia_destino if vd else op.provincia }}"></div>
         <div class="fg"><label class="fl">Hora Llegada</label><input type="time" class="vhf" data-key="hora_llegada" value="{{ vd.hora_llegada if vd else '' }}"></div>
         <div class="fg"><label class="fl">Militar</label><input type="text" class="vhf" data-key="militar" value="{{ vd.militar if vd else '' }}" placeholder="Nombre completo"></div>
         <div class="fg"><label class="fl">Chofer</label><input type="text" class="vhf" data-key="chofer" value="{{ vd.chofer if vd else '' }}" placeholder="Nombre completo"></div>
-        <div class="fg span2"><label class="fl">Observaciones del vehiculo</label><input type="text" class="vhf" data-key="observaciones" value="{{ vd.observaciones if vd else '' }}"></div>
+        <div class="fg span2"><label class="fl">Observaciónes del vehiculo</label><input type="text" class="vhf" data-key="observaciónes" value="{{ vd.observaciónes if vd else '' }}"></div>
       </div>
     </div>
     {% endfor %}
@@ -215,7 +215,7 @@
 
   <!-- TRANSPARENCY -->
   <div class="transparency-box">
-    <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaracion</div>
+    <div style="font-size:10px;font-weight:800;color:#0d2257;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Declaración</div>
     <div style="font-size:10.5px;line-height:1.7;margin-bottom:16px;">
       Me comprometo a cumplir con las politicas internas del Ministerio de Hacienda y Economia, actuando con discrecion, confidencialidad e integridad en el ejercicio de mis funciones.
     </div>
@@ -232,9 +232,9 @@
     {% if op.bloqueado or solo_lectura %}
     <div class="alert alert-ok" style="margin:0;">
       <strong>Resultado registrado y bloqueado:</strong>
-      {% if op.resultado_final == 'ejecutado' %}Ejecutado con incautacion ✓
+      {% if op.resultado_final == 'ejecutado' %}Ejecutado con incautación ✓
       {% elif op.resultado_final == 'con_decomiso' %}Ejecutado con decomiso ✓
-      {% elif op.resultado_final == 'ejecutado_sin_incautacion' %}Ejecutado sin incautacion — denuncia queda pendiente
+      {% elif op.resultado_final == 'ejecutado_sin_incautación' %}Ejecutado sin incautación — denuncia queda pendiente
       {% elif op.resultado_final == 'no_ejecutado' %}No Ejecutado
       {% else %}{{ op.resultado_final }}{% endif %}
     </div>
@@ -245,17 +245,17 @@
         onclick="setResultado({{ op.id }},'ejecutado')"
         title="Se realizo el operativo e incautaron">Ejecutado</button>
       <button class="btn btn-p" id="btn-sinInc-{{ op.id }}"
-        onclick="setResultado({{ op.id }},'ejecutado_sin_incautacion')"
+        onclick="setResultado({{ op.id }},'ejecutado_sin_incautación')"
         title="Fueron al lugar pero no se pudo incautar — denuncia queda pendiente"
-        style="background:#7c3aed;">Ejecutado sin Incautacion</button>
+        style="background:#7c3aed;">Ejecutado sin Incautación</button>
       <button class="btn btn-d" id="btn-noej-{{ op.id }}"
         onclick="setResultado({{ op.id }},'no_ejecutado')"
         title="No se pudo ir al lugar">No Ejecutado</button>
     </div>
     <div class="form-grid" style="margin-bottom:12px;">
       <div class="fg span2">
-        <label class="fl">Observaciones</label>
-        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones...">{{ op.observaciones or '' }}</textarea>
+        <label class="fl">Observaciónes</label>
+        <textarea id="obs-{{ op.id }}" rows="3" placeholder="Detalles, novedades, razones...">{{ op.observaciónes or '' }}</textarea>
       </div>
       <div class="fg span2">
         <label class="fl">Evidencia del operativo (fotos, capturas, documentos)</label>
@@ -263,14 +263,14 @@
         <p style="font-size:10px;color:#94a3b8;margin-top:2px;">Adjunta fotos o videos del operativo. Opcional pero recomendado.</p>
       </div>
       <div class="fg" id="dec-wrap-{{ op.id }}" style="display:none;">
-        <label class="fl">Incautacion / Decomiso</label>
+        <label class="fl">Incautación / Decomiso</label>
         <select id="dec-{{ op.id }}" onchange="toggleDec({{ op.id }},this.value)">
           <option value="0">No hubo decomiso</option>
           <option value="1">Si, hubo decomiso</option>
         </select>
       </div>
       <div class="fg span2" id="decdet-{{ op.id }}" style="display:none;">
-        <label class="fl">Descripcion de lo incautado</label>
+        <label class="fl">Descripción de lo incautado</label>
         <textarea id="decval-{{ op.id }}" rows="2" placeholder="Describa detalladamente...">{{ op.decomiso_detalle or '' }}</textarea>
       </div>
     </div>
@@ -285,7 +285,7 @@
   <!-- No brigadas yet -->
   <div class="card no-print" style="margin-bottom:16px;">
     <div class="card-body">
-      <div class="alert alert-warn" style="margin:0;">Este operativo aun no tiene personal asignado. Ejecuta la Designacion arriba.</div>
+      <div class="alert alert-warn" style="margin:0;">Este operativo aun no tiene personal asignado. Ejecuta la Designación arriba.</div>
     </div>
   </div>
   {% endif %}
@@ -304,19 +304,19 @@ const ejState={};
 {% for op in operativos %}ejState[{{ op.id }}]={{ op.ejecutado }};{% endfor %}
 
 // ── DESIGNACION ────────────────────────────────────────────────────
-async function ejecutarDesignacion(){
-  const btn=document.getElementById('btn-designacion');
-  btn.disabled=true; btn.textContent='Ejecutando designacion...';
+async function ejecutarDesignación(){
+  const btn=document.getElementById('btn-designación');
+  btn.disabled=true; btn.textContent='Ejecutando designación...';
   try {
-    const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
-    if(!r.ok){toast('Error al ejecutar designacion','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Designacion para '+FECHA;return;}
+    const r=await api('/asignación/ejecutar',{semana:SEMANA,vehiculos:VEH_DISP,fecha_base:FECHA});
+    if(!r.ok){toast('Error al ejecutar designación','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Designación para '+FECHA;return;}
     // Confirm immediately
-    const c=await api('/asignacion/confirmar',{resultado:r.resultado});
+    const c=await api('/asignación/confirmar',{resultado:r.resultado});
     if(c.ok){
-      toast('Designacion ejecutada y personal asignado. Recargando...','#166634');
+      toast('Designación ejecutada y personal asignado. Recargando...','#166634');
       setTimeout(()=>location.reload(),1500);
     }
-  } catch(e){ toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Ejecutar Designacion para '+FECHA; }
+  } catch(e){ toast('Error de conexion','#dc2626'); btn.disabled=false; btn.textContent='Ejecutar Designación para '+FECHA; }
 }
 
 // ── VEHICULOS ─────────────────────────────────────────────────
@@ -344,7 +344,7 @@ function setResultado(id, val){
     if(b){b.style.outline='';b.style.boxShadow='';}
   });
   // Highlight selected
-  const btnId = val==='ejecutado'?'btn-ej-'+id: val==='ejecutado_sin_incautacion'?'btn-sinInc-'+id:'btn-noej-'+id;
+  const btnId = val==='ejecutado'?'btn-ej-'+id: val==='ejecutado_sin_incautación'?'btn-sinInc-'+id:'btn-noej-'+id;
   const active=document.getElementById(btnId);
   if(active){active.style.outline='3px solid #c8a022';active.style.boxShadow='0 0 0 4px rgba(200,160,34,.2)';}
   // Show decomiso only for ejecutado
@@ -354,7 +354,7 @@ function setResultado(id, val){
   if(decDet) decDet.style.display='none';
   // Update label
   const lbl=document.getElementById('resultado-sel-'+id);
-  const labels={'ejecutado':'Ejecutado seleccionado','ejecutado_sin_incautacion':'Ejecutado sin incautacion — denuncia queda pendiente','no_ejecutado':'No Ejecutado seleccionado'};
+  const labels={'ejecutado':'Ejecutado selecciónado','ejecutado_sin_incautación':'Ejecutado sin incautación — denuncia queda pendiente','no_ejecutado':'No Ejecutado selecciónado'};
   if(lbl) lbl.textContent = labels[val]||'';
 }
 
@@ -366,7 +366,7 @@ function toggleDec(id,val){
 
 async function guardarResultado(id){
   const res = resultadoState[id];
-  if(!res){ alert('Selecciona el resultado del operativo antes de guardar.'); return; }
+  if(!res){ alert('Seleccióna el resultado del operativo antes de guardar.'); return; }
   const btn = document.getElementById('btn-guardar-'+id);
   if(btn){ btn.disabled=true; btn.textContent='Guardando...'; }
   const decomiso = res==='ejecutado' ? parseInt(document.getElementById('dec-'+id)?.value||0) : 0;
@@ -374,7 +374,7 @@ async function guardarResultado(id){
   const fd = new FormData();
   fd.append('id', id);
   fd.append('resultado_final', res);
-  fd.append('observaciones', document.getElementById('obs-'+id)?.value||'');
+  fd.append('observaciónes', document.getElementById('obs-'+id)?.value||'');
   fd.append('decomiso', decomiso);
   fd.append('decomiso_detalle', document.getElementById('decval-'+id)?.value||'');
   const evFiles = document.getElementById('ev-'+id)?.files;
