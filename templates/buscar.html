@@ -40,7 +40,7 @@
             {% set rf = op.resultado_final or '' %}
             {% if rf == 'ejecutado' %}<span class="badge b-ok">Ejecutado ✓</span>
             {% elif rf == 'con_decomiso' %}<span class="badge" style="background:#fce7f3;color:#9d174d;">Con Decomiso ✓</span>
-            {% elif rf == 'ejecutado_sin_incautacion' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautacion</span>
+            {% elif rf == 'ejecutado_sin_incautación' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Sin Incautación</span>
             {% elif rf == 'no_ejecutado' %}<span class="badge b-red">No Ejecutado</span>
             {% elif op.ejecutado == 1 %}<span class="badge b-ok">Ejecutado</span>
             {% elif op.ejecutado == 0 %}<span class="badge b-red">No Ejecutado</span>
@@ -65,4 +65,4 @@
   </div>
 </div>
 {% endif %}
-{% endblock %} 
+{% endblock %}
