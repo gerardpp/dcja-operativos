@@ -574,11 +574,21 @@ def api_stats():
                    WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada','ejecutado_sin_incautacion')""")['c'] or 0
         except: pend_manual = 0
         pend = pend_excel + pend_manual
+        # Count executed denuncias (all sources)
+        ejec_excel = db.fetchone(
+            """SELECT COUNT(*) as c FROM denuncias
+               WHERE estado IN ('ejecutada','ejecutado','con_decomiso')""")['c'] or 0
+        try:
+            ejec_manual = db.fetchone(
+                """SELECT COUNT(*) as c FROM denuncias_manual
+                   WHERE estado IN ('ejecutada','ejecutado','con_decomiso')""")['c'] or 0
+        except: ejec_manual = 0
+        ejecutadas = ejec_excel + ejec_manual
         ops  = db.fetchone("SELECT COUNT(*) as c FROM operativos WHERE semana=?", (semana,))['c']
         brig = db.fetchone("SELECT COALESCE(SUM(brigadas_requeridas),0) as c FROM operativos WHERE semana=?", (semana,))['c']
         hist = db.fetchone("SELECT COUNT(*) as c FROM operativos WHERE estado='asignado'")['c']
         sem  = db.fetchone("SELECT * FROM semanas WHERE semana=?", (semana,))
-    return jsonify(pendientes=pend, operativos=ops, brigadas=int(brig), historico=hist,
+    return jsonify(pendientes=pend, ejecutadas=ejecutadas, operativos=ops, brigadas=int(brig), historico=hist,
                    vehiculos=sem['vehiculos_disponibles'] if sem else 6,
                    militares=sem['militares_disponibles'] if sem else 6)
 
