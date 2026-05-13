@@ -122,7 +122,7 @@
         </select>
       </div>
       <div class="fg span2"><label class="fl">Observación</label>
-        <input type="text" id="od-observación" placeholder="Instrucciones o contexto de la orden...">
+        <input type="text" id="od-observaciones" placeholder="Instrucciones o contexto de la orden...">
       </div>
       <div class="fg span2">
         <label class="fl">Evidencia * <span style="color:#dc2626;">(obligatorio)</span></label>
@@ -240,7 +240,7 @@ async function agregarOrden(){
   fd.append('zona', document.getElementById('od-zona').value);
   fd.append('fuente', 'orden_direccion');
   fd.append('via_comunicacion', document.getElementById('od-via').value);
-  fd.append('observación', document.getElementById('od-observación').value.trim());
+  fd.append('observaciones', document.getElementById('od-observaciones').value.trim());
   fd.append('no_oficio', '');
   fd.append('evidencia', evidencia);
   const resp = await fetch('/planificacion/agregar_orden_con_evidencia', {method:'POST', body:fd});
