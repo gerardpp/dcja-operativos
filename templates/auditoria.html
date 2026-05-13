@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Auditoria de Sorteos{% endblock %}
+{% block title %}Auditoría de Sorteos{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
   <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Auditoria de Sorteos</h2>
-    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Verificacion de transparencia — cada semilla justifica una asignacion</p>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Auditoría de Sorteos</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Verificacion de transparencia — cada semilla justifica una asignación</p>
   </div>
 </div>
 
@@ -58,7 +58,7 @@
 
     <!-- ASIGNADOS -->
     <div style="margin-bottom:20px;">
-      <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--dcja-navy);">Personal Seleccionado</div>
+      <div style="font-size:11px;font-weight:800;color:var(--dcja-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--dcja-navy);">Personal Selecciónado</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">
         {% for p in d.asignados %}
         <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;">
@@ -105,8 +105,8 @@
 
 <!-- PRINT FOOTER -->
 <div style="background:#f8f9fc;border:1px solid var(--border);border-radius:7px;padding:12px 16px;font-size:11px;color:var(--muted);">
-  Este registro es prueba verificable de que la asignacion del personal fue realizada mediante un proceso aleatorio criptografico transparente, ejecutado el {{ d.timestamp[:16]|replace('T',' ') }}. La semilla <strong style="font-family:'DM Mono',monospace;color:var(--dcja-navy);">{{ d.seed }}</strong> identifica de forma unica este sorteo en el sistema.
+  Este registro es prueba verificable de que la asignación del personal fue realizada mediante un proceso aleatorio criptografico transparente, ejecutado el {{ d.timestamp[:16]|replace('T',' ') }}. La semilla <strong style="font-family:'DM Mono',monospace;color:var(--dcja-navy);">{{ d.seed }}</strong> identifica de forma unica este sorteo en el sistema.
 </div>
 {% endif %}
 
-{% endblock %} 
+{% endblock %}
