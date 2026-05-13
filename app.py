@@ -1034,8 +1034,9 @@ def plan_semanal():
 @login_required
 def ejecucion_diaria():
     today  = datetime.now().strftime('%Y-%m-%d')
-    # Always use today - sorteo only happens day-of
-    fecha  = today
+    # Accept fecha param for historical view (read-only)
+    fecha  = request.args.get('fecha', today)
+    solo_lectura = fecha != today  # Past dates = read-only
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
         ops     = [dict(r) for r in db.fetchall(
@@ -1047,7 +1048,7 @@ def ejecucion_diaria():
         o['brigadas']       = json.loads(o['brigadas_json'] or '[]')
         o['vehiculos_data'] = json.loads(o['vehiculos_json'] or '[]')
     vehiculos_diarios = sr['vehiculos_disponibles'] if sr else 6
-    return render_template('ejecucion_diaria.html', operativos=ops, fecha=fecha,
+    return render_template('ejecucion_diaria.html', solo_lectura=solo_lectura, operativos=ops, fecha=fecha,
                            fechas_disponibles=[x['fecha'] for x in all_ops],
                            semana=semana, vehiculos_diarios=vehiculos_diarios,
                            today=today)
@@ -1642,9 +1643,9 @@ def historial_denuncias_view():
             logs = [dict(r) for r in db.fetchall(q2, tuple(pr2))]
         except: logs = []
 
-        ejec    = sum(1 for l in logs if l.get('estado_nuevo') == 'ejecutada')
-        sin_inc = sum(1 for l in logs if l.get('estado_nuevo') == 'ejecutado_sin_incautacion')
-        decomiso= sum(1 for l in logs if l.get('estado_nuevo') == 'con_decomiso')
+        ejec    = sum(1 for l in logs if l.get('estado_nuevo') in ('ejecutada','ejecutado'))
+        sin_inc = sum(1 for l in logs if l.get('estado_nuevo') in ('ejecutado_sin_incautacion',))
+        decomiso= sum(1 for l in logs if l.get('estado_nuevo') in ('con_decomiso',))
 
     return render_template('historial_denuncias.html',
         logs=logs, den_ejecutadas=den_ejecutadas,
