@@ -32,7 +32,7 @@
               <strong>{{ p.carga_total }}</strong>
             </div>
           </td>
-          <td style="font-size:11px;color:var(--muted);">{{ p.ultima_asignación or '—' }}</td>
+          <td style="font-size:11px;color:var(--muted);">{{ p.ultima_asignacion or '—' }}</td>
           <td style="text-align:center;">
             <input type="checkbox" id="nd-{{ p.id }}" {% if p.no_disponible %}checked{% endif %}
               style="width:15px;height:15px;accent-color:var(--dcja-blue);cursor:pointer;"
