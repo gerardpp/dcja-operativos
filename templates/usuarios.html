@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Gestion de Usuarios{% endblock %}
+{% block title %}Gestión de Usuarios{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
   <div>
-    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Gestion de Usuarios</h2>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Gestión de Usuarios</h2>
     <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ users|length }} usuario(s) registrado(s)</p>
   </div>
   <button class="btn btn-p" onclick="document.getElementById('modal-nuevo').style.display='flex'">Nuevo Usuario</button>
@@ -36,7 +36,7 @@
           <td style="font-size:11px;color:var(--muted);">{{ u.created_at[:10] if u.created_at else '—' }}</td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-o btn-sm" onclick="cambiarPassword({{ u.id }},'{{ u.username }}')">Cambiar contrasena</button>
+              <button class="btn btn-o btn-sm" onclick="cambiarPassword({{ u.id }},'{{ u.username }}')">Cambiar contraseña</button>
               {% if u.id != current_user.id %}
               {% if u.activo %}
               <button class="btn btn-d btn-sm" onclick="toggleUser({{ u.id }},0,this)">Desactivar</button>
@@ -70,7 +70,7 @@
           <option value="admin">Administrador — Acceso total</option>
         </select>
       </div>
-      <div class="fg"><label class="fl">Contrasena inicial</label>
+      <div class="fg"><label class="fl">Contraseña inicial</label>
         <input type="password" id="nu-password" placeholder="Min. 8 caracteres"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
@@ -88,8 +88,8 @@ async function crearUsuario(){
   const nombre   = document.getElementById('nu-nombre').value.trim();
   const rol      = document.getElementById('nu-rol').value;
   const password = document.getElementById('nu-password').value;
-  if(!username||!password){alert('Usuario y contrasena son requeridos.');return;}
-  if(password.length<6){alert('La contrasena debe tener al menos 6 caracteres.');return;}
+  if(!username||!password){alert('Usuario y contraseña son requeridos.');return;}
+  if(password.length<6){alert('La contraseña debe tener al menos 6 caracteres.');return;}
   const r=await api('/usuarios/crear',{username,nombre,rol,password});
   if(r.ok){toast('Usuario creado correctamente','#166534');setTimeout(()=>location.reload(),1000);}
   else toast(r.error||'Error al crear usuario','#dc2626');
@@ -102,10 +102,10 @@ async function toggleUser(id,activo,btn){
 }
 
 async function cambiarPassword(id,username){
-  const pw=prompt(`Nueva contrasena para "${username}":`);
+  const pw=prompt(`Nueva contraseña para "${username}":`);
   if(!pw||pw.length<6){if(pw!==null)alert('Minimo 6 caracteres.');return;}
   const r=await api('/usuarios/cambiar_password',{id,password:pw});
-  if(r.ok) toast('Contrasena actualizada');
+  if(r.ok) toast('Contraseña actualizada');
   else toast('Error','#dc2626');
 }
 
@@ -117,4 +117,4 @@ async function eliminar(id,btn){
   else toast(d.error||'Error','#dc2626');
 }
 </script>
-{% endblock %} 
+{% endblock %}
