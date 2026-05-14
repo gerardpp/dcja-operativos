@@ -55,18 +55,25 @@
           </div>
           {% endfor %}
         </div>
-        <div style="padding:8px 14px;background:#fafbfd;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;">
-          <select id="dia-{{ loop.index }}" style="font-size:11px;padding:5px 7px;flex:1;min-width:0;width:100%;max-width:160px;">
-            <option value="">— Selecciónar dia —</option>
+        <div style="padding:8px 14px;background:#fafbfd;border-top:1px solid var(--border);">
+          <div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Seleccionar día:</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
             {% for wd in week_days %}
-            <option value="{{ wd }}">{{ wd }}</option>
+            {% set day_names = ['Lun','Mar','Mié','Jue','Vie'] %}
+            <button type="button"
+              id="dia-btn-{{ loop.index }}-{{ loop.index0 }}"
+              onclick="selDia({{ loop.index }}, '{{ wd }}', this)"
+              style="padding:4px 10px;font-size:11px;font-weight:600;border:1.5px solid var(--border);border-radius:5px;background:#fff;color:var(--text);cursor:pointer;white-space:nowrap;transition:all .1s;">
+              {{ day_names[loop.index0] }} {{ wd[8:] }}
+            </button>
             {% endfor %}
-          </select>
-          {% if zona in zonas_agregadas %}
-          <button class="btn btn-o btn-sm" disabled style="opacity:.5;cursor:not-allowed;">Ya agregado</button>
-          {% else %}
-          <button class="btn btn-g btn-sm" id="btn-zona-{{ loop.index }}" data-zona="{{ zona|e }}" onclick="agregarGrupoByBtn(this, {{ loop.index }})">Agregar</button>
-          {% endif %}
+            <input type="hidden" id="dia-{{ loop.index }}" value="">
+            {% if zona in zonas_agregadas %}
+            <button class="btn btn-o btn-sm" disabled style="opacity:.5;cursor:not-allowed;margin-left:auto;">Ya agregado</button>
+            {% else %}
+            <button class="btn btn-g btn-sm" id="btn-zona-{{ loop.index }}" data-zona="{{ zona|e }}" onclick="agregarGrupoByBtn(this, {{ loop.index }})" style="margin-left:auto;">Agregar</button>
+            {% endif %}
+          </div>
         </div>
       </div>
     {% endfor %}
@@ -171,6 +178,22 @@ const SEMANA='{{ semana }}';
 const GRUPOS={{ grupos|tojson }};
 const ZONA_KEYS=Object.keys(GRUPOS);
 const ZONAS_AGREGADAS = {{ zonas_agregadas|tojson }};
+
+function selDia(idx, val, btn){
+  // Deselect all day buttons for this zona
+  const parent = btn.parentElement;
+  parent.querySelectorAll('button[id^="dia-btn-'+idx+'-"]').forEach(b=>{
+    b.style.background='#fff';
+    b.style.color='var(--text)';
+    b.style.borderColor='var(--border)';
+  });
+  // Select clicked button
+  btn.style.background='var(--dcja-navy)';
+  btn.style.color='#fff';
+  btn.style.borderColor='var(--dcja-navy)';
+  // Set hidden input value
+  document.getElementById('dia-'+idx).value = val;
+}
 
 function calcInfo(){
   const v=parseInt(document.getElementById('vehiculos-input').value||0);
