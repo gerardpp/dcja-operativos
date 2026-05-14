@@ -18,6 +18,9 @@
 .firma-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:12px;}
 .firma-line{border-bottom:1.5px solid #0d2257;height:40px;margin-bottom:6px;}
 @media print{
+  @page { margin: 8mm; }
+  a[href]:after { content: none !important; }
+  
   .no-print,.nav-top,.nav-links-bar,.footer{display:none!important;}
   body{background:#fff;font-size:11px;}
   .container{padding:8px;}
@@ -83,10 +86,10 @@
       Si el pool es insuficiente se relaja el cooldown automaticamente.
     </div>
     {% if not solo_lectura %}
-    {% if not solo_lectura %}
+    {% if fecha == today and not solo_lectura %}
     <button class="btn btn-p" id="btn-designación" onclick="ejecutarDesignación()">Ejecutar Designación — {{ fecha }}</button>
     {% else %}
-    <span style="font-size:12px;color:var(--muted);font-style:italic;">🔒 Designación bloqueada — vista de solo lectura</span>
+    <span style="font-size:12px;color:var(--muted);font-style:italic;">La designación solo se puede ejecutar el día del operativo.</span>
     {% endif %}
     {% else %}
     <span style="font-size:12px;color:var(--muted);font-style:italic;padding:6px 0;">🔒 Designación bloqueada — fecha historica</span>
