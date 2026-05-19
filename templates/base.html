@@ -186,6 +186,37 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
     <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="/">Inicio</a>
 
+    {% if current_user.rol == 'directora' %}
+    <!-- DIRECTORA: solo lectura -->
+    <div class="nav-dropdown">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['plan_mensual_vista','historial_view','reportes_view','ejecucion_diaria','plan_semanal'] %}active{% endif %}">
+        Operativos ▾
+      </button>
+      <div class="nav-drop-menu">
+        <div class="nav-drop-menu-inner">
+          <a href="/plan-mensual/vista">Plan Mensual</a>
+          <a href="/plan_semanal">Plan Semanal</a>
+          <a href="/ejecucion_diaria">Ejecución Diaria</a>
+          <a href="/historial">Bitácora</a>
+          <a href="/reportes">Reportes</a>
+        </div>
+      </div>
+    </div>
+    <div class="nav-dropdown">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['denuncias_view','historial_denuncias_view'] %}active{% endif %}">
+        Denuncias ▾
+      </button>
+      <div class="nav-drop-menu">
+        <div class="nav-drop-menu-inner">
+          <a href="/denuncias">Denuncias Pendientes</a>
+          <a href="/historial-denuncias">Historial</a>
+        </div>
+      </div>
+    </div>
+    <a class="nav-link {% if request.endpoint=='buscar_view' %}active{% endif %}" href="/buscar">Buscar</a>
+
+    {% else %}
+
     <!-- DENUNCIAS DROPDOWN -->
     <div class="nav-dropdown">
       <button class="nav-link nav-drop-btn {% if request.endpoint in ['denuncias_view','historial_denuncias_view','mapa_view'] %}active{% endif %}">
@@ -202,7 +233,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
     <!-- OPERATIVOS DROPDOWN -->
     <div class="nav-dropdown">
-      <button class="nav-link nav-drop-btn {% if request.endpoint in ['planificacion_view','plan_semanal','asignacion_view','ejecucion_diaria','historial_view','reportes_view','auditoria_view'] %}active{% endif %}">
+      <button class="nav-link nav-drop-btn {% if request.endpoint in ['planificacion_view','plan_semanal','asignacion_view','ejecucion_diaria','historial_view','reportes_view','auditoria_view','plan_mensual_view'] %}active{% endif %}">
         Operativos ▾
       </button>
       <div class="nav-drop-menu">
@@ -238,6 +269,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
     <a class="nav-link {% if request.endpoint=='buscar_view' %}active{% endif %}" href="/buscar">Buscar</a>
 
+    {% endif %}
     {% endif %}
   </div>
 </div>
