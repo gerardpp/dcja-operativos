@@ -62,7 +62,7 @@
           <td style="text-align:center;">
             <input type="checkbox" id="chk-{{ d.id }}"
               {% if en_plan_mes %}checked{% endif %}
-              onchange="togglePlan({{ d.id }}, '{{ mes }}', this)"
+              onchange="togglePlan({{ d.id }}, '{{ mes }}', '{{ d.fuente }}', this)"
               style="width:16px;height:16px;cursor:pointer;accent-color:#166534;">
           </td>
           {% endif %}
@@ -91,12 +91,12 @@ function toggleProv(id){
   el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
-async function togglePlan(id, mes, chk){
+async function togglePlan(id, mes, fuente, chk){
   try {
     const resp = await fetch('/plan-mensual/toggle', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id, mes: mes})
+      body: JSON.stringify({id: id, mes: mes, fuente: fuente})
     });
     const d = await resp.json();
     if(d.ok){
