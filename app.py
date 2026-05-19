@@ -1745,39 +1745,52 @@ def plan_mensual_view():
         year, month = datetime.now().year, datetime.now().month
     mes_label = f"{MESES_ES[month]} {year}"
 
-    # Self-heal columns using autocommit
+    # Add plan_mes column to denuncias (Excel) table using autocommit
     sdb = get_db_schema()
     for stmt in [
-        "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''",
         "ALTER TABLE denuncias ADD COLUMN plan_mes TEXT DEFAULT ''",
+        "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''",
     ]:
         try: sdb.execute(stmt)
         except: pass
     sdb.close()
 
     with get_db() as db:
-        # Get from denuncias_manual
-        manual = [dict(r) for r in db.fetchall(
-            """SELECT id, nombre, provincia, municipio, zona, tipo, no_oficio,
-                      estado, plan_mes, 'manual' as fuente
-               FROM denuncias_manual
-               WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
-               ORDER BY provincia, municipio""")]
-
-        # Get from denuncias (Excel)
+        # Query denuncias (Excel) - safe fallback without plan_mes if column missing
         try:
             excel = [dict(r) for r in db.fetchall(
-                """SELECT id, nombre, provincia, municipio, zona, tipo, no_oficio,
+                """SELECT id, nombre, provincia, municipio,
+                          COALESCE(zona,'') as zona, COALESCE(tipo,'') as tipo,
+                          COALESCE(no_oficio,'') as no_oficio,
                           COALESCE(estado,'pendiente') as estado,
-                          COALESCE(plan_mes,'') as plan_mes, 'excel' as fuente
+                          COALESCE(plan_mes,'') as plan_mes,
+                          'excel' as fuente
                    FROM denuncias
-                   WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
+                   WHERE COALESCE(estado,'pendiente') NOT IN
+                         ('ejecutada','ejecutado','con_decomiso','cerrada')
                    ORDER BY provincia, municipio""")]
-        except: excel = []
+        except Exception as e:
+            import logging; logging.error(f"plan_mensual excel query: {e}")
+            excel = []
 
-        pendientes = manual + excel
+        # Query denuncias_manual
+        try:
+            manual = [dict(r) for r in db.fetchall(
+                """SELECT id, nombre, provincia, municipio,
+                          COALESCE(zona,'') as zona, COALESCE(tipo,'') as tipo,
+                          COALESCE(no_oficio,'') as no_oficio,
+                          COALESCE(estado,'pendiente') as estado,
+                          COALESCE(plan_mes,'') as plan_mes,
+                          'manual' as fuente
+                   FROM denuncias_manual
+                   WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
+                   ORDER BY provincia, municipio""")]
+        except Exception as e:
+            import logging; logging.error(f"plan_mensual manual query: {e}")
+            manual = []
 
-        # Group by provincia
+        pendientes = excel + manual
+
         from collections import defaultdict
         por_provincia = defaultdict(list)
         for d in pendientes:
@@ -1786,7 +1799,8 @@ def plan_mensual_view():
         en_plan = sum(1 for d in pendientes if d.get('plan_mes') == mes_param)
 
     return render_template('plan_mensual.html',
-        pendientes=pendientes, por_provincia=dict(sorted(por_provincia.items())),
+        pendientes=pendientes,
+        por_provincia=dict(sorted(por_provincia.items())),
         mes=mes_param, mes_label=mes_label, en_plan=en_plan,
         readonly=(current_user.rol == 'directora'))
 
