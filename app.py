@@ -1858,6 +1858,96 @@ def debug_plan():
         plan_query_test=plan_test, plan_query_error=plan_err
     )
 
+@app.route('/plan-mensual/asignar-semana', methods=['POST'])
+@rol_required('admin','operaciones')
+def asignar_semana_plan():
+    try:
+        d = request.json or {}
+        den_id  = int(d.get('id', 0))
+        fuente  = d.get('fuente','excel')
+        semana  = d.get('semana','').strip()
+        if not den_id: return jsonify(ok=False, error='Faltan datos')
+        tabla = 'denuncias' if fuente == 'excel' else 'denuncias_manual'
+        # Add column if missing
+        sdb = get_db_schema()
+        try: sdb.execute(f"ALTER TABLE {tabla} ADD COLUMN plan_semana TEXT DEFAULT ''")
+        except: pass
+        sdb.close()
+        with get_db() as db:
+            db.execute(f'UPDATE {tabla} SET plan_semana=? WHERE id=?', (semana, den_id))
+        return jsonify(ok=True)
+    except Exception as e:
+        import logging; logging.error(f"asignar_semana: {e}")
+        return jsonify(ok=False, error=str(e)), 500
+
+@app.route('/plan-mensual/vista')
+@rol_required('admin','operaciones','directora','coordinador')
+def plan_mensual_vista():
+    MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    try:
+        year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
+    except:
+        year, month = datetime.now().year, datetime.now().month
+    mes_label = f"{MESES_ES[month]} {year}"
+
+    # Ensure columns
+    sdb = get_db_schema()
+    for stmt in [
+        "ALTER TABLE denuncias ADD COLUMN plan_semana TEXT DEFAULT ''",
+        "ALTER TABLE denuncias_manual ADD COLUMN plan_semana TEXT DEFAULT ''",
+    ]:
+        try: sdb.execute(stmt)
+        except: pass
+    sdb.close()
+
+    with get_db() as db:
+        try:
+            excel = [dict(r) for r in db.fetchall(
+                """SELECT id, nombre, provincia, municipio,
+                          COALESCE(zona_inferida,'') as zona,
+                          TRIM(COALESCE(tipo,'')) as tipo,
+                          COALESCE(no_oficio,'') as no_oficio,
+                          COALESCE(plan_semana,'') as plan_semana,
+                          'excel' as fuente
+                   FROM denuncias WHERE plan_mes=?
+                   ORDER BY provincia, municipio""", (mes_param,))]
+        except: excel = []
+        try:
+            manual = [dict(r) for r in db.fetchall(
+                """SELECT id, nombre, provincia, municipio,
+                          COALESCE(zona,'') as zona,
+                          COALESCE(tipo,'') as tipo,
+                          COALESCE(no_oficio,'') as no_oficio,
+                          COALESCE(plan_semana,'') as plan_semana,
+                          'manual' as fuente
+                   FROM denuncias_manual WHERE plan_mes=?
+                   ORDER BY provincia, municipio""", (mes_param,))]
+        except: manual = []
+
+        en_plan = excel + manual
+        from collections import defaultdict
+        por_provincia = defaultdict(list)
+        for d in en_plan:
+            por_provincia[d.get('provincia') or 'Sin provincia'].append(d)
+
+        # Generate week options for this month
+        import calendar
+        semanas = []
+        first = datetime(year, month, 1)
+        last  = datetime(year, month, calendar.monthrange(year, month)[1])
+        cur = first
+        while cur <= last:
+            if cur.weekday() == 0:  # Monday
+                semanas.append(cur.strftime('%Y-W%V'))
+            cur = datetime(cur.year, cur.month, cur.day + 1) if cur.day < calendar.monthrange(cur.year, cur.month)[1] else datetime(cur.year, cur.month + 1 if cur.month < 12 else 1, 1)
+
+    return render_template('plan_mensual_vista.html',
+        en_plan=en_plan, por_provincia=dict(sorted(por_provincia.items())),
+        mes=mes_param, mes_label=mes_label, semanas=list(dict.fromkeys(semanas)),
+        readonly=(current_user.rol == 'directora'))
+
 @app.route('/mapa')
 @login_required
 def mapa_view():
