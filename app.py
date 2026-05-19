@@ -1814,6 +1814,27 @@ def toggle_plan_mensual():
         logging.error(f"toggle_plan_mensual: {e}")
         return jsonify(ok=False, error=str(e)), 500
 
+@app.route('/debug-plan')
+@rol_required('admin')
+def debug_plan():
+    with get_db() as db:
+        try:
+            c1 = db.fetchone("SELECT COUNT(*) as c FROM denuncias")['c']
+        except Exception as e: c1 = f"ERR:{e}"
+        try:
+            c2 = db.fetchone("SELECT COUNT(*) as c FROM denuncias_manual")['c']
+        except Exception as e: c2 = f"ERR:{e}"
+        try:
+            estados = [dict(r) for r in db.fetchall("SELECT estado, COUNT(*) as c FROM denuncias GROUP BY estado")]
+        except Exception as e: estados = [{"err": str(e)}]
+        try:
+            estados2 = [dict(r) for r in db.fetchall("SELECT estado, COUNT(*) as c FROM denuncias_manual GROUP BY estado")]
+        except Exception as e: estados2 = [{"err": str(e)}]
+    return jsonify(
+        denuncias_count=c1, denuncias_manual_count=c2,
+        denuncias_estados=estados, denuncias_manual_estados=estados2
+    )
+
 @app.route('/mapa')
 @login_required
 def mapa_view():
