@@ -1742,13 +1742,18 @@ def plan_mensual_view():
     mes_label = f"{calendar.month_name[month]} {year}"
     with get_db() as db:
         # Ensure column exists
-        try: db.execute("ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''")
-        except: pass
+
         # Get all pending + this month's planned
+        # Self-heal: add zona and plan_mes columns if missing
+        for col in ["ALTER TABLE denuncias_manual ADD COLUMN zona TEXT DEFAULT ''",
+                    "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''"]:
+            try: db.execute(col)
+            except: pass
+
         pendientes = [dict(r) for r in db.fetchall(
             """SELECT * FROM denuncias_manual
                WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
-               ORDER BY provincia, municipio, zona""")]
+               ORDER BY provincia, municipio""")]
         # Group by provincia
         from collections import defaultdict
         por_provincia = defaultdict(list)
