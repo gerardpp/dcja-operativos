@@ -98,7 +98,10 @@ tr:hover td{background:#f8f9ff;}
 .footer{text-align:center;padding:12px;font-size:10px;color:#94a3b8;border-top:2px solid var(--dcja-gold);background:var(--dcja-navy);color:rgba(255,255,255,.4);}
 #toast{position:fixed;bottom:22px;right:22px;background:var(--dcja-navy);color:#fff;padding:10px 18px;border-radius:7px;font-size:12px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;z-index:9999;border-left:4px solid var(--dcja-gold);}
 hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
-@media print{.nav-top,.nav-links-bar,.footer,button,.no-print{display:none!important;}body{background:#fff;font-size:11px;}}
+@media print{
+  @page { margin: 10mm; }
+  a[href]:after { content: none !important; }
+  .nav-top,.nav-links-bar,.footer,button,.no-print{display:none!important;}body{background:#fff;font-size:11px;}}
 
 /* ── NAV DROPDOWNS ────────────────────────────── */
 .nav-dropdown {
@@ -204,7 +207,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
       </button>
       <div class="nav-drop-menu">
         <div class="nav-drop-menu-inner">
-          <a href="/planificacion">Planificación</a>
+          <a href="/plan-mensual">Plan Mensual</a>
+          <a href="/planificacion">Planificación Semanal</a>
           <a href="/plan_semanal">Plan Semanal</a>
           <a href="/ejecucion_diaria">Ejecución Diaria</a>
           <a href="/historial">Bitácora</a>
