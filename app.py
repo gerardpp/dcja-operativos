@@ -1842,11 +1842,19 @@ def debug_plan():
             estados = [dict(r) for r in db.fetchall("SELECT estado, COUNT(*) as c FROM denuncias GROUP BY estado")]
         except Exception as e: estados = [{"err": str(e)}]
         try:
-            estados2 = [dict(r) for r in db.fetchall("SELECT estado, COUNT(*) as c FROM denuncias_manual GROUP BY estado")]
-        except Exception as e: estados2 = [{"err": str(e)}]
+            sample = dict(db.fetchone("SELECT * FROM denuncias LIMIT 1") or {})
+            cols = list(sample.keys())
+        except Exception as e: cols = [f"ERR:{e}"]
+        try:
+            plan_test = [dict(r) for r in db.fetchall("SELECT * FROM denuncias WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada') LIMIT 3")]
+            plan_err = None
+        except Exception as e:
+            plan_test = []
+            plan_err = str(e)
     return jsonify(
         denuncias_count=c1, denuncias_manual_count=c2,
-        denuncias_estados=estados, denuncias_manual_estados=estados2
+        denuncias_estados=estados, columns=cols,
+        plan_query_test=plan_test, plan_query_error=plan_err
     )
 
 @app.route('/mapa')
