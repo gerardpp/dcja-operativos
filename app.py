@@ -1739,7 +1739,9 @@ def plan_mensual_view():
     import calendar
     mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
     year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
-    mes_label = f"{calendar.month_name[month]} {year}"
+    MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+             'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    mes_label = f"{MESES_ES[month]} {year}" 
 
     # Self-heal using autocommit BEFORE main transaction
     sdb = get_db_schema()
@@ -1769,16 +1771,23 @@ def plan_mensual_view():
 @app.route('/plan-mensual/toggle', methods=['POST'])
 @rol_required('admin','operaciones')
 def toggle_plan_mensual():
-    d = request.json or {}
-    den_id = d.get('id')
-    mes = d.get('mes')
-    with get_db() as db:
-        actual = db.fetchone('SELECT plan_mes FROM denuncias_manual WHERE id=?', (den_id,))
-        if actual:
+    try:
+        d = request.json or {}
+        den_id = int(d.get('id', 0))
+        mes = d.get('mes','')
+        if not den_id or not mes:
+            return jsonify(ok=False, error='Faltan datos')
+        with get_db() as db:
+            actual = db.fetchone('SELECT plan_mes FROM denuncias_manual WHERE id=?', (den_id,))
+            if not actual:
+                return jsonify(ok=False, error='Denuncia no encontrada')
             nuevo = mes if actual.get('plan_mes') != mes else ''
             db.execute('UPDATE denuncias_manual SET plan_mes=? WHERE id=?', (nuevo, den_id))
-            return jsonify(ok=True, en_plan=(nuevo == mes))
-    return jsonify(ok=False)
+        return jsonify(ok=True, en_plan=(nuevo == mes))
+    except Exception as e:
+        import logging
+        logging.error(f"toggle_plan_mensual: {e}")
+        return jsonify(ok=False, error=str(e)), 500
 
 @app.route('/mapa')
 @login_required
