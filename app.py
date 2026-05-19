@@ -30,6 +30,10 @@ def load_user(user_id):
             return User(row['id'], row['username'], row['rol'])
     return None
 
+def is_readonly():
+    """Returns True if current user is directora (read-only role)."""
+    return current_user.is_authenticated and current_user.rol == 'directora'
+
 def rol_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -498,7 +502,7 @@ def logout_view():
     return redirect(url_for('login_view'))
 
 @app.route('/usuarios')
-@rol_required('admin')
+@rol_required('admin','directora')
 def usuarios_view():
     with get_db() as db:
         users = [dict(r) for r in db.fetchall('SELECT * FROM usuarios ORDER BY rol,username')]
@@ -696,7 +700,7 @@ def denuncias_upload():
     except Exception as e: return jsonify(ok=False, error=str(e)), 500
 
 @app.route('/planificacion')
-@rol_required('admin')
+@rol_required('admin','directora')
 def planificacion_view():
     semana = datetime.now().strftime('%Y-W%V')
     today = datetime.now()
@@ -1620,7 +1624,7 @@ def personal_update_con_evidencia():
     return jsonify(ok=True)
 
 @app.route('/historial-denuncias')
-@rol_required('admin','operaciones')
+@rol_required('admin','operaciones','directora')
 def historial_denuncias_view():
     f_nombre   = request.args.get('nombre','').strip()
     f_provincia= request.args.get('provincia','').strip()
@@ -1679,7 +1683,7 @@ def historial_denuncias_view():
 
 
 @app.route('/trazabilidad')
-@rol_required('admin','operaciones')
+@rol_required('admin','operaciones','directora')
 def trazabilidad_view():
     filtro_user   = request.args.get('usuario','').strip()
     filtro_accion = request.args.get('accion','').strip()
@@ -1728,6 +1732,48 @@ def sync_denuncia(op_id):
         return jsonify(ok=True)
     except Exception as e:
         return jsonify(ok=False, error=str(e))
+
+@app.route('/plan-mensual')
+@rol_required('admin','operaciones','directora')
+def plan_mensual_view():
+    import calendar
+    mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
+    mes_label = f"{calendar.month_name[month]} {year}"
+    with get_db() as db:
+        # Ensure column exists
+        try: db.execute("ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''")
+        except: pass
+        # Get all pending + this month's planned
+        pendientes = [dict(r) for r in db.fetchall(
+            """SELECT * FROM denuncias_manual
+               WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
+               ORDER BY provincia, municipio, zona""")]
+        # Group by provincia
+        from collections import defaultdict
+        por_provincia = defaultdict(list)
+        for d in pendientes:
+            por_provincia[d.get('provincia','Sin provincia')].append(d)
+        # Stats
+        en_plan = sum(1 for d in pendientes if d.get('plan_mes') == mes_param)
+    return render_template('plan_mensual.html',
+        pendientes=pendientes, por_provincia=dict(por_provincia),
+        mes=mes_param, mes_label=mes_label, en_plan=en_plan,
+        readonly=(current_user.rol == 'directora'))
+
+@app.route('/plan-mensual/toggle', methods=['POST'])
+@rol_required('admin','operaciones')
+def toggle_plan_mensual():
+    d = request.json or {}
+    den_id = d.get('id')
+    mes = d.get('mes')
+    with get_db() as db:
+        actual = db.fetchone('SELECT plan_mes FROM denuncias_manual WHERE id=?', (den_id,))
+        if actual:
+            nuevo = mes if actual.get('plan_mes') != mes else ''
+            db.execute('UPDATE denuncias_manual SET plan_mes=? WHERE id=?', (nuevo, den_id))
+            return jsonify(ok=True, en_plan=(nuevo == mes))
+    return jsonify(ok=False)
 
 @app.route('/mapa')
 @login_required
