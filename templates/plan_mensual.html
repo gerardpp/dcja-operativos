@@ -92,24 +92,32 @@ function toggleProv(id){
 }
 
 async function togglePlan(id, mes, chk){
-  const r = await fetch('/plan-mensual/toggle', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({id, mes})
-  });
-  const d = await r.json();
-  if(d.ok){
-    const row = document.getElementById('row-'+id);
-    if(d.en_plan){
-      row.style.background = '#f0fdf4';
-      planCount++;
+  try {
+    const resp = await fetch('/plan-mensual/toggle', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: id, mes: mes})
+    });
+    const d = await resp.json();
+    if(d.ok){
+      const row = document.getElementById('row-'+id);
+      if(d.en_plan){
+        row.style.background = '#f0fdf4';
+        planCount++;
+        chk.checked = true;
+      } else {
+        row.style.background = '';
+        planCount--;
+        chk.checked = false;
+      }
+      document.getElementById('counter-plan').textContent = planCount;
     } else {
-      row.style.background = '';
-      planCount--;
+      chk.checked = !chk.checked;
+      alert('Error al guardar');
     }
-    document.getElementById('counter-plan').textContent = planCount;
-  } else {
+  } catch(e){
     chk.checked = !chk.checked;
-    toast('Error al guardar','#dc2626');
+    alert('Error de conexión: ' + e.message);
   }
 }
 </script>
