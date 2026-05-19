@@ -34,6 +34,12 @@ def is_readonly():
     """Returns True if current user is directora (read-only role)."""
     return current_user.is_authenticated and current_user.rol == 'directora'
 
+def block_directora():
+    """Return 403 if directora tries to write."""
+    if is_readonly():
+        return jsonify(ok=False, error='Acceso denegado — perfil de solo lectura'), 403
+    return None
+
 def rol_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -563,7 +569,10 @@ def eliminar_usuario(uid):
 
 @app.route('/')
 @login_required
-def index(): return render_template('index.html')
+def index():
+    if current_user.is_authenticated and current_user.rol == 'directora':
+        return redirect('/plan-mensual/vista')
+    return render_template('index.html')
 
 @app.route('/api/stats')
 def api_stats():
