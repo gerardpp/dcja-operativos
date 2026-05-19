@@ -30,6 +30,20 @@
   </div>
 </div>
 
+<!-- Week filter -->
+{% if semanas %}
+<div class="card no-print" style="margin-bottom:16px;">
+  <div class="card-body" style="padding:12px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:12px;font-weight:700;color:var(--dcja-navy);">Filtrar por semana:</span>
+    <button onclick="filtrarSemana('')" id="f-todas" class="btn btn-p btn-sm" style="font-size:11px;">Todas</button>
+    {% for s in semanas %}
+    <button onclick="filtrarSemana('{{ s }}')" id="f-{{ s }}" class="btn btn-o btn-sm" style="font-size:11px;">{{ s }}</button>
+    {% endfor %}
+    <span style="font-size:11px;color:var(--muted);margin-left:auto;" id="filter-label">Mostrando todas</span>
+  </div>
+</div>
+{% endif %}
+
 {% if not en_plan %}
 <div class="card"><div class="card-body" style="text-align:center;padding:40px;color:var(--muted);">
   No hay denuncias seleccionadas para {{ mes_label }}.
@@ -53,7 +67,7 @@
   </div>
   <div class="card" style="flex:1;min-width:120px;border-top:3px solid #92400e;">
     <div class="card-body" style="padding:12px 16px;">
-      <div style="font-size:24px;font-weight:800;color:#92400e;">{{ en_plan|selectattr('plan_semana','')|list|length }}</div>
+      <div style="font-size:24px;font-weight:800;color:#92400e;">{{ en_plan|selectattr('plan_semana','equalto','')|list|length }}</div>
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Sin Semana Asignada</div>
     </div>
   </div>
@@ -75,7 +89,7 @@
       </tr></thead>
       <tbody>
         {% for d in items %}
-        <tr>
+        <tr data-semana="{{ d.plan_semana or '' }}">
           <td style="color:#94a3b8;">{{ loop.index }}</td>
           <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ d.no_oficio or '—' }}</td>
           <td style="font-weight:600;">{{ d.nombre }}</td>
@@ -111,6 +125,29 @@
 {% endblock %}
 {% block scripts %}
 <script>
+function filtrarSemana(semana){
+  // Update button styles
+  document.querySelectorAll('[id^="f-"]').forEach(b=>{
+    b.className = 'btn btn-o btn-sm';
+    b.style.fontSize = '11px';
+  });
+  const activeBtn = document.getElementById(semana ? 'f-'+semana : 'f-todas');
+  if(activeBtn){ activeBtn.className = 'btn btn-p btn-sm'; activeBtn.style.fontSize='11px'; }
+
+  // Filter rows
+  document.querySelectorAll('tr[data-semana]').forEach(row=>{
+    if(!semana || row.dataset.semana === semana){
+      row.style.display='';
+    } else {
+      row.style.display='none';
+    }
+  });
+
+  // Update label
+  document.getElementById('filter-label').textContent =
+    semana ? `Semana ${semana}` : 'Mostrando todas';
+}
+
 async function asignarSemana(id, fuente, semana, sel){
   try {
     const resp = await fetch('/plan-mensual/asignar-semana', {
