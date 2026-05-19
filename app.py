@@ -1736,34 +1736,57 @@ def sync_denuncia(op_id):
 @app.route('/plan-mensual')
 @rol_required('admin','operaciones','directora')
 def plan_mensual_view():
-    import calendar
-    mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
-    year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
     MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
-             'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-    mes_label = f"{MESES_ES[month]} {year}" 
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    try:
+        year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
+    except:
+        year, month = datetime.now().year, datetime.now().month
+    mes_label = f"{MESES_ES[month]} {year}"
 
-    # Self-heal using autocommit BEFORE main transaction
+    # Self-heal columns using autocommit
     sdb = get_db_schema()
-    for stmt in ["ALTER TABLE denuncias_manual ADD COLUMN zona TEXT DEFAULT ''",
-                 "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''"]:
+    for stmt in [
+        "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''",
+        "ALTER TABLE denuncias ADD COLUMN plan_mes TEXT DEFAULT ''",
+    ]:
         try: sdb.execute(stmt)
         except: pass
     sdb.close()
 
     with get_db() as db:
-        pendientes = [dict(r) for r in db.fetchall(
-            """SELECT * FROM denuncias_manual
+        # Get from denuncias_manual
+        manual = [dict(r) for r in db.fetchall(
+            """SELECT id, nombre, provincia, municipio, zona, tipo, no_oficio,
+                      estado, plan_mes, 'manual' as fuente
+               FROM denuncias_manual
                WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
                ORDER BY provincia, municipio""")]
+
+        # Get from denuncias (Excel)
+        try:
+            excel = [dict(r) for r in db.fetchall(
+                """SELECT id, nombre, provincia, municipio, zona, tipo, no_oficio,
+                          COALESCE(estado,'pendiente') as estado,
+                          COALESCE(plan_mes,'') as plan_mes, 'excel' as fuente
+                   FROM denuncias
+                   WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
+                   ORDER BY provincia, municipio""")]
+        except: excel = []
+
+        pendientes = manual + excel
+
+        # Group by provincia
         from collections import defaultdict
         por_provincia = defaultdict(list)
         for d in pendientes:
             por_provincia[d.get('provincia') or 'Sin provincia'].append(d)
+
         en_plan = sum(1 for d in pendientes if d.get('plan_mes') == mes_param)
 
     return render_template('plan_mensual.html',
-        pendientes=pendientes, por_provincia=dict(por_provincia),
+        pendientes=pendientes, por_provincia=dict(sorted(por_provincia.items())),
         mes=mes_param, mes_label=mes_label, en_plan=en_plan,
         readonly=(current_user.rol == 'directora'))
 
@@ -1774,15 +1797,17 @@ def toggle_plan_mensual():
     try:
         d = request.json or {}
         den_id = int(d.get('id', 0))
-        mes = d.get('mes','')
+        mes    = d.get('mes','')
+        fuente = d.get('fuente','manual')
         if not den_id or not mes:
             return jsonify(ok=False, error='Faltan datos')
+        tabla = 'denuncias_manual' if fuente == 'manual' else 'denuncias'
         with get_db() as db:
-            actual = db.fetchone('SELECT plan_mes FROM denuncias_manual WHERE id=?', (den_id,))
+            actual = db.fetchone(f'SELECT plan_mes FROM {tabla} WHERE id=?', (den_id,))
             if not actual:
                 return jsonify(ok=False, error='Denuncia no encontrada')
             nuevo = mes if actual.get('plan_mes') != mes else ''
-            db.execute('UPDATE denuncias_manual SET plan_mes=? WHERE id=?', (nuevo, den_id))
+            db.execute(f'UPDATE {tabla} SET plan_mes=? WHERE id=?', (nuevo, den_id))
         return jsonify(ok=True, en_plan=(nuevo == mes))
     except Exception as e:
         import logging
