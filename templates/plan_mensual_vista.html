@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Vista Plan Mensual{% endblock %}
+{% block extra_head %}
+<style>
+@media print {
+  .no-print { display:none!important; }
+  @page { margin:10mm; }
+  a[href]:after { content:none!important; }
+}
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;" class="no-print">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Plan Mensual — {{ mes_label }}</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">{{ en_plan|length }} denuncias seleccionadas para este mes</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="/plan-mensual?mes={{ mes }}" class="btn btn-o no-print">← Editar selección</a>
+    <button onclick="window.print()" class="btn btn-p no-print">Imprimir</button>
+  </div>
+</div>
+
+<!-- Print header -->
+<div style="display:none;" class="print-only">
+  <div style="text-align:center;margin-bottom:16px;">
+    <div style="font-size:14px;font-weight:800;color:#0d2257;">DIRECCIÓN DE CASINOS Y JUEGOS DE AZAR</div>
+    <div style="font-size:11px;color:#475569;">Plan Mensual de Operativos — {{ mes_label }}</div>
+  </div>
+</div>
+
+{% if not en_plan %}
+<div class="card"><div class="card-body" style="text-align:center;padding:40px;color:var(--muted);">
+  No hay denuncias seleccionadas para {{ mes_label }}.
+  <a href="/plan-mensual?mes={{ mes }}" style="display:block;margin-top:8px;">← Ir a seleccionar</a>
+</div></div>
+{% else %}
+
+<!-- Summary cards -->
+<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;" class="no-print">
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #0d2257;">
+    <div class="card-body" style="padding:12px 16px;">
+      <div style="font-size:24px;font-weight:800;color:#0d2257;">{{ en_plan|length }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Total en Plan</div>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #166534;">
+    <div class="card-body" style="padding:12px 16px;">
+      <div style="font-size:24px;font-weight:800;color:#166534;">{{ por_provincia|length }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Provincias</div>
+    </div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;border-top:3px solid #92400e;">
+    <div class="card-body" style="padding:12px 16px;">
+      <div style="font-size:24px;font-weight:800;color:#92400e;">{{ en_plan|selectattr('plan_semana','')|list|length }}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Sin Semana Asignada</div>
+    </div>
+  </div>
+</div>
+
+<!-- By provincia -->
+{% for provincia, items in por_provincia.items() %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-head">
+    <div class="card-num">{{ items|length }}</div>
+    <h2>{{ provincia }}</h2>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>No. Oficio</th><th>Nombre</th><th>Municipio</th>
+        <th>Zona</th><th>Tipo</th>
+        {% if not readonly %}<th class="no-print">Semana</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for d in items %}
+        <tr>
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:10px;">{{ d.no_oficio or '—' }}</td>
+          <td style="font-weight:600;">{{ d.nombre }}</td>
+          <td style="font-size:11px;">{{ d.municipio or '—' }}</td>
+          <td style="font-size:11px;">{{ d.zona or '—' }}</td>
+          <td>
+            {% if 'DEPORTIVA' in (d.tipo or '')|upper or 'CASINO' in (d.tipo or '')|upper %}
+              <span class="badge b-dep">Dep.</span>
+            {% else %}
+              <span class="badge b-lot">Lot.</span>
+            {% endif %}
+          </td>
+          {% if not readonly %}
+          <td class="no-print">
+            <select onchange="asignarSemana({{ d.id }},'{{ d.fuente }}',this.value,this)"
+              style="font-size:11px;padding:3px 6px;border:1.5px solid var(--border);border-radius:5px;background:#fff;">
+              <option value="">— Sin asignar —</option>
+              {% for s in semanas %}
+              <option value="{{ s }}" {% if d.plan_semana == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function asignarSemana(id, fuente, semana, sel){
+  try {
+    const resp = await fetch('/plan-mensual/asignar-semana', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id, fuente, semana})
+    });
+    const d = await resp.json();
+    if(d.ok){
+      sel.style.borderColor = semana ? '#166534' : 'var(--border)';
+      toast(semana ? `Asignada a ${semana}` : 'Semana removida', semana ? '#166534' : '#92400e');
+    } else {
+      toast('Error al guardar','#dc2626');
+    }
+  } catch(e){ toast('Error de conexión','#dc2626'); }
+}
+</script>
+{% endblock %}
