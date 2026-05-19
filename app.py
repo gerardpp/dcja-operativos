@@ -1760,7 +1760,8 @@ def plan_mensual_view():
         try:
             excel = [dict(r) for r in db.fetchall(
                 """SELECT id, nombre, provincia, municipio,
-                          COALESCE(zona,'') as zona, COALESCE(tipo,'') as tipo,
+                          COALESCE(zona_inferida,'') as zona,
+                          TRIM(COALESCE(tipo,'')) as tipo,
                           COALESCE(no_oficio,'') as no_oficio,
                           COALESCE(estado,'pendiente') as estado,
                           COALESCE(plan_mes,'') as plan_mes,
