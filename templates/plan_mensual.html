@@ -12,6 +12,11 @@
       <input type="month" name="mes" value="{{ mes }}" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;">
       <button type="submit" class="btn btn-p">Ver mes</button>
     </form>
+    {% if en_plan > 0 %}
+    <a href="/plan-mensual/vista?mes={{ mes }}" class="btn btn-p" style="background:#166534;">
+      Ver Plan Seleccionado ({{ en_plan }})
+    </a>
+    {% endif %}
   </div>
 </div>
 
