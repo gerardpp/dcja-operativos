@@ -1740,31 +1740,31 @@ def plan_mensual_view():
     mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
     year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
     mes_label = f"{calendar.month_name[month]} {year}"
+
+    # Self-heal using autocommit BEFORE main transaction
+    sdb = get_db_schema()
+    for stmt in ["ALTER TABLE denuncias_manual ADD COLUMN zona TEXT DEFAULT ''",
+                 "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''"]:
+        try: sdb.execute(stmt)
+        except: pass
+    sdb.close()
+
     with get_db() as db:
-        # Ensure column exists
-
-        # Get all pending + this month's planned
-        # Self-heal: add zona and plan_mes columns if missing
-        for col in ["ALTER TABLE denuncias_manual ADD COLUMN zona TEXT DEFAULT ''",
-                    "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''"]:
-            try: db.execute(col)
-            except: pass
-
         pendientes = [dict(r) for r in db.fetchall(
             """SELECT * FROM denuncias_manual
                WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
                ORDER BY provincia, municipio""")]
-        # Group by provincia
         from collections import defaultdict
         por_provincia = defaultdict(list)
         for d in pendientes:
-            por_provincia[d.get('provincia','Sin provincia')].append(d)
-        # Stats
+            por_provincia[d.get('provincia') or 'Sin provincia'].append(d)
         en_plan = sum(1 for d in pendientes if d.get('plan_mes') == mes_param)
+
     return render_template('plan_mensual.html',
         pendientes=pendientes, por_provincia=dict(por_provincia),
         mes=mes_param, mes_label=mes_label, en_plan=en_plan,
         readonly=(current_user.rol == 'directora'))
+
 
 @app.route('/plan-mensual/toggle', methods=['POST'])
 @rol_required('admin','operaciones')
