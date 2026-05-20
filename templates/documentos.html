@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}DCJA — Documentos Firmados{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Documentos Firmados</h2>
+    <p style="color:var(--muted);font-size:11.5px;margin-top:3px;">Archivo de documentos físicos escaneados — DCJA-035, DCJA-042, DCJA-039</p>
+  </div>
+  <button class="btn btn-p" onclick="document.getElementById('modal-subir').style.display='flex'">
+    + Subir Documento
+  </button>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Tipo</th><th>Referencia</th><th>Fecha Subida</th><th>Subido por</th><th>Archivo</th>
+      </tr></thead>
+      <tbody>
+        {% for d in docs %}
+        <tr>
+          <td style="color:#94a3b8;">{{ loop.index }}</td>
+          <td>
+            {% if '035' in d.tipo %}<span class="badge" style="background:#dbeafe;color:#1e40af;">DCJA-035</span>
+            {% elif '042' in d.tipo %}<span class="badge b-ok">DCJA-042</span>
+            {% elif '039' in d.tipo %}<span class="badge" style="background:#fce7f3;color:#9d174d;">DCJA-039</span>
+            {% else %}<span class="badge b-gray">{{ d.tipo }}</span>{% endif %}
+          </td>
+          <td style="font-family:'DM Mono',monospace;font-size:11px;">{{ d.ref_id or '—' }}</td>
+          <td style="font-size:11px;">{{ d.fecha[:16].replace('T',' ') if d.fecha else '—' }}</td>
+          <td style="font-weight:600;">{{ d.subido_por or '—' }}</td>
+          <td>
+            <a href="/evidencia/firmados/{{ d.archivo }}" target="_blank" class="btn btn-o btn-sm">Ver</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">
+          No hay documentos firmados subidos aún.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal subir -->
+<div id="modal-subir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <h3 style="font-size:15px;font-weight:800;color:var(--dcja-navy);margin-bottom:16px;">Subir Documento Firmado</h3>
+    <div class="fg" style="margin-bottom:12px;">
+      <label class="fl">Tipo de Documento *</label>
+      <select id="doc-tipo" style="width:100%;">
+        <option value="DCJA-035">DCJA-035 — Plan Semanal</option>
+        <option value="DCJA-042">DCJA-042 — Designación Diaria</option>
+        <option value="DCJA-039">DCJA-039 — Bitácora Semanal</option>
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:12px;">
+      <label class="fl">Referencia (semana o fecha)</label>
+      <input type="text" id="doc-ref" placeholder="Ej: 2026-W20 o 2026-05-13" style="width:100%;">
+    </div>
+    <div class="fg" style="margin-bottom:16px;">
+      <label class="fl">Archivo * <span style="color:#dc2626;">(PDF, imagen)</span></label>
+      <input type="file" id="doc-archivo" accept=".pdf,image/*" style="width:100%;font-size:12px;padding:6px;">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-o" onclick="document.getElementById('modal-subir').style.display='none'">Cancelar</button>
+      <button class="btn btn-p" onclick="subirDoc()">Subir y Archivar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function subirDoc(){
+  const tipo    = document.getElementById('doc-tipo').value;
+  const ref     = document.getElementById('doc-ref').value.trim();
+  const archivo = document.getElementById('doc-archivo').files[0];
+  if(!archivo){ alert('Selecciona un archivo'); return; }
+  const fd = new FormData();
+  fd.append('tipo', tipo);
+  fd.append('ref_id', ref);
+  fd.append('archivo', archivo);
+  const resp = await fetch('/documentos/subir', {method:'POST', body:fd});
+  const d = await resp.json();
+  if(d.ok){
+    toast('Documento archivado correctamente','#166534');
+    setTimeout(()=>location.reload(), 900);
+  } else {
+    toast(d.error||'Error al subir','#dc2626');
+  }
+}
+</script>
+{% endblock %}
