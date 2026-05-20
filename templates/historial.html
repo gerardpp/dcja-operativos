@@ -13,6 +13,9 @@
 .res-card.red{border-color:#fca5a5;background:#fef2f2;}.res-card.red .val{color:#991b1b;}
 .res-card.gold{border-color:var(--dcja-gold);background:#fefdf5;}.res-card.gold .val{color:var(--dcja-navy);}
 @media print{
+  @page { margin: 8mm; }
+  a[href]:after { content: none !important; }
+  
   .no-print,.nav-top,.nav-links-bar,.footer,button,select{display:none!important;}
   .print-header{display:block!important;}
   .print-only{display:block!important;}
