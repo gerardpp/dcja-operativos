@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block title %}DCJA — Planificación{% endblock %}
+{% block extra_head %}
+<style>
+html { overflow-anchor: none; scroll-behavior: auto; }
+</style>
+{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
   <div><h2 style="font-size:18px;font-weight:800;color:var(--dcja-navy);">Planificación Semanal</h2>
@@ -56,7 +61,7 @@
           {% endfor %}
         </div>
         <div style="padding:8px 14px;background:#fafbfd;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;">
-          <select id="dia-{{ loop.index }}" style="font-size:11px;padding:5px 7px;flex:1;">
+          <select id="dia-{{ loop.index }}" style="font-size:11px;padding:5px 7px;width:160px;min-width:160px;max-width:160px;">
             <option value="">— Seleccionar día —</option>
             {% for wd in week_days %}
             <option value="{{ wd }}">{{ wd }}</option>
