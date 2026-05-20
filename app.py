@@ -30,16 +30,6 @@ def load_user(user_id):
             return User(row['id'], row['username'], row['rol'])
     return None
 
-def is_readonly():
-    """Returns True if current user is directora (read-only role)."""
-    return current_user.is_authenticated and current_user.rol == 'directora'
-
-def block_directora():
-    """Return 403 if directora tries to write."""
-    if is_readonly():
-        return jsonify(ok=False, error='Acceso denegado — perfil de solo lectura'), 403
-    return None
-
 def rol_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -508,7 +498,7 @@ def logout_view():
     return redirect(url_for('login_view'))
 
 @app.route('/usuarios')
-@rol_required('admin','directora')
+@rol_required('admin')
 def usuarios_view():
     with get_db() as db:
         users = [dict(r) for r in db.fetchall('SELECT * FROM usuarios ORDER BY rol,username')]
@@ -569,10 +559,7 @@ def eliminar_usuario(uid):
 
 @app.route('/')
 @login_required
-def index():
-    if current_user.is_authenticated and current_user.rol == 'directora':
-        return redirect('/plan-mensual/vista')
-    return render_template('index.html')
+def index(): return render_template('index.html')
 
 @app.route('/api/stats')
 def api_stats():
@@ -709,7 +696,7 @@ def denuncias_upload():
     except Exception as e: return jsonify(ok=False, error=str(e)), 500
 
 @app.route('/planificacion')
-@rol_required('admin','directora')
+@rol_required('admin')
 def planificacion_view():
     semana = datetime.now().strftime('%Y-W%V')
     today = datetime.now()
@@ -1076,7 +1063,7 @@ def ejecucion_diaria():
         o['brigadas']       = json.loads(o['brigadas_json'] or '[]')
         o['vehiculos_data'] = json.loads(o['vehiculos_json'] or '[]')
     vehiculos_diarios = sr['vehiculos_disponibles'] if sr else 6
-    return render_template('ejecucion_diaria.html', solo_lectura=solo_lectura, operativos=ops, fecha=fecha,
+    return render_template('ejecucion_diaria.html', solo_lectura=solo_lectura, operativos=ops, fecha=fecha, today=today,
                            fechas_disponibles=[x['fecha'] for x in all_ops],
                            semana=semana, vehiculos_diarios=vehiculos_diarios,
                            today=today)
@@ -1633,7 +1620,7 @@ def personal_update_con_evidencia():
     return jsonify(ok=True)
 
 @app.route('/historial-denuncias')
-@rol_required('admin','operaciones','directora')
+@rol_required('admin','operaciones')
 def historial_denuncias_view():
     f_nombre   = request.args.get('nombre','').strip()
     f_provincia= request.args.get('provincia','').strip()
@@ -1692,7 +1679,7 @@ def historial_denuncias_view():
 
 
 @app.route('/trazabilidad')
-@rol_required('admin','operaciones','directora')
+@rol_required('admin','operaciones')
 def trazabilidad_view():
     filtro_user   = request.args.get('usuario','').strip()
     filtro_accion = request.args.get('accion','').strip()
@@ -1741,221 +1728,6 @@ def sync_denuncia(op_id):
         return jsonify(ok=True)
     except Exception as e:
         return jsonify(ok=False, error=str(e))
-
-@app.route('/plan-mensual')
-@rol_required('admin','operaciones','directora')
-def plan_mensual_view():
-    MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-    mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
-    try:
-        year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
-    except:
-        year, month = datetime.now().year, datetime.now().month
-    mes_label = f"{MESES_ES[month]} {year}"
-
-    # Add plan_mes column to denuncias (Excel) table using autocommit
-    sdb = get_db_schema()
-    for stmt in [
-        "ALTER TABLE denuncias ADD COLUMN plan_mes TEXT DEFAULT ''",
-        "ALTER TABLE denuncias_manual ADD COLUMN plan_mes TEXT DEFAULT ''",
-    ]:
-        try: sdb.execute(stmt)
-        except: pass
-    sdb.close()
-
-    with get_db() as db:
-        # Query denuncias (Excel) - safe fallback without plan_mes if column missing
-        try:
-            excel = [dict(r) for r in db.fetchall(
-                """SELECT id, nombre, provincia, municipio,
-                          COALESCE(zona_inferida,'') as zona,
-                          TRIM(COALESCE(tipo,'')) as tipo,
-                          COALESCE(no_oficio,'') as no_oficio,
-                          COALESCE(estado,'pendiente') as estado,
-                          COALESCE(plan_mes,'') as plan_mes,
-                          'excel' as fuente
-                   FROM denuncias
-                   WHERE COALESCE(estado,'pendiente') NOT IN
-                         ('ejecutada','ejecutado','con_decomiso','cerrada')
-                   ORDER BY provincia, municipio""")]
-        except Exception as e:
-            import logging; logging.error(f"plan_mensual excel query: {e}")
-            excel = []
-
-        # Query denuncias_manual
-        try:
-            manual = [dict(r) for r in db.fetchall(
-                """SELECT id, nombre, provincia, municipio,
-                          COALESCE(zona,'') as zona, COALESCE(tipo,'') as tipo,
-                          COALESCE(no_oficio,'') as no_oficio,
-                          COALESCE(estado,'pendiente') as estado,
-                          COALESCE(plan_mes,'') as plan_mes,
-                          'manual' as fuente
-                   FROM denuncias_manual
-                   WHERE estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')
-                   ORDER BY provincia, municipio""")]
-        except Exception as e:
-            import logging; logging.error(f"plan_mensual manual query: {e}")
-            manual = []
-
-        pendientes = excel + manual
-
-        from collections import defaultdict
-        por_provincia = defaultdict(list)
-        for d in pendientes:
-            por_provincia[d.get('provincia') or 'Sin provincia'].append(d)
-
-        en_plan = sum(1 for d in pendientes if d.get('plan_mes') == mes_param)
-
-    return render_template('plan_mensual.html',
-        pendientes=pendientes,
-        por_provincia=dict(sorted(por_provincia.items())),
-        mes=mes_param, mes_label=mes_label, en_plan=en_plan,
-        readonly=(current_user.rol == 'directora'))
-
-
-@app.route('/plan-mensual/toggle', methods=['POST'])
-@rol_required('admin','operaciones')
-def toggle_plan_mensual():
-    try:
-        d = request.json or {}
-        den_id = int(d.get('id', 0))
-        mes    = d.get('mes','')
-        fuente = d.get('fuente','manual')
-        if not den_id or not mes:
-            return jsonify(ok=False, error='Faltan datos')
-        tabla = 'denuncias_manual' if fuente == 'manual' else 'denuncias'
-        with get_db() as db:
-            actual = db.fetchone(f'SELECT plan_mes FROM {tabla} WHERE id=?', (den_id,))
-            if not actual:
-                return jsonify(ok=False, error='Denuncia no encontrada')
-            nuevo = mes if actual.get('plan_mes') != mes else ''
-            db.execute(f'UPDATE {tabla} SET plan_mes=? WHERE id=?', (nuevo, den_id))
-        return jsonify(ok=True, en_plan=(nuevo == mes))
-    except Exception as e:
-        import logging
-        logging.error(f"toggle_plan_mensual: {e}")
-        return jsonify(ok=False, error=str(e)), 500
-
-@app.route('/debug-plan')
-@rol_required('admin')
-def debug_plan():
-    with get_db() as db:
-        try:
-            c1 = db.fetchone("SELECT COUNT(*) as c FROM denuncias")['c']
-        except Exception as e: c1 = f"ERR:{e}"
-        try:
-            c2 = db.fetchone("SELECT COUNT(*) as c FROM denuncias_manual")['c']
-        except Exception as e: c2 = f"ERR:{e}"
-        try:
-            estados = [dict(r) for r in db.fetchall("SELECT estado, COUNT(*) as c FROM denuncias GROUP BY estado")]
-        except Exception as e: estados = [{"err": str(e)}]
-        try:
-            sample = dict(db.fetchone("SELECT * FROM denuncias LIMIT 1") or {})
-            cols = list(sample.keys())
-        except Exception as e: cols = [f"ERR:{e}"]
-        try:
-            plan_test = [dict(r) for r in db.fetchall("SELECT * FROM denuncias WHERE COALESCE(estado,'pendiente') NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada') LIMIT 3")]
-            plan_err = None
-        except Exception as e:
-            plan_test = []
-            plan_err = str(e)
-    return jsonify(
-        denuncias_count=c1, denuncias_manual_count=c2,
-        denuncias_estados=estados, columns=cols,
-        plan_query_test=plan_test, plan_query_error=plan_err
-    )
-
-@app.route('/plan-mensual/asignar-semana', methods=['POST'])
-@rol_required('admin','operaciones')
-def asignar_semana_plan():
-    try:
-        d = request.json or {}
-        den_id  = int(d.get('id', 0))
-        fuente  = d.get('fuente','excel')
-        semana  = d.get('semana','').strip()
-        if not den_id: return jsonify(ok=False, error='Faltan datos')
-        tabla = 'denuncias' if fuente == 'excel' else 'denuncias_manual'
-        # Add column if missing
-        sdb = get_db_schema()
-        try: sdb.execute(f"ALTER TABLE {tabla} ADD COLUMN plan_semana TEXT DEFAULT ''")
-        except: pass
-        sdb.close()
-        with get_db() as db:
-            db.execute(f'UPDATE {tabla} SET plan_semana=? WHERE id=?', (semana, den_id))
-        return jsonify(ok=True)
-    except Exception as e:
-        import logging; logging.error(f"asignar_semana: {e}")
-        return jsonify(ok=False, error=str(e)), 500
-
-@app.route('/plan-mensual/vista')
-@rol_required('admin','operaciones','directora','coordinador')
-def plan_mensual_vista():
-    MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-    mes_param = request.args.get('mes', datetime.now().strftime('%Y-%m'))
-    try:
-        year, month = int(mes_param.split('-')[0]), int(mes_param.split('-')[1])
-    except:
-        year, month = datetime.now().year, datetime.now().month
-    mes_label = f"{MESES_ES[month]} {year}"
-
-    # Ensure columns
-    sdb = get_db_schema()
-    for stmt in [
-        "ALTER TABLE denuncias ADD COLUMN plan_semana TEXT DEFAULT ''",
-        "ALTER TABLE denuncias_manual ADD COLUMN plan_semana TEXT DEFAULT ''",
-    ]:
-        try: sdb.execute(stmt)
-        except: pass
-    sdb.close()
-
-    with get_db() as db:
-        try:
-            excel = [dict(r) for r in db.fetchall(
-                """SELECT id, nombre, provincia, municipio,
-                          COALESCE(zona_inferida,'') as zona,
-                          TRIM(COALESCE(tipo,'')) as tipo,
-                          COALESCE(no_oficio,'') as no_oficio,
-                          COALESCE(plan_semana,'') as plan_semana,
-                          'excel' as fuente
-                   FROM denuncias WHERE plan_mes=?
-                   ORDER BY provincia, municipio""", (mes_param,))]
-        except: excel = []
-        try:
-            manual = [dict(r) for r in db.fetchall(
-                """SELECT id, nombre, provincia, municipio,
-                          COALESCE(zona,'') as zona,
-                          COALESCE(tipo,'') as tipo,
-                          COALESCE(no_oficio,'') as no_oficio,
-                          COALESCE(plan_semana,'') as plan_semana,
-                          'manual' as fuente
-                   FROM denuncias_manual WHERE plan_mes=?
-                   ORDER BY provincia, municipio""", (mes_param,))]
-        except: manual = []
-
-        en_plan = excel + manual
-        from collections import defaultdict
-        por_provincia = defaultdict(list)
-        for d in en_plan:
-            por_provincia[d.get('provincia') or 'Sin provincia'].append(d)
-
-        # Generate week options for this month
-        import calendar
-        semanas = []
-        first = datetime(year, month, 1)
-        last  = datetime(year, month, calendar.monthrange(year, month)[1])
-        cur = first
-        while cur <= last:
-            if cur.weekday() == 0:  # Monday
-                semanas.append(cur.strftime('%Y-W%V'))
-            cur = datetime(cur.year, cur.month, cur.day + 1) if cur.day < calendar.monthrange(cur.year, cur.month)[1] else datetime(cur.year, cur.month + 1 if cur.month < 12 else 1, 1)
-
-    return render_template('plan_mensual_vista.html',
-        en_plan=en_plan, por_provincia=dict(sorted(por_provincia.items())),
-        mes=mes_param, mes_label=mes_label, semanas=list(dict.fromkeys(semanas)),
-        readonly=(current_user.rol == 'directora'))
 
 @app.route('/mapa')
 @login_required
