@@ -79,7 +79,7 @@ async function generar(){
   const btn=document.getElementById('btn-gen');
   btn.disabled=true; btn.textContent='Procesando...';
   try {
-    const r=await api('/asignación/ejecutar',{semana:SEMANA,vehiculos:VEH,fecha_base:new Date().toISOString().slice(0,10)});
+    const r=await api('/asignacion/ejecutar',{semana:SEMANA,vehiculos:VEH,fecha_base:new Date().toISOString().slice(0,10)});
     if(!r.ok){toast('Error al generar','#dc2626');btn.disabled=false;btn.textContent='Ejecutar Sorteo';return;}
     renderResultado(r.resultado,r.seed);
     btn.textContent='Regenerar'; btn.disabled=false;
@@ -140,11 +140,11 @@ function rp(p,rol,bg,col){
 
 async function confirmar(res){
   if(!confirm('Confirmar estas asignaciónes? Se generara el Plan Semanal con el personal asignado.'))return;
-  const r=await api('/asignación/confirmar',{resultado:res});
+  const r=await api('/asignacion/confirmar',{resultado:res});
   if(r.ok){
     toast('Asignaciónes confirmadas. Redirigiendo al Plan Semanal...','#16a34a');
     setTimeout(()=>window.location='/plan_semanal',1500);
   } else toast('Error al confirmar','#dc2626');
 }
 </script>
-{% endblock %} 
+{% endblock %}
