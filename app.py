@@ -1063,7 +1063,7 @@ def ejecucion_diaria():
         o['brigadas']       = json.loads(o['brigadas_json'] or '[]')
         o['vehiculos_data'] = json.loads(o['vehiculos_json'] or '[]')
     vehiculos_diarios = sr['vehiculos_disponibles'] if sr else 6
-    return render_template('ejecucion_diaria.html', solo_lectura=solo_lectura, operativos=ops, fecha=fecha, today=today,
+    return render_template('ejecucion_diaria.html', solo_lectura=solo_lectura, operativos=ops, fecha=fecha,
                            fechas_disponibles=[x['fecha'] for x in all_ops],
                            semana=semana, vehiculos_diarios=vehiculos_diarios,
                            today=today)
@@ -1729,6 +1729,49 @@ def sync_denuncia(op_id):
     except Exception as e:
         return jsonify(ok=False, error=str(e))
 
+@app.route('/documentos/subir', methods=['POST'])
+@rol_required('admin','operaciones')
+def subir_documento_firmado():
+    """Upload a signed document (DCJA-035, DCJA-042, DCJA-039) and archive it."""
+    import uuid as _uuid, os as _os
+    tipo    = request.form.get('tipo','')      # DCJA-035 / DCJA-042 / DCJA-039
+    ref_id  = request.form.get('ref_id','')   # semana o fecha
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify(ok=False, error='No se subio ningun archivo'), 400
+    ext  = archivo.filename.rsplit('.',1)[-1].lower() if '.' in archivo.filename else 'pdf'
+    fname = f"{tipo}_{ref_id}_{_uuid.uuid4().hex[:8]}.{ext}"
+    _os.makedirs('uploads/firmados', exist_ok=True)
+    archivo.save(f"uploads/firmados/{fname}")
+    # Log in historial
+    try:
+        db = get_db_schema()
+        db.execute('''CREATE TABLE IF NOT EXISTS documentos_firmados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT, ref_id TEXT, archivo TEXT,
+            subido_por TEXT, fecha TEXT)''')
+        db.execute('''INSERT INTO documentos_firmados (tipo,ref_id,archivo,subido_por,fecha)
+                   VALUES (?,?,?,?,?)''',
+            (tipo, ref_id, fname, current_user.username, datetime.now().isoformat()))
+        db.close()
+    except Exception as e:
+        import logging; logging.warning(f"doc log failed: {e}")
+    return jsonify(ok=True, archivo=fname)
+
+@app.route('/documentos/lista')
+@login_required
+def lista_documentos():
+    with get_db() as db:
+        try:
+            db.execute('''CREATE TABLE IF NOT EXISTS documentos_firmados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo TEXT, ref_id TEXT, archivo TEXT,
+                subido_por TEXT, fecha TEXT)''')
+            docs = [dict(r) for r in db.fetchall(
+                'SELECT * FROM documentos_firmados ORDER BY fecha DESC LIMIT 200')]
+        except: docs = []
+    return render_template('documentos.html', docs=docs)
+
 @app.route('/mapa')
 @login_required
 def mapa_view():
@@ -1748,4 +1791,4 @@ def mapa_view():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    app.run(host='0.0.0.0', port=port, debug=False)
