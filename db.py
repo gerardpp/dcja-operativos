@@ -1,11 +1,24 @@
-import os, sqlite3
+import os, sqlite3, re
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+# Whitelist of allowed table names to prevent SQL injection via dynamic table names
+ALLOWED_TABLES = frozenset([
+    'operativos', 'denuncias', 'denuncias_manual', 'personal_state',
+    'semanas', 'sorteo_audit', 'usuarios', 'uploads_log',
+    'historial_estados', 'documentos_firmados', 'personal',
+])
+
+def validate_table(tabla):
+    """Validate table name against whitelist to prevent SQL injection."""
+    if tabla not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {tabla!r}")
+    return tabla
 
 def get_db():
     if DATABASE_URL:
         import psycopg2, psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         conn.autocommit = False
         return PgWrapper(conn)
     else:
@@ -14,10 +27,10 @@ def get_db():
         return SqliteWrapper(conn)
 
 def get_db_schema():
-    """Autocommit connection for schema migrations — each statement is independent."""
+    """Autocommit connection for schema migrations."""
     if DATABASE_URL:
         import psycopg2
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         conn.autocommit = True
         return PgSchemaWrapper(conn)
     else:
@@ -57,8 +70,7 @@ class PgSchemaWrapper:
             except Exception as e:
                 if 'already exists' in str(e).lower() or 'duplicate' in str(e).lower():
                     pass
-                else:
-                    raise
+                else: raise
     def execute(self, sql, params=()):
         cur = self.conn.cursor(); cur.execute(self._q(sql), params); return cur
     def fetchone(self, sql, params=()):
