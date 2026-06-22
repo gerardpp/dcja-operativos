@@ -33,7 +33,7 @@ input:focus{border-color:#1a3a8f;box-shadow:0 0 0 3px rgba(26,58,143,.1);}
   </div>
   <div class="login-body">
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
-    <form method="post">
+    <form autocomplete="off" method="post">
       <div class="fg">
         <label for="username">Usuario</label>
         <input type="text" id="username" name="username" placeholder="Ingresa tu usuario" autofocus autocomplete="username">
@@ -48,4 +48,4 @@ input:focus{border-color:#1a3a8f;box-shadow:0 0 0 3px rgba(26,58,143,.1);}
   <div class="login-footer">Republica Dominicana &nbsp;·&nbsp; Ministerio de Hacienda y Economia &nbsp;·&nbsp; Uso Exclusivo Institucional</div>
 </div>
 </body>
-</html> 
+</html>
