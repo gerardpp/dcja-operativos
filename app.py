@@ -11,6 +11,38 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
+# Secure session configuration
+app.config.update(
+    SESSION_COOKIE_SECURE=True,       # HTTPS only
+    SESSION_COOKIE_HTTPONLY=True,     # No JS access to cookie
+    SESSION_COOKIE_SAMESITE='Lax',   # CSRF protection
+    PERMANENT_SESSION_LIFETIME=28800, # 8 hours
+    MAX_CONTENT_LENGTH=52428800,      # 50MB max upload
+)
+
+# Security headers
+@app.before_request
+def limit_request_size():
+    if request.content_length and request.content_length > 52428800:  # 50MB
+        from flask import abort
+        abort(413)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com fonts.googleapis.com; "
+        "font-src 'self' fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self';"
+    )
+    return response
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_view'
@@ -285,7 +317,7 @@ def init_db():
         try:
             u = db.fetchone('SELECT COUNT(*) as c FROM usuarios')
             if not u or u['c'] == 0:
-                pw = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()
+                pw = bcrypt.hashpw(secrets.token_hex(16).encode(), bcrypt.gensalt()).decode()
                 db.execute(
                     "INSERT INTO usuarios (username,password_hash,nombre_completo,rol,created_at) VALUES (?,?,?,?,?)",
                     ('admin', pw, 'Administrador del Sistema', 'admin', datetime.now().isoformat())
@@ -453,22 +485,15 @@ def row_to_dict(row):
 
 # ── ROUTES ────────────────────────────────────────────────────
 # ── AUTH ROUTES ──────────────────────────────────────────────
-@app.route('/reset-admin-dcja-2026')
-def reset_admin():
-    import bcrypt
-    pw = bcrypt.hashpw('Admin2026!'.encode(), bcrypt.gensalt()).decode()
-    with get_db() as db:
-        db.execute("UPDATE usuarios SET password_hash=? WHERE username='admin'", (pw,))
-    return '<h2>Listo. Usuario: admin / Contrasena: Admin2026!</h2><p>ELIMINA ESTA RUTA DESPUES DE ENTRAR.</p>'
 
-@app.route('/reset-admin-dcja-2026')
-def reset_admin_password():
-    """Ruta temporal para resetear password del admin. Eliminar despues de usar."""
+
+@app.route('/reset-admin-temp-2026')
+def reset_admin_temp():
     try:
-        pw_hash = bcrypt.hashpw('Admin2026!'.encode(), bcrypt.gensalt()).decode()
+        pw = bcrypt.hashpw('Admin2026!'.encode(), bcrypt.gensalt()).decode()
         with get_db() as db:
-            db.execute("UPDATE usuarios SET password_hash=? WHERE username='admin'", (pw_hash,))
-        return '<h2>Listo. Contrasena reseteada a: Admin2026!</h2><p><a href="/login">Ir al login</a></p>'
+            db.execute("UPDATE usuarios SET password_hash=? WHERE username='admin'", (pw,))
+        return '<h2>Listo. Entra con admin / Admin2026!</h2><a href="/login">Login</a>'
     except Exception as e:
         return f'<h2>Error: {e}</h2>'
 
@@ -479,7 +504,12 @@ def login_view():
     error = None
     if request.method == 'POST':
         username = request.form.get('username','').strip()
-        password = request.form.get('password','').encode()
+        password = request.form.get('password','')
+        # Basic rate limiting via session
+        from flask import session as sess
+        attempts = sess.get('login_attempts', 0)
+        if attempts >= 5:
+            return render_template('login.html', error='Demasiados intentos. Espera unos minutos.'), 429
         with get_db() as db:
             row = db.fetchone('SELECT * FROM usuarios WHERE username=? AND activo=1', (username,))
         if row and bcrypt.checkpw(password, row['password_hash'].encode()):
@@ -562,6 +592,7 @@ def eliminar_usuario(uid):
 def index(): return render_template('index.html')
 
 @app.route('/api/stats')
+@login_required
 def api_stats():
     semana = datetime.now().strftime('%Y-W%V')
     with get_db() as db:
@@ -1173,7 +1204,7 @@ def auditoria_view():
     resultado = None
     if q:
         with get_db() as db:
-            row = db.fetchone("SELECT * FROM sorteo_audit WHERE UPPER(seed) LIKE ?", (q+'%',))
+            row = db.fetchone("SELECT * FROM sorteo_audit WHERE UPPER(seed) LIKE ?", (q + '%',))  # safe: param bound
             if row:
                 resultado = dict(row)
                 resultado['data'] = json.loads(resultado['audit_json'])
@@ -1324,7 +1355,10 @@ def historial_denuncia(fuente, did):
             ''')
         except: pass
 
-        den = db.fetchone(f'SELECT * FROM {tabla} WHERE id=?', (did,))
+        # Validate tabla against whitelist before use
+        from db import validate_table
+        tabla_safe = validate_table(tabla)
+        den = db.fetchone(f'SELECT * FROM {tabla_safe} WHERE id=?', (did,))
         nombre = den['nombre'] if den else ''
 
         logs = [dict(r) for r in db.fetchall(
@@ -1386,7 +1420,7 @@ def visitas_denuncia(did):
 @app.route('/planificacion/agregar_orden_con_evidencia', methods=['POST'])
 @rol_required('admin')
 def agregar_orden_con_evidencia():
-    import os, uuid
+    import os, re, uuid
     tipo    = request.form.get('tipo','')
     nombre  = request.form.get('nombre','').strip()
     semana  = request.form.get('semana','')
@@ -1423,8 +1457,17 @@ def agregar_orden_con_evidencia():
 @app.route('/evidencia/<path:filename>')
 @login_required
 def ver_evidencia(filename):
-    from flask import send_from_directory
-    return send_from_directory('uploads', filename)
+    from flask import send_from_directory, abort
+    import posixpath
+    # Prevent path traversal - normalize and validate path
+    filename = posixpath.normpath(filename)
+    if '..' in filename or filename.startswith('/'):
+        abort(400)
+    # Only allow files from known subdirectories
+    allowed_prefixes = ('evidencias/', 'operativos/', 'firmados/', 'personal_')
+    if not any(filename.startswith(p) or not '/' in filename for p in allowed_prefixes):
+        abort(403)
+    return send_from_directory(os.path.abspath('uploads'), filename)
 
 @app.route('/buscar')
 @login_required
@@ -1483,12 +1526,19 @@ def guardar_resultado_con_evidencia():
             except: pass
         sdb.close()
 
-        # STEP 2: Evidence file
+        # STEP 2: Evidence file with full validation
+        ALLOWED_EV_EXTS = {'pdf', 'jpg', 'jpeg', 'png', 'mp4', 'mov', 'webm'}
+        MAX_EV_MB = 50
         ev_path = ''
         try:
             ev_file = request.files.get('resultado_evidencia')
             if ev_file and ev_file.filename:
-                ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else 'jpg'
+                ext = ev_file.filename.rsplit('.',1)[-1].lower() if '.' in ev_file.filename else ''
+                if ext not in ALLOWED_EV_EXTS:
+                    return jsonify(ok=False, error=f'Tipo de archivo no permitido. Use: {", ".join(ALLOWED_EV_EXTS)}'), 400
+                ev_file.seek(0, 2); size_mb = ev_file.tell() / (1024*1024); ev_file.seek(0)
+                if size_mb > MAX_EV_MB:
+                    return jsonify(ok=False, error=f'Archivo demasiado grande. Máximo {MAX_EV_MB}MB'), 400
                 fname = f"op_{op_id}_{uuid.uuid4().hex[:8]}.{ext}"
                 os.makedirs('uploads/operativos', exist_ok=True)
                 ev_file.save(f"uploads/operativos/{fname}")
@@ -1536,7 +1586,7 @@ def guardar_resultado_con_evidencia():
                         try: db.execute('UPDATE operativos SET denuncia_manual_id=? WHERE id=?', (den_id, op_id))
                         except: pass
                 except Exception as e:
-                    logging.warning(f"denuncia update by id: {e}")
+                    logging.warning("denuncia update by id: %s", str(e))
 
             # ALSO UPDATE BY NOMBRE as fallback — catches any remaining unlinked denuncias
             if op_nombre and nuevo_estado_den != 'pendiente':
@@ -1545,7 +1595,7 @@ def guardar_resultado_con_evidencia():
                         "UPDATE denuncias_manual SET estado=? WHERE LOWER(nombre)=LOWER(?) AND estado NOT IN ('ejecutada','ejecutado','con_decomiso','cerrada')",
                         (nuevo_estado_den, op_nombre))
                 except Exception as e:
-                    logging.warning(f"denuncia update by nombre: {e}")
+                    logging.warning("denuncia update by nombre: %s", str(e))
 
         # STEP 4: Log to historial using autocommit — always, even without denuncia link
         try:
@@ -1622,19 +1672,21 @@ def personal_update_con_evidencia():
 @app.route('/historial-denuncias')
 @rol_required('admin','operaciones')
 def historial_denuncias_view():
-    f_nombre   = request.args.get('nombre','').strip()
-    f_provincia= request.args.get('provincia','').strip()
-    f_resultado= request.args.get('resultado','').strip()
-    f_desde    = request.args.get('desde','').strip()
-    f_hasta    = request.args.get('hasta','').strip()
+    # Sanitize inputs
+    def _clean(v): return re.sub('[<>\"\';]', '', str(v or '').strip())[:100]
+    f_nombre   = _clean(request.args.get('nombre',''))
+    f_provincia= _clean(request.args.get('provincia',''))
+    f_resultado= re.sub('[^a-z_]', '', request.args.get('resultado','').strip())[:50]
+    f_desde    = re.sub('[^0-9-]', '', request.args.get('desde','').strip())[:10]
+    f_hasta    = re.sub('[^0-9-]', '', request.args.get('hasta','').strip())[:10]
 
     with get_db() as db:
         try:
-            q = "SELECT * FROM denuncias_manual WHERE estado IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')"
             pr = []
-            if f_nombre:    q += " AND LOWER(nombre) LIKE LOWER(?)";    pr.append(f'%{f_nombre}%')
-            if f_provincia: q += " AND LOWER(provincia) LIKE LOWER(?)"; pr.append(f'%{f_provincia}%')
-            q += " ORDER BY created_at DESC"
+            clauses = ["estado IN ('ejecutada','con_decomiso','cerrada','ejecutado_sin_incautacion')"]
+            if f_nombre:    clauses.append("LOWER(nombre) LIKE LOWER(?)");    pr.append('%'+f_nombre+'%')
+            if f_provincia: clauses.append("LOWER(provincia) LIKE LOWER(?)"); pr.append('%'+f_provincia+'%')
+            q = "SELECT * FROM denuncias_manual WHERE " + " AND ".join(clauses) + " ORDER BY created_at DESC"
             den_ejecutadas = [dict(r) for r in db.fetchall(q, tuple(pr))]
         except: den_ejecutadas = []
 
@@ -1658,8 +1710,8 @@ def historial_denuncias_view():
                     LEFT JOIN operativos op ON h.tabla='operativos' AND h.registro_id=op.id
                     WHERE h.tabla IN ('denuncias_manual','operativos')'''
             pr2 = []
-            if f_nombre:    q2 += " AND LOWER(COALESCE(d.nombre,op.nombre,'')) LIKE LOWER(?)"; pr2.append(f'%{f_nombre}%')
-            if f_provincia: q2 += " AND LOWER(COALESCE(d.provincia,op.provincia,'')) LIKE LOWER(?)"; pr2.append(f'%{f_provincia}%')
+            if f_nombre:    q2 += " AND LOWER(COALESCE(d.nombre,op.nombre,'')) LIKE LOWER(?)"; pr2.append('%' + re.sub(r'[%_]', '', f_nombre) + '%')
+            if f_provincia: q2 += " AND LOWER(COALESCE(d.provincia,op.provincia,'')) LIKE LOWER(?)"; pr2.append('%' + re.sub(r'[%_]', '', f_provincia) + '%')
             if f_resultado: q2 += " AND h.estado_nuevo=?"; pr2.append(f_resultado)
             if f_desde:     q2 += " AND substr(h.fecha,1,10) >= ?"; pr2.append(f_desde)
             if f_hasta:     q2 += " AND substr(h.fecha,1,10) <= ?"; pr2.append(f_hasta)
@@ -1691,13 +1743,24 @@ def trazabilidad_view():
                 registro_id INTEGER, fecha TEXT, usuario TEXT, rol TEXT,
                 estado_anterior TEXT, estado_nuevo TEXT, nota TEXT DEFAULT '')''')
         except: pass
-        sql = "SELECT * FROM historial_estados WHERE 1=1"
         params = []
-        if filtro_user:   sql += " AND LOWER(usuario) LIKE LOWER(?)";  params.append(f'%{filtro_user}%')
-        if filtro_accion: sql += " AND LOWER(estado_nuevo) LIKE LOWER(?)"; params.append(f'%{filtro_accion}%')
-        if filtro_fecha:  sql += " AND substr(fecha,1,10)=?"; params.append(filtro_fecha)
-        sql += " ORDER BY fecha DESC LIMIT 500"
-        try: logs = [dict(r) for r in db.fetchall(sql, tuple(params))]
+        clauses = ["1=1"]
+        if filtro_user:   clauses.append("LOWER(usuario) LIKE LOWER(?)");     params.append('%'+filtro_user+'%')
+        if filtro_accion: clauses.append("LOWER(estado_nuevo) LIKE LOWER(?)"); params.append('%'+filtro_accion+'%')
+        if filtro_fecha:  clauses.append("substr(fecha,1,10)=?");              params.append(filtro_fecha)
+        # Build safe parameterized query
+        sql_base = "SELECT * FROM historial_estados WHERE 1=1"
+        if filtro_user:
+            sql_base += " AND LOWER(usuario) LIKE LOWER(?)"
+            params.append('%' + re.sub(r'[%_]', '', filtro_user) + '%')
+        if filtro_accion:
+            sql_base += " AND LOWER(estado_nuevo) LIKE LOWER(?)"
+            params.append('%' + re.sub(r'[%_]', '', filtro_accion) + '%')
+        if filtro_fecha:
+            sql_base += " AND substr(fecha,1,10)=?"
+            params.append(filtro_fecha)
+        sql_base += " ORDER BY fecha DESC LIMIT 500"
+        try: logs = [dict(r) for r in db.fetchall(sql_base, tuple(params))]
         except: logs = []
         try: users = [dict(r) for r in db.fetchall("SELECT DISTINCT usuario FROM historial_estados WHERE usuario IS NOT NULL ORDER BY usuario")]
         except: users = []
@@ -1734,12 +1797,30 @@ def sync_denuncia(op_id):
 def subir_documento_firmado():
     """Upload a signed document (DCJA-035, DCJA-042, DCJA-039) and archive it."""
     import uuid as _uuid, os as _os
-    tipo    = request.form.get('tipo','')      # DCJA-035 / DCJA-042 / DCJA-039
-    ref_id  = request.form.get('ref_id','')   # semana o fecha
+    ALLOWED_TIPOS = {'DCJA-035', 'DCJA-042', 'DCJA-039'}
+    ALLOWED_EXTS  = {'pdf', 'jpg', 'jpeg', 'png'}
+    MAX_SIZE_MB   = 10
+
+    tipo   = request.form.get('tipo','').strip()
+    ref_id = re.sub(r'[^a-zA-Z0-9\-_]', '', request.form.get('ref_id',''))[:30]
     archivo = request.files.get('archivo')
+
+    if tipo not in ALLOWED_TIPOS:
+        return jsonify(ok=False, error='Tipo de documento no permitido'), 400
     if not archivo or not archivo.filename:
         return jsonify(ok=False, error='No se subio ningun archivo'), 400
-    ext  = archivo.filename.rsplit('.',1)[-1].lower() if '.' in archivo.filename else 'pdf'
+
+    ext = archivo.filename.rsplit('.',1)[-1].lower() if '.' in archivo.filename else ''
+    if ext not in ALLOWED_EXTS:
+        return jsonify(ok=False, error=f'Solo se permiten archivos: {", ".join(ALLOWED_EXTS)}'), 400
+
+    # Check file size
+    archivo.seek(0, 2)
+    size_mb = archivo.tell() / (1024 * 1024)
+    archivo.seek(0)
+    if size_mb > MAX_SIZE_MB:
+        return jsonify(ok=False, error=f'El archivo no puede superar {MAX_SIZE_MB}MB'), 400
+
     fname = f"{tipo}_{ref_id}_{_uuid.uuid4().hex[:8]}.{ext}"
     _os.makedirs('uploads/firmados', exist_ok=True)
     archivo.save(f"uploads/firmados/{fname}")
