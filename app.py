@@ -512,7 +512,7 @@ def login_view():
             return render_template('login.html', error='Demasiados intentos. Espera unos minutos.'), 429
         with get_db() as db:
             row = db.fetchone('SELECT * FROM usuarios WHERE username=? AND activo=1', (username,))
-        if row and bcrypt.checkpw(password, row['password_hash'].encode()):
+        if row and bcrypt.checkpw(password.encode(), row['password_hash'].encode()):
             user = User(row['id'], row['username'], row['rol'])
             login_user(user, remember=True)
             if row['rol'] == 'denuncias':
